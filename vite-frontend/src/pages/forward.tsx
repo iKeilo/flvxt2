@@ -2281,7 +2281,7 @@ export default function ForwardPage() {
           strategy: addressCount > 1 ? form.strategy : "fifo",
           speedId: normalizedSpeedId,
           ipMaxConn: form.ipMaxConn,
-          ipSpeedId: normalizedIPSpeedId,
+          ...(isAdmin ? { ipSpeedId: normalizedIPSpeedId } : {}),
           maxConn: form.maxConn,
           proxyProtocol: form.proxyProtocol,
         };
@@ -2297,7 +2297,7 @@ export default function ForwardPage() {
           strategy: addressCount > 1 ? form.strategy : "fifo",
           speedId: normalizedSpeedId,
           ipMaxConn: form.ipMaxConn,
-          ipSpeedId: normalizedIPSpeedId,
+          ...(isAdmin ? { ipSpeedId: normalizedIPSpeedId } : {}),
           maxConn: form.maxConn,
           proxyProtocol: form.proxyProtocol,
         };
@@ -2325,7 +2325,7 @@ export default function ForwardPage() {
             duration: 5000,
           });
         }
-        if (ipSpeedLimitAutoCleared) {
+        if (isAdmin && ipSpeedLimitAutoCleared) {
           toast("所选每 IP 限速规则不存在，已自动清除为不限速", {
             icon: "⚠️",
             duration: 5000,
