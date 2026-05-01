@@ -242,7 +242,8 @@ func (p *tunnelQualityProber) probeTunnel(tunnelID int64) {
 		pingTimeoutMS:  tunnelQualityPingTimeoutMs,
 		timeoutMessage: "探测超时",
 	}
-	p.probeBestExitOwners(tunnelID, inNodes, midNodesGrouped, outNodes, ipPreference, options)
+	probeTarget := p.probeTargetForTunnel(tunnelID)
+	p.probeBestExitOwners(tunnelID, inNodes, midNodesGrouped, outNodes, ipPreference, options, probeTarget)
 
 	switch tunnel.Type {
 	case 1:
@@ -376,7 +377,7 @@ func (p *tunnelQualityProber) probeTunnel(tunnelID int64) {
 	p.storeResult(snap)
 }
 
-func (p *tunnelQualityProber) probeBestExitOwners(tunnelID int64, inNodes []chainNodeRecord, chainHops [][]chainNodeRecord, outNodes []chainNodeRecord, ipPreference string, options diagnosisExecOptions) {
+func (p *tunnelQualityProber) probeBestExitOwners(tunnelID int64, inNodes []chainNodeRecord, chainHops [][]chainNodeRecord, outNodes []chainNodeRecord, ipPreference string, options diagnosisExecOptions, probeTarget tunnelProbeTarget) {
 	if p == nil || p.handler == nil || p.handler.bestExit == nil || len(outNodes) <= 1 {
 		return
 	}
@@ -407,7 +408,7 @@ func (p *tunnelQualityProber) probeBestExitOwners(tunnelID int64, inNodes []chai
 		}
 		key := bestExitOwnerKey{TunnelID: tunnelID, OwnerNodeID: owner.NodeID}
 		p.handler.bestExit.ensureApplied(key, outNodes[0].NodeID, time.Now())
-		scores := evaluateBestExitOwner(owner, outNodes, nodeMap, ipPreference, options, roundPinger)
+		scores := evaluateBestExitOwner(owner, outNodes, nodeMap, ipPreference, options, probeTarget, roundPinger)
 		decision := p.handler.bestExit.observeScores(key, scores, time.Now())
 		if decision.Switch {
 			now := time.Now()
@@ -419,6 +420,22 @@ func (p *tunnelQualityProber) probeBestExitOwners(tunnelID int64, inNodes []chai
 			p.handler.bestExit.setApplied(key, decision.ExitNodeID, time.Now())
 		}
 	}
+}
+
+func (p *tunnelQualityProber) probeTargetForTunnel(tunnelID int64) tunnelProbeTarget {
+	if p == nil || p.handler == nil || p.handler.repo == nil {
+		return defaultTunnelProbeTarget()
+	}
+	tunnels, err := p.handler.repo.ListTunnels()
+	if err != nil {
+		return defaultTunnelProbeTarget()
+	}
+	for _, tunnel := range tunnels {
+		if asInt64(tunnel["id"], 0) == tunnelID {
+			return effectiveTunnelProbeTargetValues(asString(tunnel["probeTargetHost"]), asInt(tunnel["probeTargetPort"], 0))
+		}
+	}
+	return defaultTunnelProbeTarget()
 }
 
 func (p *tunnelQualityProber) tcpPingNode(nodeID int64, ip string, port int, options diagnosisExecOptions) (latency float64, loss float64, err error) {
