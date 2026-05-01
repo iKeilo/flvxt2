@@ -555,12 +555,14 @@ type ForwardRecord struct {
 
 // TunnelRecord is a minimal tunnel view used by control plane.
 type TunnelRecord struct {
-	ID           int64
-	Type         int
-	Status       int
-	Flow         int64
-	TrafficRatio float64
-	Protocol     string
+	ID              int64
+	Type            int
+	Status          int
+	Flow            int64
+	TrafficRatio    float64
+	Protocol        string
+	ProbeTargetHost string
+	ProbeTargetPort int
 }
 
 type UserQuotaView struct {
