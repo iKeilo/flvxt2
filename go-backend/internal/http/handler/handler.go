@@ -475,6 +475,7 @@ func (h *Handler) tunnelList(w http.ResponseWriter, r *http.Request) {
 		response.WriteJSON(w, response.Err(-2, err.Error()))
 		return
 	}
+	h.attachBestExitStates(items)
 	response.WriteJSON(w, response.OK(items))
 }
 
