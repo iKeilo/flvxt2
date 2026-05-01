@@ -405,19 +405,21 @@ type NodeBackup struct {
 }
 
 type TunnelBackup struct {
-	ID           int64               `json:"id"`
-	Name         string              `json:"name"`
-	TrafficRatio float64             `json:"trafficRatio"`
-	Type         int                 `json:"type"`
-	Protocol     string              `json:"protocol"`
-	Flow         int64               `json:"flow"`
-	CreatedTime  int64               `json:"createdTime"`
-	UpdatedTime  int64               `json:"updatedTime"`
-	Status       int                 `json:"status"`
-	InIP         string              `json:"inIp,omitempty"`
-	Inx          int                 `json:"inx"`
-	IPPreference string              `json:"ipPreference,omitempty"`
-	ChainTunnels []ChainTunnelBackup `json:"chainTunnels,omitempty"`
+	ID              int64               `json:"id"`
+	Name            string              `json:"name"`
+	TrafficRatio    float64             `json:"trafficRatio"`
+	Type            int                 `json:"type"`
+	Protocol        string              `json:"protocol"`
+	Flow            int64               `json:"flow"`
+	CreatedTime     int64               `json:"createdTime"`
+	UpdatedTime     int64               `json:"updatedTime"`
+	Status          int                 `json:"status"`
+	InIP            string              `json:"inIp,omitempty"`
+	Inx             int                 `json:"inx"`
+	IPPreference    string              `json:"ipPreference,omitempty"`
+	ProbeTargetHost string              `json:"probeTargetHost,omitempty"`
+	ProbeTargetPort int                 `json:"probeTargetPort,omitempty"`
+	ChainTunnels    []ChainTunnelBackup `json:"chainTunnels,omitempty"`
 }
 
 type ChainTunnelBackup struct {

@@ -2063,6 +2063,7 @@ func (r *Repository) exportTunnels() ([]model.TunnelBackup, error) {
 			Type: t.Type, Protocol: t.Protocol, Flow: t.Flow,
 			CreatedTime: t.CreatedTime, UpdatedTime: t.UpdatedTime,
 			Status: t.Status, Inx: t.Inx, IPPreference: t.IPPreference,
+			ProbeTargetHost: t.ProbeTargetHost, ProbeTargetPort: t.ProbeTargetPort,
 		}
 		if t.InIP.Valid {
 			b.InIP = t.InIP.String
@@ -2458,23 +2459,25 @@ func importTunnels(tx *gorm.DB, tunnels []model.TunnelBackup, now int64) (int, e
 	count := 0
 	for _, t := range tunnels {
 		item := model.Tunnel{
-			ID:           t.ID,
-			Name:         t.Name,
-			TrafficRatio: t.TrafficRatio,
-			Type:         t.Type,
-			Protocol:     t.Protocol,
-			Flow:         t.Flow,
-			CreatedTime:  t.CreatedTime,
-			UpdatedTime:  now,
-			Status:       t.Status,
-			InIP:         sql.NullString{String: t.InIP, Valid: true},
-			Inx:          t.Inx,
-			IPPreference: t.IPPreference,
+			ID:              t.ID,
+			Name:            t.Name,
+			TrafficRatio:    t.TrafficRatio,
+			Type:            t.Type,
+			Protocol:        t.Protocol,
+			Flow:            t.Flow,
+			CreatedTime:     t.CreatedTime,
+			UpdatedTime:     now,
+			Status:          t.Status,
+			InIP:            sql.NullString{String: t.InIP, Valid: true},
+			Inx:             t.Inx,
+			IPPreference:    t.IPPreference,
+			ProbeTargetHost: t.ProbeTargetHost,
+			ProbeTargetPort: t.ProbeTargetPort,
 		}
 		err := tx.Clauses(clause.OnConflict{
 			Columns: []clause.Column{{Name: "id"}},
 			DoUpdates: clause.AssignmentColumns([]string{
-				"name", "traffic_ratio", "type", "protocol", "flow", "updated_time", "status", "in_ip", "inx", "ip_preference",
+				"name", "traffic_ratio", "type", "protocol", "flow", "updated_time", "status", "in_ip", "inx", "ip_preference", "probe_target_host", "probe_target_port",
 			}),
 		}).Create(&item).Error
 		if err != nil {
