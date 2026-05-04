@@ -604,7 +604,7 @@ func setupContractRouter(t *testing.T, jwtSecret string) (http.Handler, *repo.Re
 		_ = r.Close()
 	})
 
-	h := handler.New(r, jwtSecret)
+	h := handler.New(r, jwtSecret, "test")
 	return httpserver.NewRouter(h, jwtSecret), r
 }
 

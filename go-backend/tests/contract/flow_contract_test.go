@@ -10,7 +10,7 @@ import (
 )
 
 func TestFlowEndpointsStringResponses(t *testing.T) {
-	h := handler.New(nil, "secret")
+	h := handler.New(nil, "secret", "test")
 	mux := http.NewServeMux()
 	h.Register(mux)
 
