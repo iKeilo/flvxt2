@@ -5899,7 +5899,7 @@ export default function ForwardPage() {
         <ModalContent>
           {(onClose) => (
             <>
-              <ModalHeader className="flex flex-col gap-1 bg-content1 border-b border-divider">
+              <ModalHeader className="flex flex-col gap-1 bg-content1">
                 <h2 className="text-xl font-bold">规则诊断结果</h2>
                 {currentDiagnosisForward && (
                   <div className="flex items-center gap-2 min-w-0">
@@ -6401,7 +6401,7 @@ export default function ForwardPage() {
                   </div>
                 )}
               </ModalBody>
-              <ModalFooter className="bg-content1 border-t border-divider">
+              <ModalFooter className="bg-content1">
                 <Button variant="flat" onPress={onClose}>
                   关闭
                 </Button>
