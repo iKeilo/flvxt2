@@ -155,7 +155,6 @@ export function VersionFooter({
               <Button
                 size="sm"
                 color="primary"
-                variant="flat"
                 className="inline-flex h-[18px] px-1.5 text-[10px] min-w-0 rounded-sm font-semibold"
                 onPress={handleOpenUpgradeModal}
                 isLoading={upgrading}
