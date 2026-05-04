@@ -509,7 +509,7 @@ export default function ConfigPage() {
           <Button
             isDisabled={value.length === 0 || uploading}
             size="sm"
-            variant="light"
+            variant="flat"
             onPress={() => clearBrandAsset(key)}
           >
             清除

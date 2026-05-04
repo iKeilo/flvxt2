@@ -1060,7 +1060,7 @@ export default function DashboardPage() {
                   <Button
                     isLoading={item.copying}
                     size="sm"
-                    variant="light"
+                    variant="flat"
                     onPress={() => copyAddress(item)}
                   >
                     复制

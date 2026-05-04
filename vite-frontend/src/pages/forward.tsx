@@ -629,7 +629,7 @@ const SortableTunnelGroupContainer = ({
             aria-label={collapsed ? "展开分组" : "折叠分组"}
             className="h-7 w-7 min-w-7 pointer-events-none"
             size="sm"
-            variant="light"
+            variant="flat"
           >
             <svg
               aria-hidden="true"
@@ -890,7 +890,7 @@ const SortableTableRow = ({
             isIconOnly
             className="w-6 h-6 min-w-6"
             size="sm"
-            variant="light"
+            variant="flat"
             onPress={() => handleViewTrafficResetLogs(forward)}
           >
             <svg
@@ -1201,7 +1201,7 @@ const SortableCompactTableRow = ({
             isIconOnly
             className="w-6 h-6 min-w-6"
             size="sm"
-            variant="light"
+            variant="flat"
             onPress={() => handleViewTrafficResetLogs(forward)}
           >
             <svg
@@ -5477,7 +5477,7 @@ export default function ForwardPage() {
                   <Button
                     isLoading={item.copying}
                     size="sm"
-                    variant="light"
+                    variant="flat"
                     onPress={() => copyAddress(item)}
                   >
                     复制
@@ -5648,7 +5648,7 @@ export default function ForwardPage() {
             </div>
           </ModalBody>
           <ModalFooter>
-            <Button variant="light" onPress={() => setExportModalOpen(false)}>
+            <Button variant="flat" onPress={() => setExportModalOpen(false)}>
               关闭
             </Button>
           </ModalFooter>
@@ -5863,7 +5863,7 @@ export default function ForwardPage() {
             </div>
           </ModalBody>
           <ModalFooter>
-            <Button variant="light" onPress={() => setImportModalOpen(false)}>
+            <Button variant="flat" onPress={() => setImportModalOpen(false)}>
               关闭
             </Button>
             <Button
@@ -6520,7 +6520,7 @@ export default function ForwardPage() {
                               isIconOnly
                               className="w-6 h-6 min-w-6 text-danger hover:bg-danger/10"
                               size="sm"
-                              variant="light"
+                              variant="flat"
                               onPress={() => {
                                 setLogToDelete(log.id);
                                 setDeleteLogModalOpen(true);
@@ -6611,7 +6611,7 @@ export default function ForwardPage() {
           </ModalBody>
           <ModalFooter className="border-t border-default-200">
             <Button
-              variant="light"
+              variant="flat"
               onPress={() => setDeleteLogModalOpen(false)}
             >
               取消

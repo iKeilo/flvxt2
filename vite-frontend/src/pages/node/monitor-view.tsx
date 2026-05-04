@@ -1394,7 +1394,7 @@ export function MonitorView({ nodeMap, viewMode = "grid" }: MonitorViewProps) {
                             <Button
                               isIconOnly
                               size="sm"
-                              variant="light"
+                              variant="flat"
                               onPress={() => {
                                 setDetailNodeId(node.id);
                                 setSelectedNodeId(node.id);
@@ -1871,7 +1871,7 @@ export function MonitorView({ nodeMap, viewMode = "grid" }: MonitorViewProps) {
                           </div>
                           <Dropdown>
                             <DropdownTrigger>
-                              <Button isIconOnly size="sm" variant="light">
+                              <Button isIconOnly size="sm" variant="flat">
                                 <MoreVertical className="w-4 h-4" />
                               </Button>
                             </DropdownTrigger>

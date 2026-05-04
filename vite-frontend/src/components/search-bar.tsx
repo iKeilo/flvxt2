@@ -75,7 +75,7 @@ export function SearchBar({
               className="text-default-600 shrink-0"
               color="default"
               size="sm"
-              variant="light"
+              variant="flat"
               onPress={() => {
                 onClose();
                 onChange("");

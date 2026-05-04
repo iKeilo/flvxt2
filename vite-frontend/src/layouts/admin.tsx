@@ -523,7 +523,7 @@ export default function AdminLayout({
               isIconOnly
               className="flex-shrink-0 text-gray-400 hover:text-gray-700 dark:text-gray-500 dark:hover:text-gray-300 min-w-0 w-10 h-10 rounded-full ml-auto"
               size="sm"
-              variant="light"
+              variant="flat"
               onPress={toggleCollapse}
             >
               {isCollapsed ? (
@@ -597,7 +597,7 @@ export default function AdminLayout({
               <Button
                 isIconOnly
                 className="lg:hidden"
-                variant="light"
+                variant="flat"
                 onPress={toggleMobileMenu}
               >
                 <svg
@@ -662,7 +662,7 @@ export default function AdminLayout({
               <DropdownTrigger>
                 <Button
                   className="text-sm font-medium text-foreground"
-                  variant="light"
+                  variant="flat"
                 >
                   {username}
                   <svg

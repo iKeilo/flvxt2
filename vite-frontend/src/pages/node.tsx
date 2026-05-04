@@ -2619,7 +2619,7 @@ export default function NodePage() {
                           isIconOnly
                           className="h-7 w-7 min-w-7 pointer-events-none -ml-1"
                           size="sm"
-                          variant="light"
+                          variant="flat"
                         >
                           <svg
                             aria-hidden="true"
@@ -3266,7 +3266,7 @@ export default function NodePage() {
                   isLoading={deleteLoading}
                   onPress={confirmDelete}
                 >
-                  {deleteLoading ? "删除中..." : "确认删除"}
+                  {deleteLoading ? "删除中..." : "确认"}
                 </Button>
               </ModalFooter>
             </>
@@ -3638,7 +3638,7 @@ export default function NodePage() {
                               isIconOnly
                               className="w-6 h-6 min-w-6 text-danger hover:bg-danger/10"
                               size="sm"
-                              variant="light"
+                              variant="flat"
                               onPress={() => {
                                 setLogToDelete(log.id);
                                 setDeleteLogModalOpen(true);
@@ -3775,7 +3775,7 @@ export default function NodePage() {
           </ModalBody>
           <ModalFooter className="border-t border-default-200">
             <Button
-              variant="light"
+              variant="flat"
               onPress={() => setDeleteLogModalOpen(false)}
             >
               取消
@@ -3823,7 +3823,7 @@ export default function NodePage() {
                   isLoading={batchLoading}
                   onPress={handleBatchDelete}
                 >
-                  {batchLoading ? "删除中..." : "确认删除"}
+                  {batchLoading ? "删除中..." : "确认"}
                 </Button>
               </ModalFooter>
             </>

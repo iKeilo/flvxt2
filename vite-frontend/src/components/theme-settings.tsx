@@ -181,7 +181,7 @@ export const ThemeSettings: React.FC = () => {
             <Button
               className="text-gray-500 dark:text-gray-400"
               size="sm"
-              variant="light"
+              variant="flat"
               onPress={handleReset}
             >
               ↩ 恢复默认主题

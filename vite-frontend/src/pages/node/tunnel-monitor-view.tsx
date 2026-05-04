@@ -1116,7 +1116,7 @@ export function TunnelMonitorView({
                         <Button
                           isIconOnly
                           size="sm"
-                          variant="light"
+                          variant="flat"
                           onPress={() => setDetailTunnelId(tunnel.id)}
                         >
                           <Eye className="w-4 h-4 text-default-500" />

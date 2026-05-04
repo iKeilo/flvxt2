@@ -1876,9 +1876,9 @@ export default function TunnelPage() {
     deleteHasForwardDependencies && deleteReplacementTunnels.length === 0;
   const deleteConfirmLabel = deleteHasForwardDependencies
     ? deleteAction === "replace"
-      ? "迁移规则后删除该隧道"
-      : "删除规则并删除该隧道"
-    : "删除该隧道";
+      ? "迁移后删除"
+      : "直接删除"
+    : "确认";
   const selectedTunnelIdList = useMemo(
     () =>
       viewMode === "list"
@@ -3088,7 +3088,7 @@ export default function TunnelPage() {
                                     aria-label={`删除第${groupIndex + 1}跳`}
                                     color="danger"
                                     size="sm"
-                                    variant="light"
+                                    variant="flat"
                                     onPress={() => removeChainNode(groupIndex)}
                                   >
                                     <svg
@@ -4094,7 +4094,7 @@ export default function TunnelPage() {
         <ModalContent>
           {(onClose) => (
             <>
-              <ModalHeader className="flex flex-col gap-1 bg-content1 border-b border-divider">
+              <ModalHeader className="flex flex-col gap-1 bg-content1">
                 <h2 className="text-xl font-bold">隧道诊断结果</h2>
                 {currentDiagnosisTunnel && (
                   <div className="flex items-center gap-2">
@@ -4604,7 +4604,7 @@ export default function TunnelPage() {
                   </div>
                 )}
               </ModalBody>
-              <ModalFooter className="bg-content1 border-t border-divider">
+              <ModalFooter className="bg-content1">
                 <Button variant="flat" onPress={onClose}>
                   关闭
                 </Button>

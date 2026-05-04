@@ -447,7 +447,7 @@ function SortableTableRow({
               isIconOnly
               className="w-6 h-6"
               size="sm"
-              variant="light"
+              variant="flat"
               onPress={() => handleViewNodeTrafficLogs(node)}
             >
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">

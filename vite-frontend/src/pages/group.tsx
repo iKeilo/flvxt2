@@ -552,7 +552,7 @@ export default function GroupPage() {
                                   <Button
                                     className="min-h-5 min-w-5 h-5 w-5 p-0 flex-shrink-0"
                                     size="sm"
-                                    variant="light"
+                                    variant="flat"
                                     onPress={() =>
                                       toggleTunnelGroupExpand(item.id)
                                     }
@@ -576,7 +576,7 @@ export default function GroupPage() {
                                   <Button
                                     className="min-h-5 min-w-5 h-5 w-5 p-0 flex-shrink-0"
                                     size="sm"
-                                    variant="light"
+                                    variant="flat"
                                     onPress={() =>
                                       toggleTunnelGroupExpand(item.id)
                                     }
@@ -713,7 +713,7 @@ export default function GroupPage() {
                                   <Button
                                     className="min-h-5 min-w-5 h-5 w-5 p-0 flex-shrink-0"
                                     size="sm"
-                                    variant="light"
+                                    variant="flat"
                                     onPress={() =>
                                       toggleUserGroupExpand(item.id)
                                     }
@@ -737,7 +737,7 @@ export default function GroupPage() {
                                   <Button
                                     className="min-h-5 min-w-5 h-5 w-5 p-0 flex-shrink-0"
                                     size="sm"
-                                    variant="light"
+                                    variant="flat"
                                     onPress={() =>
                                       toggleUserGroupExpand(item.id)
                                     }
@@ -964,7 +964,7 @@ export default function GroupPage() {
             </Select>
           </ModalBody>
           <ModalFooter>
-            <Button variant="light" onPress={onTunnelGroupModalClose}>
+            <Button variant="flat" onPress={onTunnelGroupModalClose}>
               取消
             </Button>
             <Button
@@ -1011,7 +1011,7 @@ export default function GroupPage() {
             </Select>
           </ModalBody>
           <ModalFooter>
-            <Button variant="light" onPress={onUserGroupModalClose}>
+            <Button variant="flat" onPress={onUserGroupModalClose}>
               取消
             </Button>
             <Button
@@ -1061,7 +1061,7 @@ export default function GroupPage() {
             </p>
           </ModalBody>
           <ModalFooter className="mt-auto">
-            <Button variant="light" onPress={onTunnelAssignModalClose}>
+            <Button variant="flat" onPress={onTunnelAssignModalClose}>
               取消
             </Button>
             <Button
@@ -1111,7 +1111,7 @@ export default function GroupPage() {
             </p>
           </ModalBody>
           <ModalFooter className="mt-auto">
-            <Button variant="light" onPress={onUserAssignModalClose}>
+            <Button variant="flat" onPress={onUserAssignModalClose}>
               取消
             </Button>
             <Button

@@ -376,7 +376,7 @@ export default function H5Layout({ children }: { children: React.ReactNode }) {
             <DropdownTrigger>
               <Button
                 className="text-sm font-medium text-foreground px-1 sm:px-2 min-w-0 bg-transparent"
-                variant="light"
+                variant="flat"
               >
                 <span className="truncate max-w-[70px] sm:max-w-[120px]">
                   {username}

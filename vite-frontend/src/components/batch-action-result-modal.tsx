@@ -134,7 +134,7 @@ export function BatchActionResultModal({
               </div>
             </ModalBody>
             <ModalFooter>
-              <Button variant="light" onPress={handleCopy}>
+              <Button variant="flat" onPress={handleCopy}>
                 复制失败原因
               </Button>
               <Button color="primary" onPress={onClose}>

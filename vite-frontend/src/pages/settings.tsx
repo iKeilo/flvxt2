@@ -153,7 +153,7 @@ export const SettingsPage = () => {
               isIconOnly
               aria-label="返回上一页"
               className="text-gray-600 dark:text-gray-300"
-              variant="light"
+              variant="flat"
               onPress={() => navigate(-1)}
             >
               <BackIcon className="w-5 h-5" />
@@ -300,7 +300,7 @@ export const SettingsPage = () => {
                           <Button
                             color="danger"
                             size="sm"
-                            variant="light"
+                            variant="flat"
                             onPress={() => handleDeletePanelAddress(panel.name)}
                           >
                             删除
