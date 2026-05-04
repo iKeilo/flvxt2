@@ -911,26 +911,19 @@ const SortableTableRow = ({
         </div>
       </TableCell>
       <TableCell className={`whitespace-nowrap ${rowBg}`}>
-        <div className="flex flex-col gap-1 items-start">
-          {(forward.inSpeed || 0) > 0 && (
-            <span
-              className="inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-500/10 text-blue-600 dark:text-blue-400"
-              title="上行带宽"
-            >
-              ↑{formatSpeed(forward.inSpeed || 0)}
-            </span>
-          )}
-          {(forward.outSpeed || 0) > 0 && (
-            <span
-              className="inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-500/10 text-purple-600 dark:text-purple-400"
-              title="下行带宽"
-            >
-              ↓{formatSpeed(forward.outSpeed || 0)}
-            </span>
-          )}
-          {(forward.inSpeed || 0) === 0 && (forward.outSpeed || 0) === 0 && (
-            <span className="text-xs text-default-400">-</span>
-          )}
+        <div className="flex flex-col gap-1 w-full">
+          <span
+            className="block w-full min-h-[20px] px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-500/10 text-blue-600 dark:text-blue-400"
+            title="上行带宽"
+          >
+            {(forward.inSpeed || 0) > 0 ? `↑${formatSpeed(forward.inSpeed || 0)}` : ''}
+          </span>
+          <span
+            className="block w-full min-h-[20px] px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-500/10 text-purple-600 dark:text-purple-400"
+            title="下行带宽"
+          >
+            {(forward.outSpeed || 0) > 0 ? `↓${formatSpeed(forward.outSpeed || 0)}` : ''}
+          </span>
         </div>
       </TableCell>
       <TableCell className={`whitespace-nowrap ${rowBg}`}>
@@ -1229,26 +1222,19 @@ const SortableCompactTableRow = ({
         </div>
       </TableCell>
       <TableCell className={`whitespace-nowrap ${rowBg}`}>
-        <div className="flex flex-col gap-1 items-start">
-          {(forward.inSpeed || 0) > 0 && (
-            <span
-              className="inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-500/10 text-blue-600 dark:text-blue-400"
-              title="上行带宽"
-            >
-              ↑{formatSpeed(forward.inSpeed || 0)}
-            </span>
-          )}
-          {(forward.outSpeed || 0) > 0 && (
-            <span
-              className="inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-500/10 text-purple-600 dark:text-purple-400"
-              title="下行带宽"
-            >
-              ↓{formatSpeed(forward.outSpeed || 0)}
-            </span>
-          )}
-          {(forward.inSpeed || 0) === 0 && (forward.outSpeed || 0) === 0 && (
-            <span className="text-xs text-default-400">-</span>
-          )}
+        <div className="flex flex-col gap-1 w-full">
+          <span
+            className="block w-full min-h-[20px] px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-500/10 text-blue-600 dark:text-blue-400"
+            title="上行带宽"
+          >
+            {(forward.inSpeed || 0) > 0 ? `↑${formatSpeed(forward.inSpeed || 0)}` : ''}
+          </span>
+          <span
+            className="block w-full min-h-[20px] px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-500/10 text-purple-600 dark:text-purple-400"
+            title="下行带宽"
+          >
+            {(forward.outSpeed || 0) > 0 ? `↓${formatSpeed(forward.outSpeed || 0)}` : ''}
+          </span>
         </div>
       </TableCell>
       <TableCell className={`whitespace-nowrap ${rowBg}`}>
@@ -6826,9 +6812,9 @@ function ConnectionCountCell({
   current: number;
   max: number;
 }) {
-  // 都是 0 时显示 -
+  // 都是 0 时显示 0/暂无
   if (current === 0 && max === 0) {
-    return <span className="text-sm text-default-400">-</span>;
+    return <span className="text-sm text-default-400">0/暂无</span>;
   }
   const maxText = max > 0 ? max.toString() : "不限";
 

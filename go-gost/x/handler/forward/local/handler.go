@@ -112,7 +112,59 @@ func (h *forwardHandler) Handle(ctx context.Context, conn net.Conn, opts ...hand
 	pStats := xstats.Stats{}
 	conn = stats_wrapper.WrapConn(conn, &pStats)
 
+	// 上报流量统计到 stats 包
+	var forwardID, userID, tunnelID int64
+	var port int
+	if h.options.Service != "" {
+		// 从服务名解析 forwardID、userID、tunnelID
+		// 服务名格式：{forwardID}_{userID}_{tunnelID}_tcp 或 {forwardID}_{userID}_{tunnelID}_udp
+		forwardID, userID, tunnelID = parseServiceName(h.options.Service)
+		if forwardID > 0 {
+			// 获取本地监听地址（节点 ID 和端口）
+			localAddr := ro.LocalAddr
+			_, portStr, _ := net.SplitHostPort(localAddr)
+			port, _ = strconv.Atoi(portStr)
+		}
+	}
+
+	// 启动后台协程定期上报流量（每 1 秒）
+	var statsTicker *time.Ticker
+	var statsDone chan struct{}
+	if forwardID > 0 {
+		statsTicker = time.NewTicker(time.Second)
+		statsDone = make(chan struct{})
+		go func() {
+			lastInput := uint64(0)
+			lastOutput := uint64(0)
+			for {
+				select {
+				case <-statsTicker.C:
+					inputBytes := pStats.Get(stats.KindInputBytes)
+					outputBytes := pStats.Get(stats.KindOutputBytes)
+					
+					// 上报增量流量（用于计算实时带宽）
+					if inputBytes > lastInput {
+						forwardStats.AddForwardTraffic(forwardID, userID, tunnelID, h.options.Service, 0, port, true, inputBytes-lastInput)
+						lastInput = inputBytes
+					}
+					if outputBytes > lastOutput {
+						forwardStats.AddForwardTraffic(forwardID, userID, tunnelID, h.options.Service, 0, port, false, outputBytes-lastOutput)
+						lastOutput = outputBytes
+					}
+				case <-statsDone:
+					return
+				}
+			}
+		}()
+	}
+
 	defer func() {
+		// 停止定期上报
+		if statsTicker != nil {
+			statsTicker.Stop()
+			close(statsDone)
+		}
+		
 		if err != nil {
 			ro.Err = err.Error()
 		}
@@ -122,24 +174,12 @@ func (h *forwardHandler) Handle(ctx context.Context, conn net.Conn, opts ...hand
 		ro.OutputBytes = outputBytes
 		ro.Duration = time.Since(start)
 
-		// 上报流量统计到 stats 包
-		if h.options.Service != "" {
-			// 从服务名解析 forwardID、userID、tunnelID
-			// 服务名格式：{forwardID}_{userID}_{tunnelID}_tcp 或 {forwardID}_{userID}_{tunnelID}_udp
-			forwardID, userID, tunnelID := parseServiceName(h.options.Service)
-			if forwardID > 0 {
-				// 获取本地监听地址（节点 ID 和端口）
-				localAddr := ro.LocalAddr
-				_, portStr, _ := net.SplitHostPort(localAddr)
-				port, _ := strconv.Atoi(portStr)
-				
-				h.options.Logger.Debugf("[forward.stats] service=%s forwardID=%d userID=%d tunnelID=%d port=%d inBytes=%d outBytes=%d",
-					h.options.Service, forwardID, userID, tunnelID, port, inputBytes, outputBytes)
-				forwardStats.AddForwardTraffic(forwardID, userID, tunnelID, h.options.Service, 0, port, true, inputBytes)
-				forwardStats.AddForwardTraffic(forwardID, userID, tunnelID, h.options.Service, 0, port, false, outputBytes)
-			} else {
-				h.options.Logger.Debugf("[forward.stats] parseServiceName failed: service=%s", h.options.Service)
-			}
+		// 上报剩余流量（连接关闭时的最终统计）
+		if forwardID > 0 {
+			h.options.Logger.Debugf("[forward.stats] service=%s forwardID=%d userID=%d tunnelID=%d port=%d inBytes=%d outBytes=%d",
+				h.options.Service, forwardID, userID, tunnelID, port, inputBytes, outputBytes)
+			forwardStats.AddForwardTraffic(forwardID, userID, tunnelID, h.options.Service, 0, port, true, inputBytes)
+			forwardStats.AddForwardTraffic(forwardID, userID, tunnelID, h.options.Service, 0, port, false, outputBytes)
 		}
 	}()
 

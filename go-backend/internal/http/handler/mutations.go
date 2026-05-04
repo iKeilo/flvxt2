@@ -175,7 +175,7 @@ func (h *Handler) userUpdate(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	h.repo.PropagateUserFlowToTunnels(id, flow, num, expTime, flowResetTime)
+	h.repo.PropagateUserFlowToTunnels(id, flow, num, expTime, flowResetTime, status)
 	if hasDailyQuota || hasMonthlyQuota {
 		dailyQuotaGB := asInt64(req["dailyQuotaGB"], 0)
 		monthlyQuotaGB := asInt64(req["monthlyQuotaGB"], 0)

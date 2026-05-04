@@ -24,6 +24,12 @@
    - No graceful handling of temporary disconnections
    - Metrics lost immediately when node disconnected
 
+4. **Traffic Stats Only Reported on Connection Close** (`go-gost/x/handler/forward/local/handler.go`) ⭐ **CRITICAL**
+   - Traffic was only accumulated and reported in `defer` (when connection closes)
+   - `BandwidthCalculator` runs every 1 second, but `InBytes`/`OutBytes` didn't update during long-lived connections
+   - Speed calculation always got `0` delta → displayed `-`
+   - **This was the main cause of "一会有一会没有" (flickering) issue**
+
 ## Changes Made
 
 ### 1. Fix Bandwidth Calculator State (`go-gost/x/stats/forward_collector.go`)
@@ -107,7 +113,62 @@ func collectForwardMetrics() []ForwardMetric {
 - Frontend shows `0 B/s` instead of `-`
 - Consistent data flow for monitoring
 
-### 3. Panel Graceful Metrics Cleanup (`go-backend/internal/ws/server.go`)
+### 3. Real-time Traffic Reporting (`go-gost/x/handler/forward/local/handler.go`) ⭐ **KEY FIX**
+
+**Before:**
+```go
+defer func() {
+    // Only report traffic when connection CLOSES
+    inputBytes := pStats.Get(stats.KindInputBytes)
+    outputBytes := pStats.Get(stats.KindOutputBytes)
+    forwardStats.AddForwardTraffic(..., true, inputBytes)
+    forwardStats.AddForwardTraffic(..., false, outputBytes)
+}()
+```
+
+**Problem:** Long-lived connections never trigger updates → bandwidth always 0.
+
+**After:**
+```go
+// Start background goroutine to report traffic every 1 second
+statsTicker = time.NewTicker(time.Second)
+go func() {
+    lastInput := uint64(0)
+    lastOutput := uint64(0)
+    for {
+        select {
+        case <-statsTicker.C:
+            inputBytes := pStats.Get(stats.KindInputBytes)
+            outputBytes := pStats.Get(stats.KindOutputBytes)
+            // Report DELTA traffic for real-time bandwidth calculation
+            if inputBytes > lastInput {
+                forwardStats.AddForwardTraffic(..., true, inputBytes-lastInput)
+                lastInput = inputBytes
+            }
+            if outputBytes > lastOutput {
+                forwardStats.AddForwardTraffic(..., false, outputBytes-lastOutput)
+                lastOutput = outputBytes
+            }
+        case <-statsDone:
+            return
+        }
+    }
+}()
+
+defer func() {
+    // Stop ticker and report final accumulated traffic
+    statsTicker.Stop()
+    close(statsDone)
+    // ... report final totals
+}()
+```
+
+**Benefits:**
+- Traffic reported every 1 second during connection lifetime
+- `BandwidthCalculator` gets continuous delta updates
+- Real-time bandwidth displays smoothly, no flickering
+
+### 4. Panel Graceful Metrics Cleanup (`go-backend/internal/ws/server.go`)
 
 **Added:**
 - `nodeOfflineTime map[int64]int64` - Track when nodes go offline
@@ -137,8 +198,9 @@ func collectForwardMetrics() []ForwardMetric {
 ## Files Modified
 
 1. `go-gost/x/stats/forward_collector.go` - Bandwidth calculator state fix
-2. `go-gost/x/socket/websocket_reporter.go` - Always report metrics
-3. `go-backend/internal/ws/server.go` - Graceful metrics cleanup
+2. `go-gost/x/socket/websocket_reporter.go` - Always report metrics (return empty array)
+3. `go-backend/internal/ws/server.go` - Graceful metrics cleanup with 10-min grace period
+4. `go-gost/x/handler/forward/local/handler.go` - **KEY FIX**: Real-time traffic reporting every 1s
 
 ## Related Issues
 

@@ -114,7 +114,7 @@ func (r *Repository) UpdateUserWithoutPassword(id int64, username, name string, 
 		}).Error
 }
 
-func (r *Repository) PropagateUserFlowToTunnels(userID int64, flow int64, num int, expTime, flowResetTime int64) {
+func (r *Repository) PropagateUserFlowToTunnels(userID int64, flow int64, num int, expTime, flowResetTime int64, status int) {
 	if r == nil || r.db == nil {
 		return
 	}
@@ -125,6 +125,7 @@ func (r *Repository) PropagateUserFlowToTunnels(userID int64, flow int64, num in
 			"num":             num,
 			"exp_time":        expTime,
 			"flow_reset_time": flowResetTime,
+			"status":          status,
 		}).Error
 }
 
