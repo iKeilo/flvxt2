@@ -151,18 +151,18 @@ export function VersionFooter({
               <span className={updateBadgeClassName} role="status">
                 {latestUpdateVersion}
               </span>
-              {" "}
-              <Button
-                size="sm"
-                color="primary"
-                className="inline-flex h-[18px] px-1.5 text-[10px] min-w-0 rounded-sm font-semibold"
-                onPress={handleOpenUpgradeModal}
-                isLoading={upgrading}
-              >
-                升级
-              </Button>
             </>
           )}
+          {" "}
+          <Button
+            size="sm"
+            color="primary"
+            className="inline-flex h-[18px] px-1.5 text-[10px] min-w-0 rounded-sm font-semibold"
+            onPress={handleOpenUpgradeModal}
+            isLoading={upgrading}
+          >
+            升级
+          </Button>
         </p>
         <p className={poweredClassName}>
           Powered by Flvx
