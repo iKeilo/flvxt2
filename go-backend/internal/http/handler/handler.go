@@ -32,6 +32,7 @@ type Handler struct {
 	metrics     *metrics.IngestionService
 	healthCheck *health.Checker
 	bestExit    *bestExitManager
+	fluxVersion string
 
 	captchaMu     sync.Mutex
 	captchaTokens map[string]int64
@@ -55,6 +56,11 @@ func (h *Handler) GetForwardConnections(nodeID int64, forwardID int64) int {
 		return 0
 	}
 	return h.wsServer.GetForwardCurrentConnections(nodeID, forwardID)
+}
+
+// GetFluxVersion 获取当前面板版本
+func (h *Handler) GetFluxVersion() string {
+	return h.fluxVersion
 }
 
 type loginRequest struct {
@@ -95,7 +101,7 @@ const (
 	maxBrandAssetDataURLBytes = 1024 * 1024
 )
 
-func New(repo *repo.Repository, jwtSecret string) *Handler {
+func New(repo *repo.Repository, jwtSecret string, fluxVersion string) *Handler {
 	h := &Handler{
 		repo:                   repo,
 		jwtSecret:              jwtSecret,
@@ -103,6 +109,7 @@ func New(repo *repo.Repository, jwtSecret string) *Handler {
 		metrics:                metrics.NewIngestionService(repo),
 		healthCheck:            nil,
 		bestExit:               newBestExitManager(),
+		fluxVersion:            fluxVersion,
 		captchaTokens:          make(map[string]int64),
 		pendingUpgradeRedeploy: make(map[int64]struct{}),
 	}
@@ -218,6 +225,9 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/forward/traffic-reset-log/delete", h.deleteForwardTrafficResetLog)
 	mux.HandleFunc("/api/v1/node/traffic-reset-logs", h.nodeTrafficResetLogs)
 	mux.HandleFunc("/api/v1/node/traffic-reset-log/delete", h.deleteNodeTrafficResetLog)
+	mux.HandleFunc("/api/v1/panel/upgrade/check", h.panelUpgradeCheck)
+	mux.HandleFunc("/api/v1/panel/upgrade/releases", h.panelReleases)
+	mux.HandleFunc("/api/v1/panel/upgrade", h.panelUpgrade)
 	mux.HandleFunc("/api/v1/speed-limit/list", h.speedLimitList)
 	mux.HandleFunc("/api/v1/speed-limit/create", h.speedLimitCreate)
 	mux.HandleFunc("/api/v1/speed-limit/update", h.speedLimitUpdate)

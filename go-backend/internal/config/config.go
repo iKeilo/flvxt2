@@ -11,6 +11,7 @@ type Config struct {
 	LogDir           string
 	LicenseServerURL string
 	LicenseKey       string
+	FluxVersion      string
 }
 
 func FromEnv() Config {
@@ -23,6 +24,7 @@ func FromEnv() Config {
 		LogDir:           getEnv("LOG_DIR", "/app/logs"),
 		LicenseServerURL: getEnv("LICENSE_SERVER_URL", ""),
 		LicenseKey:       getEnv("LICENSE_KEY", ""),
+		FluxVersion:      getEnv("FLUX_VERSION", "dev"),
 	}
 
 	return cfg

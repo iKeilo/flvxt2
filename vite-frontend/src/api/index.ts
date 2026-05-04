@@ -744,16 +744,41 @@ export const assignNodeToGroup = (nodeId: number, groupId: number | null) =>
   Network.post("/node-group/assign", { nodeId, groupId });
 
 export const getNodeTagList = () =>
-  Network.post<NodeTagApiItem[]>("/node-tag/list");
+	Network.post<NodeTagApiItem[]>("/node-tag/list");
 
 export const createNodeTag = (data: NodeTagMutationPayload) =>
-  Network.post("/node-tag/create", data);
+	Network.post("/node-tag/create", data);
 
 export const updateNodeTag = (data: NodeTagMutationPayload) =>
-  Network.post("/node-tag/update", data);
+	Network.post("/node-tag/update", data);
 
 export const deleteNodeTag = (id: number) =>
-  Network.post("/node-tag/delete", { id });
+	Network.post("/node-tag/delete", { id });
 
-export const assignTagsToNode = (nodeId: number, tagIds: number[]) =>
-  Network.post("/node-tag/assign", { nodeId, tagIds });
+export const assignNodeToTag = (nodeId: number, tagId: number | null) =>
+	Network.post("/node-tag/assign", { nodeId, tagId });
+
+// ─── Panel Upgrade ────────────────────────────────────────────────────
+
+export interface PanelUpgradeCheckResponse {
+	currentVersion: string;
+	latestVersion: string;
+	hasUpdate: boolean;
+}
+
+export interface PanelReleaseItem {
+	version: string;
+	name: string;
+	publishedAt: string;
+	prerelease: boolean;
+	channel: string;
+}
+
+export const checkPanelUpgrade = (channel?: string) =>
+	Network.post<PanelUpgradeCheckResponse>("/panel/upgrade/check", { channel });
+
+export const getPanelReleases = (channel?: string) =>
+	Network.post<PanelReleaseItem[]>("/panel/upgrade/releases", { channel });
+
+export const upgradePanel = (version?: string, channel?: string) =>
+	Network.post("/panel/upgrade", { version, channel });

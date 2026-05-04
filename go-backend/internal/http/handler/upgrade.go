@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"os/exec"
 	"regexp"
 	"sort"
 	"strings"
@@ -459,4 +461,328 @@ func (h *Handler) redeployNodeRuntimeAfterUpgrade(nodeID int64) {
 			fmt.Printf("post-upgrade redeploy: forward %d failed on node %d: %v\n", forwardID, nodeID, err)
 		}
 	}
+}
+
+type PanelUpgradeRequest struct {
+	Version string `json:"version"`
+	Channel string `json:"channel"`
+}
+
+type PanelUpgradeCheckResponse struct {
+	CurrentVersion string `json:"currentVersion"`
+	LatestVersion  string `json:"latestVersion"`
+	HasUpdate      bool   `json:"hasUpdate"`
+}
+
+func (h *Handler) panelUpgradeCheck(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		response.WriteJSON(w, response.ErrDefault("请求失败"))
+		return
+	}
+
+	var req struct {
+		Channel string `json:"channel"`
+	}
+	if err := decodeJSON(r.Body, &req); err != nil && err != io.EOF {
+		req.Channel = ""
+	}
+
+	currentVersion := h.GetFluxVersion()
+	latestVersion, err := resolveLatestReleaseByChannel(req.Channel)
+	if err != nil {
+		response.WriteJSON(w, response.Err(-2, fmt.Sprintf("获取最新版本失败：%v", err)))
+		return
+	}
+
+	hasUpdate := compareVersions(currentVersion, latestVersion) < 0
+
+	response.WriteJSON(w, response.OK(PanelUpgradeCheckResponse{
+		CurrentVersion: currentVersion,
+		LatestVersion:  latestVersion,
+		HasUpdate:      hasUpdate,
+	}))
+}
+
+func (h *Handler) panelReleases(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		response.WriteJSON(w, response.ErrDefault("请求失败"))
+		return
+	}
+
+	var req struct {
+		Channel string `json:"channel"`
+	}
+	if err := decodeJSON(r.Body, &req); err != nil && err != io.EOF {
+		req.Channel = ""
+	}
+
+	releases, err := fetchGitHubReleases(50)
+	if err != nil {
+		response.WriteJSON(w, response.Err(-2, fmt.Sprintf("获取版本列表失败：%v", err)))
+		return
+	}
+
+	type releaseItem struct {
+		Version     string `json:"version"`
+		Name        string `json:"name"`
+		PublishedAt string `json:"publishedAt"`
+		Prerelease  bool   `json:"prerelease"`
+		Channel     string `json:"channel"`
+	}
+
+	items := make([]releaseItem, 0, len(releases))
+	for _, r := range releases {
+		if r.Draft {
+			continue
+		}
+		tag := strings.TrimSpace(r.TagName)
+		if tag == "" {
+			continue
+		}
+		itemChannel := releaseChannelFromTag(tag)
+		if req.Channel != "" && itemChannel != req.Channel {
+			continue
+		}
+		items = append(items, releaseItem{
+			Version:     tag,
+			Name:        r.Name,
+			PublishedAt: r.PublishedAt,
+			Prerelease:  itemChannel == releaseChannelDev,
+			Channel:     itemChannel,
+		})
+	}
+
+	sort.Slice(items, func(i, j int) bool {
+		return items[i].PublishedAt > items[j].PublishedAt
+	})
+
+	response.WriteJSON(w, response.OK(items))
+}
+
+func (h *Handler) panelUpgrade(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		response.WriteJSON(w, response.ErrDefault("请求失败"))
+		return
+	}
+
+	var req PanelUpgradeRequest
+	if err := decodeJSON(r.Body, &req); err != nil {
+		response.WriteJSON(w, response.ErrDefault("请求参数错误"))
+		return
+	}
+
+	channel := normalizeReleaseChannel(req.Channel)
+	targetVersion := strings.TrimSpace(req.Version)
+	if targetVersion == "" {
+		var err error
+		targetVersion, err = resolveLatestReleaseByChannel(channel)
+		if err != nil {
+			response.WriteJSON(w, response.Err(-2, fmt.Sprintf("获取最新版本失败：%v", err)))
+			return
+		}
+	}
+
+	currentVersion := h.GetFluxVersion()
+
+	go func() {
+		if err := h.executePanelUpgrade(currentVersion, targetVersion); err != nil {
+			fmt.Printf("面板升级失败：%v\n", err)
+			h.rollbackPanelUpgrade(currentVersion)
+		}
+	}()
+
+	response.WriteJSON(w, response.OK(map[string]string{
+		"message": "升级任务已提交，面板正在后台升级，完成后将自动重启",
+	}))
+}
+
+func (h *Handler) executePanelUpgrade(currentVersion, targetVersion string) error {
+	fmt.Printf("开始升级面板：%s -> %s\n", currentVersion, targetVersion)
+
+	installDir := "/opt/flux_panel"
+	envFile := installDir + "/.env"
+	composeFile := installDir + "/docker-compose.yml"
+	backupEnvFile := envFile + ".backup"
+	backupComposeFile := composeFile + ".backup"
+
+	if err := backupFile(envFile, backupEnvFile); err != nil {
+		return fmt.Errorf("备份 .env 失败：%v", err)
+	}
+	defer func() {
+		_ = os.Remove(backupEnvFile)
+	}()
+
+	if err := backupFile(composeFile, backupComposeFile); err != nil {
+		return fmt.Errorf("备份 docker-compose.yml 失败：%v", err)
+	}
+	defer func() {
+		_ = os.Remove(backupComposeFile)
+	}()
+
+	latestComposeURL := fmt.Sprintf("%s/%s/releases/download/%s/docker-compose-v4.yml", githubAPIBase, githubRepo, targetVersion)
+	latestComposeURL = strings.Replace(latestComposeURL, "https://api.github.com/repos", "https://github.com", 1)
+	latestComposeURL = strings.Replace(latestComposeURL, "/releases/download", "/releases/download", 1)
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Get(latestComposeURL)
+	if err != nil {
+		return fmt.Errorf("下载 docker-compose.yml 失败：%v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("下载 docker-compose.yml 失败：HTTP %d", resp.StatusCode)
+	}
+
+	composeContent, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("读取 docker-compose.yml 失败：%v", err)
+	}
+
+	if err := os.WriteFile(composeFile, composeContent, 0644); err != nil {
+		return fmt.Errorf("写入 docker-compose.yml 失败：%v", err)
+	}
+
+	if err := updateEnvVersion(envFile, targetVersion); err != nil {
+		return fmt.Errorf("更新 .env 中的版本号失败：%v", err)
+	}
+
+	fmt.Println("拉取最新镜像...")
+	if err := runDockerComposePull(installDir); err != nil {
+		return fmt.Errorf("拉取镜像失败：%v", err)
+	}
+
+	fmt.Println("停止服务...")
+	if err := runDockerComposeDown(installDir); err != nil {
+		return fmt.Errorf("停止服务失败：%v", err)
+	}
+
+	fmt.Println("启动服务...")
+	if err := runDockerComposeUp(installDir); err != nil {
+		return fmt.Errorf("启动服务失败：%v", err)
+	}
+
+	fmt.Println("等待服务健康检查...")
+	if err := waitForBackendHealthy(); err != nil {
+		return fmt.Errorf("服务健康检查失败：%v", err)
+	}
+
+	fmt.Printf("面板升级成功：%s -> %s\n", currentVersion, targetVersion)
+	return nil
+}
+
+func (h *Handler) rollbackPanelUpgrade(version string) {
+	fmt.Printf("回滚面板到版本：%s\n", version)
+	installDir := "/opt/flux_panel"
+	envFile := installDir + "/.env"
+
+	if err := updateEnvVersion(envFile, version); err != nil {
+		fmt.Printf("回滚 .env 失败：%v\n", err)
+		return
+	}
+
+	if err := runDockerComposeUp(installDir); err != nil {
+		fmt.Printf("回滚启动服务失败：%v\n", err)
+	}
+}
+
+func backupFile(src, dst string) error {
+	content, err := os.ReadFile(src)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(dst, content, 0644)
+}
+
+func updateEnvVersion(envFile, version string) error {
+	content, err := os.ReadFile(envFile)
+	if err != nil {
+		return err
+	}
+
+	lines := strings.Split(string(content), "\n")
+	updated := false
+	for i, line := range lines {
+		if strings.HasPrefix(line, "FLUX_VERSION=") {
+			lines[i] = "FLUX_VERSION=" + version
+			updated = true
+			break
+		}
+	}
+
+	if !updated {
+		lines = append(lines, "FLUX_VERSION="+version)
+	}
+
+	return os.WriteFile(envFile, []byte(strings.Join(lines, "\n")), 0644)
+}
+
+func runDockerComposePull(workDir string) error {
+	cmd := exec.Command("docker", "compose", "-f", workDir+"/docker-compose.yml", "pull")
+	cmd.Dir = workDir
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
+func runDockerComposeDown(workDir string) error {
+	cmd := exec.Command("docker", "compose", "-f", workDir+"/docker-compose.yml", "down")
+	cmd.Dir = workDir
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
+func runDockerComposeUp(workDir string) error {
+	cmd := exec.Command("docker", "compose", "-f", workDir+"/docker-compose.yml", "up", "-d")
+	cmd.Dir = workDir
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
+func waitForBackendHealthy() error {
+	client := &http.Client{Timeout: 5 * time.Second}
+	for i := 0; i < 60; i++ {
+		time.Sleep(5 * time.Second)
+		resp, err := client.Get("http://localhost:6365/flow/test")
+		if err == nil && resp.StatusCode == http.StatusOK {
+			resp.Body.Close()
+			return nil
+		}
+		if err == nil {
+			resp.Body.Close()
+		}
+	}
+	return fmt.Errorf("等待后端服务健康检查超时")
+}
+
+func compareVersions(current, target string) int {
+	current = strings.TrimPrefix(current, "v")
+	target = strings.TrimPrefix(target, "v")
+
+	currentParts := strings.Split(current, ".")
+	targetParts := strings.Split(target, ".")
+
+	maxLen := len(currentParts)
+	if len(targetParts) > maxLen {
+		maxLen = len(targetParts)
+	}
+
+	for i := 0; i < maxLen; i++ {
+		var currNum, targetNum int
+		if i < len(currentParts) {
+			fmt.Sscanf(currentParts[i], "%d", &currNum)
+		}
+		if i < len(targetParts) {
+			fmt.Sscanf(targetParts[i], "%d", &targetNum)
+		}
+		if currNum < targetNum {
+			return -1
+		}
+		if currNum > targetNum {
+			return 1
+		}
+	}
+	return 0
 }

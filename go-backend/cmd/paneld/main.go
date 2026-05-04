@@ -39,7 +39,7 @@ func main() {
 		log.Println("⚠️  未配置授权服务，跳过验证")
 	}
 	
-	log.Printf("starting go-backend on %s (db=%s)", cfg.Addr, cfg.DBPath)
+	log.Printf("starting go-backend on %s (db=%s, version=%s)", cfg.Addr, cfg.DBPath, cfg.FluxVersion)
 
 	a, err := app.New(cfg)
 	if err != nil {
