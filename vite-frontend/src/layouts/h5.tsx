@@ -585,7 +585,7 @@ export default function H5Layout({ children }: { children: React.ReactNode }) {
                 </div>
               </ModalBody>
               <ModalFooter>
-                <Button color="default" variant="light" onPress={onClose}>
+                <Button color="default" variant="flat" onPress={onClose}>
                   取消
                 </Button>
                 <Button

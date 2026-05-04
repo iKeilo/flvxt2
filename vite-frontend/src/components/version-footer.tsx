@@ -242,7 +242,7 @@ export function VersionFooter({
                 )}
               </ModalBody>
               <ModalFooter>
-                <Button variant="light" onPress={onClose} isDisabled={upgrading}>
+                <Button variant="flat" onPress={onClose} isDisabled={upgrading}>
                   取消
                 </Button>
                 <Button

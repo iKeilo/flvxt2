@@ -1143,7 +1143,7 @@ export default function GroupPage() {
                 <p className="text-default-600">{confirmConfig?.content}</p>
               </ModalBody>
               <ModalFooter>
-                <Button variant="light" onPress={onClose}>
+                <Button variant="flat" onPress={onClose}>
                   取消
                 </Button>
                 <Button

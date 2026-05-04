@@ -818,7 +818,7 @@ export default function AdminLayout({
                 </div>
               </ModalBody>
               <ModalFooter>
-                <Button color="default" variant="light" onPress={onClose}>
+                <Button color="default" variant="flat" onPress={onClose}>
                   取消
                 </Button>
                 <Button

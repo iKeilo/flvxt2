@@ -3871,7 +3871,7 @@ export default function TunnelPage() {
                 </div>
               </ModalBody>
               <ModalFooter>
-                <Button variant="light" onPress={onClose}>
+                <Button variant="flat" onPress={onClose}>
                   取消
                 </Button>
                 <Button
@@ -4051,7 +4051,7 @@ export default function TunnelPage() {
                 )}
               </ModalBody>
               <ModalFooter>
-                <Button variant="light" onPress={onClose}>
+                <Button variant="flat" onPress={onClose}>
                   取消
                 </Button>
                 <Button
@@ -4605,7 +4605,7 @@ export default function TunnelPage() {
                 )}
               </ModalBody>
               <ModalFooter className="bg-content1 border-t border-divider">
-                <Button variant="light" onPress={onClose}>
+                <Button variant="flat" onPress={onClose}>
                   关闭
                 </Button>
                 {currentDiagnosisTunnel && (
@@ -4784,7 +4784,7 @@ export default function TunnelPage() {
                 )}
               </ModalBody>
               <ModalFooter>
-                <Button variant="light" onPress={onClose}>
+                <Button variant="flat" onPress={onClose}>
                   取消
                 </Button>
                 <Button

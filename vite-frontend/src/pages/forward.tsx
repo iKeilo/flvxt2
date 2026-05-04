@@ -5386,7 +5386,7 @@ export default function ForwardPage() {
                 </div>
               </ModalBody>
               <ModalFooter>
-                <Button variant="light" onPress={onClose}>
+                <Button variant="flat" onPress={onClose}>
                   取消
                 </Button>
                 <Button
@@ -5432,7 +5432,7 @@ export default function ForwardPage() {
                 </p>
               </ModalBody>
               <ModalFooter>
-                <Button variant="light" onPress={onClose}>
+                <Button variant="flat" onPress={onClose}>
                   取消
                 </Button>
                 <Button
@@ -6402,7 +6402,7 @@ export default function ForwardPage() {
                 )}
               </ModalBody>
               <ModalFooter className="bg-content1 border-t border-divider">
-                <Button variant="light" onPress={onClose}>
+                <Button variant="flat" onPress={onClose}>
                   关闭
                 </Button>
                 {currentDiagnosisForward && (
@@ -6460,7 +6460,7 @@ export default function ForwardPage() {
                 </ul>
               </ModalBody>
               <ModalFooter>
-                <Button variant="light" onPress={onClose}>
+                <Button variant="flat" onPress={onClose}>
                   取消
                 </Button>
                 <Button
@@ -6581,7 +6581,7 @@ export default function ForwardPage() {
                 )}
               </ModalBody>
               <ModalFooter>
-                <Button variant="light" onPress={onClose}>
+                <Button variant="flat" onPress={onClose}>
                   关闭
                 </Button>
               </ModalFooter>
@@ -6641,7 +6641,7 @@ export default function ForwardPage() {
                 </p>
               </ModalBody>
               <ModalFooter>
-                <Button variant="light" onPress={onClose}>
+                <Button variant="flat" onPress={onClose}>
                   取消
                 </Button>
                 <Button
@@ -6706,7 +6706,7 @@ export default function ForwardPage() {
                 </Select>
               </ModalBody>
               <ModalFooter>
-                <Button variant="light" onPress={onClose}>
+                <Button variant="flat" onPress={onClose}>
                   取消
                 </Button>
                 <Button

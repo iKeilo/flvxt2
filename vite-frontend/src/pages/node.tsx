@@ -3258,7 +3258,7 @@ export default function NodePage() {
                 </p>
               </ModalBody>
               <ModalFooter>
-                <Button variant="light" onPress={onClose}>
+                <Button variant="flat" onPress={onClose}>
                   取消
                 </Button>
                 <Button
@@ -3313,7 +3313,7 @@ export default function NodePage() {
                 </div>
               </ModalBody>
               <ModalFooter>
-                <Button variant="light" onPress={onClose}>
+                <Button variant="flat" onPress={onClose}>
                   取消
                 </Button>
                 <Button color="primary" onPress={handleConfirmInstallCommand}>
@@ -3514,7 +3514,7 @@ export default function NodePage() {
                   )}
                 </ModalBody>
                 <ModalFooter>
-                  <Button variant="light" onPress={onClose}>
+                  <Button variant="flat" onPress={onClose}>
                     取消
                   </Button>
                   <Button
@@ -3575,7 +3575,7 @@ export default function NodePage() {
                 </ul>
               </ModalBody>
               <ModalFooter>
-                <Button variant="light" onPress={onClose}>
+                <Button variant="flat" onPress={onClose}>
                   取消
                 </Button>
                 <Button
@@ -3699,7 +3699,7 @@ export default function NodePage() {
                 )}
               </ModalBody>
               <ModalFooter>
-                <Button variant="light" onPress={onClose}>
+                <Button variant="flat" onPress={onClose}>
                   关闭
                 </Button>
               </ModalFooter>
@@ -3738,7 +3738,7 @@ export default function NodePage() {
                 </p>
               </ModalBody>
               <ModalFooter>
-                <Button variant="light" onPress={onClose}>
+                <Button variant="flat" onPress={onClose}>
                   取消
                 </Button>
                 <Button
@@ -3815,7 +3815,7 @@ export default function NodePage() {
                 </p>
               </ModalBody>
               <ModalFooter>
-                <Button variant="light" onPress={onClose}>
+                <Button variant="flat" onPress={onClose}>
                   取消
                 </Button>
                 <Button

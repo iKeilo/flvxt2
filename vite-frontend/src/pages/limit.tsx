@@ -524,7 +524,7 @@ export default function LimitPage() {
                 </div>
               </ModalBody>
               <ModalFooter>
-                <Button variant="light" onPress={onClose}>
+                <Button variant="flat" onPress={onClose}>
                   取消
                 </Button>
                 <Button
@@ -570,7 +570,7 @@ export default function LimitPage() {
                 </p>
               </ModalBody>
               <ModalFooter>
-                <Button variant="light" onPress={onClose}>
+                <Button variant="flat" onPress={onClose}>
                   取消
                 </Button>
                 <Button
