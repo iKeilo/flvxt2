@@ -251,7 +251,7 @@ export function VersionFooter({
                   isLoading={upgrading}
                   onPress={handleConfirmUpgrade}
                 >
-                  确认升级
+                  确认
                 </Button>
               </ModalFooter>
             </>
