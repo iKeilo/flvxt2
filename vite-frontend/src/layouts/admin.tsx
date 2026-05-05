@@ -662,7 +662,7 @@ export default function AdminLayout({
               <DropdownTrigger>
                 <Button
                   className="text-sm font-medium text-foreground"
-                  variant="flat"
+                  variant="light"
                 >
                   {username}
                   <svg
