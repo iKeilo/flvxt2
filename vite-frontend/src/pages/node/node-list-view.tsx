@@ -123,26 +123,22 @@ function SortableTableRow({
 }: any) {
   const [expiryPopoverOpen, setExpiryPopoverOpen] = useState(false);
   const expiryButtonRef = useRef<HTMLButtonElement>(null);
-  const [popoverPosition, setPopoverPosition] = useState<{ top: number; left: number } | null>(null);
+  const [popoverPosition, setPopoverPosition] = useState({ top: 0, left: 0 });
+
+  const handleTogglePopover = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!expiryPopoverOpen && expiryButtonRef.current) {
+      const rect = expiryButtonRef.current.getBoundingClientRect();
+      setPopoverPosition({
+        top: rect.bottom + window.scrollY + 6,
+        left: rect.left + window.scrollX,
+      });
+    }
+    setExpiryPopoverOpen(!expiryPopoverOpen);
+  };
 
   useEffect(() => {
-    if (!expiryPopoverOpen || !expiryButtonRef.current) {
-      setPopoverPosition(null);
-      return;
-    }
-
-    const updatePosition = () => {
-      if (expiryButtonRef.current) {
-        const rect = expiryButtonRef.current.getBoundingClientRect();
-        setPopoverPosition({
-          top: rect.bottom + window.scrollY + 6,
-          left: rect.left + window.scrollX,
-        });
-      }
-    };
-
-    updatePosition();
-
+    if (!expiryPopoverOpen) return;
     const handleScroll = () => setExpiryPopoverOpen(false);
     window.addEventListener("scroll", handleScroll, true);
     window.addEventListener("resize", handleScroll);
@@ -538,10 +534,7 @@ function SortableTableRow({
               ref={expiryButtonRef}
               className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border transition-all ${expiryChipProps.className} ${expiryPopoverOpen ? "border-default-400 shadow-sm" : "border-transparent hover:border-default-300"}`}
               type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setExpiryPopoverOpen(!expiryPopoverOpen);
-              }}
+              onClick={handleTogglePopover}
             >
               <svg
                 aria-hidden="true"
@@ -561,7 +554,7 @@ function SortableTableRow({
                 {expiryChipProps.label}
               </span>
             </button>
-            {expiryPopoverOpen && popoverPosition && (
+            {expiryPopoverOpen && (
               <div
                 className="fixed z-[100] w-64 rounded-xl border border-divider/80 bg-background/98 p-3 shadow-xl backdrop-blur"
                 style={{
