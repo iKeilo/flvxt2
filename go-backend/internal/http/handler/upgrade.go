@@ -643,7 +643,11 @@ func (h *Handler) executePanelUpgrade(currentVersion, targetVersion string) erro
 	if globalURL == "" {
 		globalURL = "https://ghfast.top"
 	}
-	downloadURL := fmt.Sprintf("%s/%s", globalURL, latestComposeURL)
+	// 构建下载 URL：如果是 GitHub 代理，需要去掉 https://github.com/前缀
+	downloadURL := latestComposeURL
+	if !strings.Contains(globalURL, "github.com") {
+		downloadURL = fmt.Sprintf("%s/%s", strings.TrimRight(globalURL, "/"), strings.TrimPrefix(latestComposeURL, "https://github.com/"))
+	}
 
 	h.broadcastPanelUpgradeProgress("downloading", 10, "下载 docker-compose.yml...", false)
 	client := &http.Client{Timeout: 60 * time.Second}
