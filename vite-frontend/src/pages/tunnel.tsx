@@ -2220,13 +2220,38 @@ export default function TunnelPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {sortedTunnels.map((tunnel) => {
-                      const typeDisplay = getTunnelTypeDisplay(tunnel.type);
-                      const inCount = tunnel.inNodeId?.length || 0;
-                      const outCount = tunnel.outNodeId?.length || 0;
-                      const chainCount = tunnel.chainNodes?.length || 0;
+                    {sortedTunnels.length === 0 ? (
+                      <tr>
+                        <td className="py-16 text-center" colSpan={12}>
+                          <div className="flex flex-col items-center justify-center">
+                            <h3 className="text-base font-medium text-foreground mb-1">
+                              未找到匹配的隧道
+                            </h3>
+                            <p className="text-default-500 text-sm mb-3">
+                              没有符合条件的隧道配置，请调整筛选条件
+                            </p>
+                            <Button
+                              color="warning"
+                              size="sm"
+                              variant="flat"
+                              onPress={() => {
+                                setFilterGroupId(null);
+                                setSearchKeyword("");
+                              }}
+                            >
+                              重置筛选
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : (
+                      sortedTunnels.map((tunnel) => {
+                        const typeDisplay = getTunnelTypeDisplay(tunnel.type);
+                        const inCount = tunnel.inNodeId?.length || 0;
+                        const outCount = tunnel.outNodeId?.length || 0;
+                        const chainCount = tunnel.chainNodes?.length || 0;
 
-                      return (
+                        return (
                         <SortableListRowItem key={tunnel.id} id={tunnel.id}>
                           {({ setNodeRef, style, attributes, listeners }) => (
                             <tr
@@ -2415,7 +2440,8 @@ export default function TunnelPage() {
                           )}
                         </SortableListRowItem>
                       );
-                    })}
+                    })
+                    )}
                   </tbody>
                 </table>
               </div>

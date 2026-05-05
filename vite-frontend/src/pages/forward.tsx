@@ -3912,6 +3912,43 @@ export default function ForwardPage() {
 
     return users;
   }, [forwards, isAdmin, tokenUserId]);
+  // 生成用作筛选项的隧道列表（先按用户过滤，再检查是否有规则）
+  const availableTunnels = useMemo(() => {
+    // 如果选中了特定用户，只返回该用户有规则的隧道
+    if (searchParams.userId !== "all") {
+      const targetUserId = parseInt(searchParams.userId);
+
+      // 先找出该用户的所有规则
+      const userForwards = forwards.filter(
+        (f) => f.userId === targetUserId || (targetUserId === 0 && !f.userId),
+      );
+
+      // 提取这些规则涉及的隧道 ID
+      const tunnelIdsWithForwards = new Set<number>();
+
+      userForwards.forEach((f) => {
+        if (f.tunnelId) {
+          tunnelIdsWithForwards.add(f.tunnelId);
+        }
+      });
+
+      // 只返回有规则的隧道
+      return tunnels.filter((tunnel) =>
+        tunnelIdsWithForwards.has(tunnel.id),
+      );
+    }
+
+    // 如果是"全部用户"，返回所有有规则的隧道
+    const tunnelIdsWithForwards = new Set<number>();
+
+    forwards.forEach((f) => {
+      if (f.tunnelId) {
+        tunnelIdsWithForwards.add(f.tunnelId);
+      }
+    });
+
+    return tunnels.filter((tunnel) => tunnelIdsWithForwards.has(tunnel.id));
+  }, [tunnels, forwards, searchParams.userId]);
   // 渲染规则卡片
   const renderForwardCard = (forward: Forward, listeners?: any) => {
     const rawInIp = forward.inIp ? forward.inIp.replace(/\s/g, "") : "默认IP";
@@ -4515,7 +4552,7 @@ export default function ForwardPage() {
                             <SelectItem key="all" textValue="全部隧道">
                               全部隧道
                             </SelectItem>
-                            {tunnels.map((tunnel) => (
+                            {availableTunnels.map((tunnel) => (
                               <SelectItem
                                 key={tunnel.id.toString()}
                                 textValue={

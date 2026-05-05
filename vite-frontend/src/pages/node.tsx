@@ -2580,38 +2580,76 @@ export default function NodePage() {
             </p>
           </CardBody>
         </Card>
-      ) : displayNodes.length === 0 ? (
-        <Card className="shadow-sm border border-gray-200 dark:border-gray-700 bg-default-50/50">
-          <CardBody className="text-center py-20 flex flex-col items-center justify-center min-h-[240px]">
-            <h3 className="text-xl font-medium text-foreground tracking-tight mb-2">
-              未找到匹配的节点
-            </h3>
-            <p className="text-default-500 text-sm max-w-xs mx-auto leading-relaxed">
-              没有符合条件的节点配置，请调整筛选条件
-            </p>
-          </CardBody>
-        </Card>
       ) : (
         <>
           {viewMode === "grid" && (
-            <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-              <SortableContext
-                items={sortableNodeIds}
-                strategy={rectSortingStrategy}
-              >
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
-                  {displayNodes.map((node) => (
-                    <SortableItem key={node.id} id={node.id}>
-                      {(listeners) => renderNodeCard(node, listeners)}
-                    </SortableItem>
-                  ))}
-                </div>
-              </SortableContext>
-            </DndContext>
+            displayNodes.length === 0 ? (
+              <Card className="shadow-sm border border-divider bg-content1">
+                <CardBody className="py-16 flex flex-col items-center justify-center min-h-[200px]">
+                  <h3 className="text-base font-medium text-foreground mb-1">
+                    未找到匹配的节点
+                  </h3>
+                  <p className="text-default-500 text-sm mb-3">
+                    没有符合条件的节点配置，请调整筛选条件
+                  </p>
+                  <Button
+                    color="warning"
+                    size="sm"
+                    variant="flat"
+                    onPress={() => {
+                      setFilterGroupId(null);
+                      setNodeFilterMode("all");
+                      setLocalSearchKeyword("");
+                    }}
+                  >
+                    重置筛选
+                  </Button>
+                </CardBody>
+              </Card>
+            ) : (
+              <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+                <SortableContext
+                  items={sortableNodeIds}
+                  strategy={rectSortingStrategy}
+                >
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+                    {displayNodes.map((node) => (
+                      <SortableItem key={node.id} id={node.id}>
+                        {(listeners) => renderNodeCard(node, listeners)}
+                      </SortableItem>
+                    ))}
+                  </div>
+                </SortableContext>
+              </DndContext>
+            )
           )}
           {viewMode === "grouped" && (
-            <div className="space-y-4">
-              {groupedNodes.map(({ group, nodes }) => {
+            groupedNodes.length === 0 ? (
+              <Card className="shadow-sm border border-divider bg-content1">
+                <CardBody className="py-16 flex flex-col items-center justify-center min-h-[200px]">
+                  <h3 className="text-base font-medium text-foreground mb-1">
+                    未找到匹配的节点
+                  </h3>
+                  <p className="text-default-500 text-sm mb-3">
+                    没有符合条件的节点配置，请调整筛选条件
+                  </p>
+                  <Button
+                    color="warning"
+                    size="sm"
+                    variant="flat"
+                    onPress={() => {
+                      setFilterGroupId(null);
+                      setNodeFilterMode("all");
+                      setLocalSearchKeyword("");
+                    }}
+                  >
+                    重置筛选
+                  </Button>
+                </CardBody>
+              </Card>
+            ) : (
+              <div className="space-y-4">
+                {groupedNodes.map(({ group, nodes }) => {
                 const groupSortableIds = nodes.map((n) => n.id);
                 const groupIdStr = String(group ? group.id : "none");
                 const isCollapsed = collapsedGroups[groupIdStr];
@@ -2752,6 +2790,7 @@ export default function NodePage() {
                 );
               })}
             </div>
+            )
           )}
           {viewMode === "list" && (
             <DndContext sensors={sensors} onDragEnd={handleDragEnd}>

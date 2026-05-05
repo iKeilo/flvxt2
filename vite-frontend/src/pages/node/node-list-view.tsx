@@ -857,30 +857,59 @@ export function NodeListView({
         </TableColumn>
       </TableHeader>
       <TableBody>
-        {displayNodes.map((node) => (
-          <SortableTableRow
-            key={node.id}
-            {...{
-              node,
-              realtimeNodeMetrics,
-              upgradeProgress,
-              selectedIds,
-              toggleSelect,
-              copyToClipboard,
-              openUpgradeModal,
-              handleEdit,
-              handleDelete,
-              formatTraffic,
-              nodeGroups,
-              handleDismissExpiryReminder,
-              handleCopyOverseasInstallCommand,
-              handleCopyOfflineInstallCommand,
-              handleCopyAutoInstallCommand,
-              handleViewNodeTrafficLogs,
-              handleResetNodeTraffic,
-            }}
-          />
-        ))}
+        {displayNodes.length === 0 ? (
+          <TableRow>
+            <TableCell
+              className="py-16 text-center"
+              colSpan={12}
+            >
+              <div className="flex flex-col items-center justify-center">
+                <h3 className="text-base font-medium text-foreground mb-1">
+                  未找到匹配的节点
+                </h3>
+                <p className="text-default-500 text-sm mb-3">
+                  没有符合条件的节点配置，请调整筛选条件
+                </p>
+                <Button
+                  color="warning"
+                  size="sm"
+                  variant="flat"
+                  onPress={() => {
+                    setFilterGroupId(null);
+                    setNodeFilterMode?.("all");
+                  }}
+                >
+                  重置筛选
+                </Button>
+              </div>
+            </TableCell>
+          </TableRow>
+        ) : (
+          displayNodes.map((node) => (
+            <SortableTableRow
+              key={node.id}
+              {...{
+                node,
+                realtimeNodeMetrics,
+                upgradeProgress,
+                selectedIds,
+                toggleSelect,
+                copyToClipboard,
+                openUpgradeModal,
+                handleEdit,
+                handleDelete,
+                formatTraffic,
+                nodeGroups,
+                handleDismissExpiryReminder,
+                handleCopyOverseasInstallCommand,
+                handleCopyOfflineInstallCommand,
+                handleCopyAutoInstallCommand,
+                handleViewNodeTrafficLogs,
+                handleResetNodeTraffic,
+              }}
+            />
+          ))
+        )}
       </TableBody>
     </Table>
     </div>
