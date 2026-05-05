@@ -3,7 +3,7 @@ import type { NodeSystemInfo } from "./system-info";
 
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 
 import { getConnectionStatusMeta } from "./display";
 import { getNodeRenewalSnapshot, formatNodeRenewalTime } from "./renewal";
@@ -122,6 +122,36 @@ function SortableTableRow({
   handleResetNodeTraffic,
 }: any) {
   const [expiryPopoverOpen, setExpiryPopoverOpen] = useState(false);
+  const expiryButtonRef = useRef<HTMLButtonElement>(null);
+  const [popoverPosition, setPopoverPosition] = useState<{ top: number; left: number } | null>(null);
+
+  useEffect(() => {
+    if (!expiryPopoverOpen || !expiryButtonRef.current) {
+      setPopoverPosition(null);
+      return;
+    }
+
+    const updatePosition = () => {
+      if (expiryButtonRef.current) {
+        const rect = expiryButtonRef.current.getBoundingClientRect();
+        setPopoverPosition({
+          top: rect.bottom + window.scrollY + 6,
+          left: rect.left + window.scrollX,
+        });
+      }
+    };
+
+    updatePosition();
+
+    const handleScroll = () => setExpiryPopoverOpen(false);
+    window.addEventListener("scroll", handleScroll, true);
+    window.addEventListener("resize", handleScroll);
+    return () => {
+      window.removeEventListener("scroll", handleScroll, true);
+      window.removeEventListener("resize", handleScroll);
+    };
+  }, [expiryPopoverOpen]);
+
   const {
     setNodeRef,
     transform,
@@ -505,6 +535,7 @@ function SortableTableRow({
         {hasExpiryInfo && expiryChipProps ? (
           <div className="relative">
             <button
+              ref={expiryButtonRef}
               className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border transition-all ${expiryChipProps.className} ${expiryPopoverOpen ? "border-default-400 shadow-sm" : "border-transparent hover:border-default-300"}`}
               type="button"
               onClick={(e) => {
@@ -530,9 +561,13 @@ function SortableTableRow({
                 {expiryChipProps.label}
               </span>
             </button>
-            {expiryPopoverOpen && (
+            {expiryPopoverOpen && popoverPosition && (
               <div
-                className="absolute right-0 top-full mt-1.5 z-50 w-64 rounded-xl border border-divider/80 bg-background/98 p-3 shadow-xl backdrop-blur"
+                className="fixed z-[100] w-64 rounded-xl border border-divider/80 bg-background/98 p-3 shadow-xl backdrop-blur"
+                style={{
+                  top: popoverPosition.top,
+                  left: popoverPosition.left,
+                }}
                 onClick={(e) => {
                   e.stopPropagation();
                   e.nativeEvent.stopImmediatePropagation();
