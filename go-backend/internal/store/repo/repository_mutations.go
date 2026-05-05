@@ -540,49 +540,6 @@ func (r *Repository) UpdateNodeExpiryReminderDismissed(nodeID int64, dismissed i
 		Update("expiry_reminder_dismissed", dismissed).Error
 }
 
-func (r *Repository) RefreshNodeExpiryReminder(nodeID int64) error {
-	if r == nil || r.db == nil {
-		return errors.New("repository not initialized")
-	}
-
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		var node model.Node
-		if err := tx.Select("id", "renewal_cycle").Where("id = ?", nodeID).First(&node).Error; err != nil {
-			return err
-		}
-
-		cycle := strings.TrimSpace(node.RenewalCycle.String)
-		if cycle == "" || cycle == "disabled" {
-			return errors.New("node does not have a valid renewal cycle")
-		}
-
-		now := time.Now().UnixMilli()
-		var nextExpiry int64
-
-		switch cycle {
-		case "month":
-			nextExpiry = time.Now().AddDate(0, 1, 0).UnixMilli()
-		case "quarter":
-			nextExpiry = time.Now().AddDate(0, 3, 0).UnixMilli()
-		case "halfYear":
-			nextExpiry = time.Now().AddDate(0, 6, 0).UnixMilli()
-		case "year":
-			nextExpiry = time.Now().AddDate(1, 0, 0).UnixMilli()
-		default:
-			// default to 1 month if unrecognized
-			nextExpiry = time.Now().AddDate(0, 1, 0).UnixMilli()
-		}
-
-		return tx.Model(&model.Node{}).
-			Where("id = ?", nodeID).
-			Updates(map[string]interface{}{
-				"expiry_time":                  nextExpiry,
-				"expiry_reminder_dismissed":    0,
-				"expiry_reminder_dismissed_until": 0,
-			}).Error
-	})
-}
-
 func (r *Repository) DeleteNodeCascade(nodeID int64) error {
 	if r == nil || r.db == nil {
 		return errors.New("repository not initialized")

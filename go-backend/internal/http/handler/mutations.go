@@ -877,13 +877,6 @@ func (h *Handler) nodeRefreshExpiryReminder(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// Get Node Info first to ensure it exists and has cycle
-	_, err := h.repo.GetNode(req.ID)
-	if err != nil {
-		response.WriteJSON(w, response.ErrDefault("节点不存在"))
-		return
-	}
-
 	if err := h.repo.RefreshNodeExpiryReminder(req.ID); err != nil {
 		response.WriteJSON(w, response.Err(-2, fmt.Sprintf("更新提醒周期失败: %v", err)))
 		return
