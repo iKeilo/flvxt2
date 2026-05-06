@@ -261,10 +261,10 @@ const SortableItem = ({
   const style: React.CSSProperties = {
     transform: transform
       ? CSS.Transform.toString({
-          ...transform,
-          x: Math.round(transform.x),
-          y: Math.round(transform.y),
-        })
+        ...transform,
+        x: Math.round(transform.x),
+        y: Math.round(transform.y),
+      })
       : undefined,
     transition: isDragging ? undefined : transition || undefined,
     opacity: isDragging ? 0.5 : 1,
@@ -733,7 +733,7 @@ export default function NodePage() {
             });
           }
         }
-      } catch {}
+      } catch { }
     } else if (type === "panel_upgrade_progress") {
       try {
         const progressData =
@@ -753,7 +753,7 @@ export default function NodePage() {
             }),
           );
         }
-      } catch {}
+      } catch { }
     } else if (type === "metric") {
       clearOfflineTimer(nodeId);
       const metric =
@@ -766,27 +766,27 @@ export default function NodePage() {
             ...prev[nodeId],
             uploadTraffic: Number(
               metric.netOutBytes ??
-                metric.bytes_transmitted ??
-                prev[nodeId]?.uploadTraffic ??
-                0,
+              metric.bytes_transmitted ??
+              prev[nodeId]?.uploadTraffic ??
+              0,
             ),
             downloadTraffic: Number(
               metric.netInBytes ??
-                metric.bytes_received ??
-                prev[nodeId]?.downloadTraffic ??
-                0,
+              metric.bytes_received ??
+              prev[nodeId]?.downloadTraffic ??
+              0,
             ),
             // 周期流量（新字段）
             periodTraffic:
               metric.period_bytes_received !== undefined ||
-              metric.period_bytes_transmitted !== undefined
+                metric.period_bytes_transmitted !== undefined
                 ? {
-                    rx: Number(metric.period_bytes_received ?? 0),
-                    tx: Number(metric.period_bytes_transmitted ?? 0),
-                    since: metric.baseline_recorded_at || 0,
-                    nextReset: metric.next_reset_at || 0,
-                    cycle: metric.renewal_cycle || "",
-                  }
+                  rx: Number(metric.period_bytes_received ?? 0),
+                  tx: Number(metric.period_bytes_transmitted ?? 0),
+                  since: metric.baseline_recorded_at || 0,
+                  nextReset: metric.next_reset_at || 0,
+                  cycle: metric.renewal_cycle || "",
+                }
                 : prev[nodeId]?.periodTraffic,
           },
         };
@@ -1493,26 +1493,26 @@ export default function NodePage() {
             prev.map((n) =>
               n.id === form.id
                 ? ({
-                    ...n,
-                    name: form.name,
-                    remark: form.remark.trim(),
-                    expiryTime: form.expiryTime,
-                    renewalCycle: form.renewalCycle,
-                    groupId: form.groupId,
-                    intranetIp: form.intranetIp?.trim(),
-                    serverIpV4: form.serverIpV4,
-                    serverIpV6: form.serverIpV6,
-                    port: form.port,
-                    tcpListenAddr: form.tcpListenAddr,
-                    udpListenAddr: form.udpListenAddr,
-                    interfaceName: form.interfaceName,
-                    http: form.http,
-                    tls: form.tls,
-                    socks: form.socks,
-                    expiryReminderDismissed: n.expiryReminderDismissed ?? 0,
-                    expiryReminderDismissedUntil:
-                      n.expiryReminderDismissedUntil ?? null,
-                  } as Node)
+                  ...n,
+                  name: form.name,
+                  remark: form.remark.trim(),
+                  expiryTime: form.expiryTime,
+                  renewalCycle: form.renewalCycle,
+                  groupId: form.groupId,
+                  intranetIp: form.intranetIp?.trim(),
+                  serverIpV4: form.serverIpV4,
+                  serverIpV6: form.serverIpV6,
+                  port: form.port,
+                  tcpListenAddr: form.tcpListenAddr,
+                  udpListenAddr: form.udpListenAddr,
+                  interfaceName: form.interfaceName,
+                  http: form.http,
+                  tls: form.tls,
+                  socks: form.socks,
+                  expiryReminderDismissed: n.expiryReminderDismissed ?? 0,
+                  expiryReminderDismissedUntil:
+                    n.expiryReminderDismissedUntil ?? null,
+                } as Node)
                 : n,
             ),
           );
@@ -1734,12 +1734,12 @@ export default function NodePage() {
     const groupFiltered =
       filterGroupId !== null
         ? keywordFiltered.filter((node) => {
-            if (filterGroupId === -1) {
-              return !node.groupId || node.groupId === 0;
-            }
+          if (filterGroupId === -1) {
+            return !node.groupId || node.groupId === 0;
+          }
 
-            return node.groupId === filterGroupId;
-          })
+          return node.groupId === filterGroupId;
+        })
         : keywordFiltered;
 
     if (nodeFilterMode === "all") {
@@ -1817,22 +1817,20 @@ export default function NodePage() {
     const hasRemark = Boolean(node.remark?.trim());
     const hasExpiryInfo = Boolean(
       node.expiryTime &&
-        node.expiryTime > 0 &&
-        node.renewalCycle &&
-        (node.expiryReminderDismissed !== 1 ||
-          (node.expiryReminderDismissedUntil &&
-            node.expiryReminderDismissedUntil * 1000 < Date.now())),
+      node.expiryTime > 0 &&
+      node.renewalCycle &&
+      (node.expiryReminderDismissed !== 1 ||
+        (node.expiryReminderDismissedUntil &&
+          node.expiryReminderDismissedUntil * 1000 < Date.now())),
     );
     const hasInfoTrigger = hasRemark || hasExpiryInfo;
-    const infoCount = Number(hasExpiryInfo) + Number(hasRemark);
     const infoPlacement = infoPopoverPlacement[node.id] ?? "left";
 
     return (
       <Card
         key={node.id}
-        className={`group relative overflow-visible shadow-sm border border-divider hover:shadow-md transition-shadow duration-200 h-full flex flex-col ${
-          node.expiryReminderDismissed ? "" : expiryMeta.accentClassName
-        }`}
+        className={`group relative overflow-visible shadow-sm border border-divider hover:shadow-md transition-shadow duration-200 h-full flex flex-col ${node.expiryReminderDismissed ? "" : expiryMeta.accentClassName
+          }`}
         data-node-card="true"
       >
         <CardHeader className="pb-3 md:pb-3">
@@ -1890,90 +1888,52 @@ export default function NodePage() {
                 {hasInfoTrigger && (
                   <div className="relative">
                     <button
-                      aria-label={`查看节点信息，共 ${infoCount} 项`}
-                      className={`relative flex h-7 w-7 items-center justify-center rounded-full border border-divider/80 bg-background/95 text-default-500 shadow-sm transition hover:border-default-300 hover:text-foreground focus-visible:border-default-300 focus-visible:text-foreground focus-visible:outline-none ${
-                        infoPopoverOpenId === node.id
-                          ? "border-default-300 text-foreground"
-                          : ""
-                      }`}
+                      aria-label="查看节点信息"
+                      className={`relative flex h-7 w-7 items-center justify-center rounded-full border border-divider/80 bg-background/95 text-default-500 shadow-sm transition hover:border-default-300 hover:text-foreground focus-visible:border-default-300 focus-visible:text-foreground focus-visible:outline-none ${infoPopoverOpenId === node.id ? "border-default-300 text-foreground" : ""}`}
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         updateInfoPopoverPlacement(node.id, null);
-                        setInfoPopoverOpenId(
-                          infoPopoverOpenId === node.id ? null : node.id,
-                        );
+                        setInfoPopoverOpenId(infoPopoverOpenId === node.id ? null : node.id);
                       }}
-                      onFocus={(event) =>
-                        updateInfoPopoverPlacement(node.id, event.currentTarget)
-                      }
-                      onMouseEnter={(event) =>
-                        updateInfoPopoverPlacement(node.id, event.currentTarget)
-                      }
+                      onFocus={(event) => updateInfoPopoverPlacement(node.id, event.currentTarget)}
+                      onMouseEnter={(event) => updateInfoPopoverPlacement(node.id, event.currentTarget)}
                     >
-                      <svg
-                        aria-hidden="true"
-                        className="h-3.5 w-3.5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={1.8}
-                        />
+                      <svg aria-hidden="true" className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} />
                       </svg>
                       {hasRemark && (
                         <span className="absolute -right-1 -top-1 flex h-2.5 w-2.5 rounded-full border border-background bg-red-300 shadow-sm dark:bg-default-500" />
                       )}
                     </button>
+
+                    {/* 👇 核心魔法：直接让【有内容的窄胶囊】当外壳，彻底消灭那个【没内容的宽空壳】！ */}
                     <div
-                      className={`absolute z-[60] w-72 max-w-[min(18rem,calc(100vw-4rem))] rounded-xl border border-divider/80 bg-background/98 p-3 shadow-xl backdrop-blur transition-all duration-150 ${
-                        infoPopoverOpenId === node.id
-                          ? "visible opacity-100 pointer-events-auto"
-                          : "invisible opacity-0 pointer-events-none"
-                      } ${
-                        infoPlacement === "bottom"
-                          ? "right-0 top-[calc(100%+0.75rem)] translate-y-1"
-                          : "right-[calc(100%+0.75rem)] top-1/2 -translate-y-1/2 translate-x-1"
-                      }`}
+                      className={`absolute z-[60] w-auto whitespace-nowrap flex items-center gap-4 rounded-xl border border-divider/80 bg-background/98 p-2 pl-3 shadow-xl backdrop-blur transition-all duration-150 ${infoPopoverOpenId === node.id ? "visible opacity-100 pointer-events-auto" : "invisible opacity-0 pointer-events-none"} ${infoPlacement === "bottom" ? "right-0 top-[calc(100%+0.75rem)] translate-y-1" : "right-[calc(100%+0.75rem)] top-1/2 -translate-y-1/2 translate-x-1"}`}
                       onClick={(e) => {
                         e.stopPropagation();
                         e.nativeEvent.stopImmediatePropagation();
                       }}
                     >
-                      <div className="space-y-3">
-                        {hasExpiryInfo && (
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                              <div className="text-[11px] font-medium text-default-500">
-                                到期提醒
-                              </div>
-                              <button
-                                className="text-[10px] text-default-400 hover:text-default-600 transition-colors"
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  e.nativeEvent.stopImmediatePropagation();
-                                  handleDismissExpiryReminder(node.id);
-                                }}
-                              >
-                                更新周期
-                              </button>
-                            </div>
-                            <div className="rounded-lg border border-divider/80 bg-default-50/80 px-3 py-2 text-xs leading-5 text-default-700">
-                              {formatNodeRenewalTime(expiryMeta.nextDueTime)}{" "}
-                              <div
-                                className={`text-[10px] h-5 px-1.5 ml-1 inline-flex items-center justify-center rounded font-medium ${expiryMeta.tone === "danger" ? "bg-danger-500/10 text-danger-600 dark:text-danger-400" : expiryMeta.tone === "warning" ? "bg-warning-500/10 text-warning-600 dark:text-warning-400" : expiryMeta.tone === "success" ? "bg-success-500/10 text-success-600 dark:text-success-400" : "bg-default-500/10 text-default-500"}`}
-                              >
-                                {expiryMeta.label}
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
+                      {hasExpiryInfo && (
+                        <>
+                          <span className="text-xs font-medium text-default-700 tracking-wide">
+                            {formatNodeRenewalTime(expiryMeta.nextDueTime)}
+                          </span>
+                          <button
+                            className="inline-flex items-center justify-center text-[12px] font-medium px-3 py-1.5 rounded-md bg-red-50 text-red-500 hover:bg-red-100 dark:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/20 transition-colors active:scale-95"
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.nativeEvent.stopImmediatePropagation();
+                              handleDismissExpiryReminder?.(node.id);
+                              setInfoPopoverOpenId(null);
+                            }}
+                          >
+                            更新周期
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 )}
@@ -1981,11 +1941,10 @@ export default function NodePage() {
             </div>
             <div className="flex items-center gap-2">
               <span
-                className={`h-2.5 w-2.5 rounded-full flex-shrink-0 ${
-                  connectionStatusMeta.color === "success"
-                    ? "bg-emerald-500"
-                    : "bg-rose-500"
-                }`}
+                className={`h-2.5 w-2.5 rounded-full flex-shrink-0 ${connectionStatusMeta.color === "success"
+                  ? "bg-emerald-500"
+                  : "bg-rose-500"
+                  }`}
                 title={connectionStatusMeta.text}
               />
               {/* 这里加上 title 属性 */}
@@ -2161,11 +2120,11 @@ export default function NodePage() {
               <span className="text-default-600">周期流量</span>
               <span className="font-medium text-sm text-danger-600 dark:text-danger-400">
                 {node.connectionStatus === "online" &&
-                realtimeNodeMetrics[node.id]
+                  realtimeNodeMetrics[node.id]
                   ? formatTraffic(
-                      (realtimeNodeMetrics[node.id]?.periodTraffic?.rx ?? 0) +
-                        (realtimeNodeMetrics[node.id]?.periodTraffic?.tx ?? 0),
-                    )
+                    (realtimeNodeMetrics[node.id]?.periodTraffic?.rx ?? 0) +
+                    (realtimeNodeMetrics[node.id]?.periodTraffic?.tx ?? 0),
+                  )
                   : "-"}
               </span>
             </div>
@@ -2352,14 +2311,14 @@ export default function NodePage() {
           </div>
           {/* 备注和到期提醒 */}
           {(node.remark?.trim() || hasExpiryInfo) && (
-            <div className="mt-2 pt-2 border-t border-divider">
+            <div className="mt-2 pt-2 border-t border-divider flex items-center min-w-0">
               {node.remark?.trim() && (
-                <div className="flex items-center text-xs text-default-500 mb-1.5">
+                <div className="flex items-center text-xs text-default-500 min-w-0 mr-2">
                   <span className="font-medium text-red-500 flex-shrink-0">
                     备注：
                   </span>
                   <span
-                    className="truncate ml-1 cursor-pointer hover:bg-default-200/50 rounded px-1 transition-colors w-fit inline-block"
+                    className="truncate ml-1 text-xs cursor-pointer hover:bg-default-200/50 rounded px-1 transition-colors"
                     title={node.remark.trim()}
                     onClick={(e) => {
                       e.stopPropagation();
@@ -2370,27 +2329,18 @@ export default function NodePage() {
                   </span>
                 </div>
               )}
+
               {hasExpiryInfo && (
-                <div className="flex items-center text-xs">
-                  <span className="font-medium text-default-600 flex-shrink-0 mr-1.5">
-                    到期提醒：
-                  </span>
+                <div className="flex items-center text-xs ml-auto flex-shrink-0">
                   <span
-                    className="truncate text-default-700"
-                    title={formatNodeRenewalTime(expiryMeta.nextDueTime)}
-                  >
-                    {formatNodeRenewalTime(expiryMeta.nextDueTime)}
-                  </span>
-                  <span
-                    className={`flex-shrink-0 ml-1.5 text-[10px] h-4.5 px-1.5 rounded font-medium ${
-                      expiryMeta.tone === "danger"
+                    className={`text-[10px] py-0.5 px-1.5 rounded font-medium ${expiryMeta.tone === "danger"
                         ? "bg-danger-500/10 text-danger-600 dark:text-danger-400"
                         : expiryMeta.tone === "warning"
                           ? "bg-warning-500/10 text-warning-600 dark:text-warning-400"
                           : expiryMeta.tone === "success"
                             ? "bg-success-500/10 text-success-600 dark:text-success-400"
                             : "bg-default-500/10 text-default-500"
-                    }`}
+                      }`}
                   >
                     {expiryMeta.label}
                   </span>
@@ -2527,19 +2477,19 @@ export default function NodePage() {
                 {(nodeFilterMode !== "all" ||
                   filterGroupId !== null ||
                   localSearchKeyword.trim()) && (
-                  <Button
-                    color="warning"
-                    size="sm"
-                    variant="flat"
-                    onPress={() => {
-                      resetNodeFilterMode();
-                      setFilterGroupId(null);
-                      setLocalSearchKeyword("");
-                    }}
-                  >
-                    重置
-                  </Button>
-                )}
+                    <Button
+                      color="warning"
+                      size="sm"
+                      variant="flat"
+                      onPress={() => {
+                        resetNodeFilterMode();
+                        setFilterGroupId(null);
+                        setLocalSearchKeyword("");
+                      }}
+                    >
+                      重置
+                    </Button>
+                  )}
               </>
             )}
           </div>
@@ -2650,146 +2600,146 @@ export default function NodePage() {
             ) : (
               <div className="space-y-4">
                 {groupedNodes.map(({ group, nodes }) => {
-                const groupSortableIds = nodes.map((n) => n.id);
-                const groupIdStr = String(group ? group.id : "none");
-                const isCollapsed = collapsedGroups[groupIdStr];
+                  const groupSortableIds = nodes.map((n) => n.id);
+                  const groupIdStr = String(group ? group.id : "none");
+                  const isCollapsed = collapsedGroups[groupIdStr];
 
-                return (
-                  <div
-                    key={groupIdStr}
-                    className="overflow-hidden rounded-xl border border-divider/60 bg-content1/80 backdrop-blur shadow-sm hover:shadow-md transition-shadow duration-200"
-                  >
+                  return (
                     <div
-                      className="flex items-center justify-between border-b border-divider bg-default-100/50 hover:bg-default-200/30 px-4 py-2.5 cursor-pointer select-none transition-colors"
-                      onClick={() => {
-                        setCollapsedGroups((prev) => ({
-                          ...prev,
-                          [groupIdStr]: !prev[groupIdStr],
-                        }));
-                      }}
+                      key={groupIdStr}
+                      className="overflow-hidden rounded-xl border border-divider/60 bg-content1/80 backdrop-blur shadow-sm hover:shadow-md transition-shadow duration-200"
                     >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <Button
-                          isIconOnly
-                          className="h-7 w-7 min-w-7 pointer-events-none -ml-1"
-                          size="sm"
-                          variant="flat"
-                        >
-                          <svg
-                            aria-hidden="true"
-                            className={`h-4 w-4 transition-transform ${isCollapsed ? "-rotate-90" : "rotate-0"}`}
-                            fill="none"
-                            stroke="currentColor"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="2"
-                            viewBox="0 0 24 24"
+                      <div
+                        className="flex items-center justify-between border-b border-divider bg-default-100/50 hover:bg-default-200/30 px-4 py-2.5 cursor-pointer select-none transition-colors"
+                        onClick={() => {
+                          setCollapsedGroups((prev) => ({
+                            ...prev,
+                            [groupIdStr]: !prev[groupIdStr],
+                          }));
+                        }}
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Button
+                            isIconOnly
+                            className="h-7 w-7 min-w-7 pointer-events-none -ml-1"
+                            size="sm"
+                            variant="flat"
                           >
-                            <path d="m6 9 6 6 6-6" />
-                          </svg>
-                        </Button>
-                        {group ? (
-                          <div className="flex items-center gap-2">
-                            <div
-                              className="w-3 h-3 rounded-full flex-shrink-0"
-                              style={{ backgroundColor: group.color }}
-                            />
-                            <span className="truncate text-sm font-semibold text-foreground">
-                              {group.name}
-                            </span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-2 ml-1">
-                            <div className="w-3 h-3 rounded-full bg-gray-300 flex-shrink-0" />
-                            <span className="truncate text-sm font-semibold text-foreground">
-                              未分组
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-default-600">
-                          {nodes.length} 个节点
-                        </span>
-                      </div>
-                    </div>
-                    {!isCollapsed && (
-                      <div className="">
-                        <DndContext
-                          collisionDetection={pointerWithin}
-                          sensors={sensors}
-                          onDragEnd={handleDragEnd}
-                        >
-                          <SortableContext
-                            items={groupSortableIds}
-                            strategy={rectSortingStrategy}
-                          >
-                            <div className="overflow-x-auto">
-                              <NodeListView
-                                copyToClipboard={copyToClipboard}
-                                displayNodes={nodes}
-                                filterGroupId={filterGroupId}
-                                formatTraffic={formatTraffic}
-                                handleCopyAutoInstallCommand={
-                                  handleCopyDomesticInstallCommand
-                                }
-                                handleCopyOfflineInstallCommand={
-                                  handleCopyOfflineInstallCommand
-                                }
-                                handleCopyOverseasInstallCommand={
-                                  handleCopyOverseasInstallCommand
-                                }
-                                handleDelete={handleDelete}
-                                handleDismissExpiryReminder={
-                                  handleDismissExpiryReminder
-                                }
-                                handleEdit={handleEdit}
-                                handleResetNodeTraffic={handleResetNodeTraffic}
-                                handleViewNodeTrafficLogs={
-                                  handleViewNodeTrafficLogs
-                                }
-                                nodeExpiryStats={nodeExpiryStats}
-                                nodeFilterMode={nodeFilterMode}
-                                nodeGroups={nodeGroups}
-                                openInstallSelector={openInstallSelector}
-                                openUpgradeModal={openUpgradeModal}
-                                realtimeNodeMetrics={realtimeNodeMetrics}
-                                selectedIds={selectedIds}
-                                setFilterGroupId={setFilterGroupId}
-                                setNodeFilterMode={setNodeFilterMode}
-                                toggleSelect={toggleSelect}
-                                toggleSelectAll={(isSelected: boolean) => {
-                                  if (isSelected) {
-                                    setSelectedIds(
-                                      (prev) =>
-                                        new Set([
-                                          ...prev,
-                                          ...nodes.map((n) => n.id),
-                                        ]),
-                                    );
-                                    if (!selectMode) setSelectMode(true);
-                                  } else {
-                                    setSelectedIds((prev) => {
-                                      const next = new Set(prev);
-
-                                      nodes.forEach((n) => next.delete(n.id));
-                                      if (next.size === 0) setSelectMode(false);
-
-                                      return next;
-                                    });
-                                  }
-                                }}
-                                upgradeProgress={upgradeProgress}
+                            <svg
+                              aria-hidden="true"
+                              className={`h-4 w-4 transition-transform ${isCollapsed ? "-rotate-90" : "rotate-0"}`}
+                              fill="none"
+                              stroke="currentColor"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2"
+                              viewBox="0 0 24 24"
+                            >
+                              <path d="m6 9 6 6 6-6" />
+                            </svg>
+                          </Button>
+                          {group ? (
+                            <div className="flex items-center gap-2">
+                              <div
+                                className="w-3 h-3 rounded-full flex-shrink-0"
+                                style={{ backgroundColor: group.color }}
                               />
+                              <span className="truncate text-sm font-semibold text-foreground">
+                                {group.name}
+                              </span>
                             </div>
-                          </SortableContext>
-                        </DndContext>
+                          ) : (
+                            <div className="flex items-center gap-2 ml-1">
+                              <div className="w-3 h-3 rounded-full bg-gray-300 flex-shrink-0" />
+                              <span className="truncate text-sm font-semibold text-foreground">
+                                未分组
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-default-600">
+                            {nodes.length} 个节点
+                          </span>
+                        </div>
                       </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                      {!isCollapsed && (
+                        <div className="">
+                          <DndContext
+                            collisionDetection={pointerWithin}
+                            sensors={sensors}
+                            onDragEnd={handleDragEnd}
+                          >
+                            <SortableContext
+                              items={groupSortableIds}
+                              strategy={rectSortingStrategy}
+                            >
+                              <div className="overflow-x-auto">
+                                <NodeListView
+                                  copyToClipboard={copyToClipboard}
+                                  displayNodes={nodes}
+                                  filterGroupId={filterGroupId}
+                                  formatTraffic={formatTraffic}
+                                  handleCopyAutoInstallCommand={
+                                    handleCopyDomesticInstallCommand
+                                  }
+                                  handleCopyOfflineInstallCommand={
+                                    handleCopyOfflineInstallCommand
+                                  }
+                                  handleCopyOverseasInstallCommand={
+                                    handleCopyOverseasInstallCommand
+                                  }
+                                  handleDelete={handleDelete}
+                                  handleDismissExpiryReminder={
+                                    handleDismissExpiryReminder
+                                  }
+                                  handleEdit={handleEdit}
+                                  handleResetNodeTraffic={handleResetNodeTraffic}
+                                  handleViewNodeTrafficLogs={
+                                    handleViewNodeTrafficLogs
+                                  }
+                                  nodeExpiryStats={nodeExpiryStats}
+                                  nodeFilterMode={nodeFilterMode}
+                                  nodeGroups={nodeGroups}
+                                  openInstallSelector={openInstallSelector}
+                                  openUpgradeModal={openUpgradeModal}
+                                  realtimeNodeMetrics={realtimeNodeMetrics}
+                                  selectedIds={selectedIds}
+                                  setFilterGroupId={setFilterGroupId}
+                                  setNodeFilterMode={setNodeFilterMode}
+                                  toggleSelect={toggleSelect}
+                                  toggleSelectAll={(isSelected: boolean) => {
+                                    if (isSelected) {
+                                      setSelectedIds(
+                                        (prev) =>
+                                          new Set([
+                                            ...prev,
+                                            ...nodes.map((n) => n.id),
+                                          ]),
+                                      );
+                                      if (!selectMode) setSelectMode(true);
+                                    } else {
+                                      setSelectedIds((prev) => {
+                                        const next = new Set(prev);
+
+                                        nodes.forEach((n) => next.delete(n.id));
+                                        if (next.size === 0) setSelectMode(false);
+
+                                        return next;
+                                      });
+                                    }
+                                  }}
+                                  upgradeProgress={upgradeProgress}
+                                />
+                              </div>
+                            </SortableContext>
+                          </DndContext>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             )
           )}
           {viewMode === "list" && (
@@ -3128,9 +3078,8 @@ export default function NodePage() {
                         />
                       )}
                       <div
-                        className={`grid grid-cols-1 sm:grid-cols-3 gap-3 bg-default-50 dark:bg-default-100 p-3 rounded-md border border-default-200 dark:border-default-100/30 ${
-                          protocolDisabled ? "opacity-70" : ""
-                        }`}
+                        className={`grid grid-cols-1 sm:grid-cols-3 gap-3 bg-default-50 dark:bg-default-100 p-3 rounded-md border border-default-200 dark:border-default-100/30 ${protocolDisabled ? "opacity-70" : ""
+                          }`}
                       >
                         <div className="px-3 py-3 rounded-lg bg-white dark:bg-default-50 border border-default-200 dark:border-default-100/30 hover:border-primary-200 transition-colors">
                           <div className="flex items-center gap-2 mb-2">
@@ -3732,7 +3681,7 @@ export default function NodePage() {
                                 总{" "}
                                 {formatTraffic(
                                   (log.inFlowBefore || 0) +
-                                    (log.outFlowBefore || 0),
+                                  (log.outFlowBefore || 0),
                                 )}
                               </span>
                             </div>
