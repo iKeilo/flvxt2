@@ -13,7 +13,8 @@ import {
   getUpdateReleaseChannel,
   hasVersionUpdate,
 } from "@/utils/version-update";
-import { getPanelReleases, runSystemUpgrade, type PanelReleaseItem } from "@/api";
+import { getPanelReleases, type PanelReleaseItem } from "@/api";
+import { runSystemUpgrade } from "@/api/index";
 
 const FALLBACK_GITHUB_REPO = "https://github.com/abai569/flvx";
 
