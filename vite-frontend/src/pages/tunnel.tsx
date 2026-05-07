@@ -204,6 +204,7 @@ const isObjectRecord = (value: unknown): value is Record<string, unknown> =>
 const toSafeString = (value: unknown): string => {
   if (typeof value === "string") return value;
   if (typeof value === "number" && Number.isFinite(value)) return String(value);
+
   return "";
 };
 
@@ -265,11 +266,13 @@ const normalizeBestExitState = (value: unknown): BestExitState | undefined => {
 
 const bestExitOwnerRoleText = (role?: string) => {
   if (role === "chain") return "中转";
+
   return "入口";
 };
 
 const bestExitDetailTitle = (state?: BestExitState) => {
   if (!state?.items?.length) return undefined;
+
   return state.items
     .map(
       (item) =>
@@ -3108,7 +3111,9 @@ export default function TunnelPage() {
                             }}
                           >
                             <SelectItem key="1">单向计算（仅上传）</SelectItem>
-                            <SelectItem key="2">双向计算（上传+下载）</SelectItem>
+                            <SelectItem key="2">
+                              双向计算（上传+下载）
+                            </SelectItem>
                           </Select>
 
                           <Input
@@ -3171,7 +3176,9 @@ export default function TunnelPage() {
                         )}
 
                         <div>
-                          <div className="text-sm font-medium">质量检测目标</div>
+                          <div className="text-sm font-medium">
+                            质量检测目标
+                          </div>
                           <p className="text-xs text-default-500 mt-0.5">
                             用于实时隧道质量检测、诊断目标和 best
                             最优出口评分，留空使用 www.bing.com:443

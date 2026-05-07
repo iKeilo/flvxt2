@@ -180,13 +180,41 @@ func (e *systemUpgradeExecutor) selectComposeAsset(current []byte) string {
 }
 
 func (e *systemUpgradeExecutor) helperScript() string {
-	return strings.Join([]string{
-		"set -eu",
-		`cd "$PANEL_DEPLOY_DIR"`,
-		"docker compose pull backend frontend",
-		"sleep 5",
-		"docker compose up -d backend frontend",
-	}, "\n")
+	return `set -eu
+LOGFILE="$PANEL_DEPLOY_DIR/upgrade.log"
+log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOGFILE"; }
+
+cd "$PANEL_DEPLOY_DIR"
+echo "" > "$LOGFILE"
+log "开始面板升级"
+log "工作目录: $(pwd)"
+
+if [ ! -f docker-compose.yml ]; then
+  log "错误: docker-compose.yml 不存在"
+  exit 1
+fi
+if [ ! -f .env ]; then
+  log "错误: .env 不存在"
+  exit 1
+fi
+
+log "拉取新镜像..."
+if ! docker compose pull backend frontend 2>&1 | tee -a "$LOGFILE"; then
+  log "错误: 拉取镜像失败"
+  exit 1
+fi
+
+log "等待旧容器释放资源..."
+sleep 3
+
+log "重启服务（force-recreate）..."
+if ! docker compose up -d --force-recreate --remove-orphans backend frontend 2>&1 | tee -a "$LOGFILE"; then
+  log "错误: 重启服务失败"
+  exit 1
+fi
+
+log "升级完成"
+`
 }
 
 func (e *systemUpgradeExecutor) buildHelperRunArgs(imageID, helperName string) ([]string, error) {

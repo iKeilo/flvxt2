@@ -1,3 +1,10 @@
+import type {
+  SystemUpgradeCheckApiData,
+  SystemUpgradeRunApiData,
+  SystemUpgradeReleaseApiItem,
+  SystemUpgradeVersionApiData,
+} from "@/api/types";
+
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
@@ -32,12 +39,6 @@ import {
   runSystemUpgrade,
   type AnnouncementData,
 } from "@/api";
-import type {
-  SystemUpgradeCheckApiData,
-  SystemUpgradeRunApiData,
-  SystemUpgradeReleaseApiItem,
-  SystemUpgradeVersionApiData,
-} from "@/api/types";
 import { BackIcon, SettingsIcon } from "@/components/icons";
 import { ThemeSettings } from "@/components/theme-settings";
 import { isAdmin } from "@/utils/auth";
@@ -328,6 +329,12 @@ export default function ConfigPage() {
       systemUpgradeReleasesMatchChannel &&
       systemUpgradeReleases.length > 0,
   );
+  const canTriggerSystemUpgrade = Boolean(
+    !systemUpgradeLoading &&
+      !systemUpgradeChecking &&
+      !systemUpgradeExecuting &&
+      systemUpgradeInfo?.capability.capable !== false,
+  );
   const canOpenSystemUpgradeModal = Boolean(
     systemUpgradeInfo?.capability.capable &&
       systemUpgradeHasConfirmedUpdate &&
@@ -421,7 +428,9 @@ export default function ConfigPage() {
           hasUpdate:
             response.data.channel === channel ? response.data.hasUpdate : false,
           latestVersion:
-            response.data.channel === channel ? response.data.latestVersion : "",
+            response.data.channel === channel
+              ? response.data.latestVersion
+              : "",
         });
       } else {
         setSystemUpgradeInfo(null);
@@ -512,7 +521,9 @@ export default function ConfigPage() {
             : "未获取到可用版本",
         );
 
-        return Boolean(data.capability.capable && data.hasUpdate && data.releases?.length);
+        return Boolean(
+          data.capability.capable && data.hasUpdate && data.releases?.length,
+        );
       } else {
         setSystemUpgradeReleases([]);
         setSystemUpgradeCheckedChannel(null);
@@ -1568,7 +1579,8 @@ export default function ConfigPage() {
                   <div>
                     <p className="text-xs text-default-500">部署目录</p>
                     <p className="mt-1 break-all font-medium">
-                      {systemUpgradeInfo?.capability.deployDir || "未获取到部署目录"}
+                      {systemUpgradeInfo?.capability.deployDir ||
+                        "未获取到部署目录"}
                     </p>
                   </div>
                   <div>
@@ -1625,7 +1637,9 @@ export default function ConfigPage() {
                     size="md"
                     variant="bordered"
                     onSelectionChange={(keys) => {
-                      const selected = Array.from(keys)[0] as string | undefined;
+                      const selected = Array.from(keys)[0] as
+                        | string
+                        | undefined;
 
                       setSystemUpgradeSelectedVersion(selected || "");
                     }}
@@ -1648,17 +1662,15 @@ export default function ConfigPage() {
 
             <div className="flex flex-col gap-3 pt-1 sm:flex-row sm:justify-end">
               <Button
-                variant="flat"
                 isLoading={systemUpgradeChecking}
+                variant="flat"
                 onPress={handleCheckSystemUpgrade}
               >
                 检查更新
               </Button>
               <Button
                 color="primary"
-                isDisabled={
-                  !canOpenSystemUpgradeModal
-                }
+                isDisabled={!canTriggerSystemUpgrade}
                 isLoading={systemUpgradeExecuting}
                 onPress={handleOpenSystemUpgradeModal}
               >
@@ -1925,10 +1937,12 @@ export default function ConfigPage() {
               <ModalBody>
                 <div className="space-y-3 text-sm text-default-700 dark:text-default-300">
                   <p>
-                    升级过程需要访问 Docker Socket，并会在短时间内中断当前面板服务。
+                    升级过程需要访问 Docker
+                    Socket，并会在短时间内中断当前面板服务。
                   </p>
                   <p>
-                    请确认已经允许面板管理容器与宿主机 Docker 交互，并且可以接受升级期间的临时不可用。
+                    请确认已经允许面板管理容器与宿主机 Docker
+                    交互，并且可以接受升级期间的临时不可用。
                   </p>
                   <div className="space-y-2 rounded-lg border border-warning-200 bg-warning-50 px-4 py-3 text-warning-800 dark:border-warning-900/40 dark:bg-warning-950/30 dark:text-warning-200">
                     <p className="text-xs font-medium">升级前请确认</p>

@@ -508,8 +508,7 @@ export interface SystemUpgradeVersionApiData {
   capability: SystemUpgradeCapabilityApiData;
 }
 
-export interface SystemUpgradeCheckApiData
-  extends SystemUpgradeVersionApiData {
+export interface SystemUpgradeCheckApiData extends SystemUpgradeVersionApiData {
   releases: SystemUpgradeReleaseApiItem[];
 }
 

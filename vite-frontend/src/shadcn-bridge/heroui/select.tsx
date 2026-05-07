@@ -401,6 +401,7 @@ export function Select<T>({
         </div>
       ) : (
         <select
+          aria-label={label ? undefined : ariaLabel}
           className={cn(
             "w-full rounded-md border border-input bg-background px-3 py-2 text-foreground shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:[color-scheme:dark]",
             sizeClass(size),
@@ -409,7 +410,6 @@ export function Select<T>({
           )}
           disabled={isDisabled}
           id={generatedId}
-          aria-label={label ? undefined : ariaLabel}
           required={isRequired}
           value={singleValue}
           onChange={handleChange}
