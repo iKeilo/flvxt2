@@ -186,6 +186,7 @@ func (e *systemUpgradeExecutor) helperScript() string {
 		"docker compose pull backend frontend",
 		"sleep 5",
 		"docker compose up -d backend frontend",
+		"docker image prune -a -f",
 	}, "\n")
 }
 

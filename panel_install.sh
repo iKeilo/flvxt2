@@ -624,6 +624,10 @@ update_panel() {
     return 1
   fi
 
+  # 清理旧镜像
+  echo "🧹 清理旧镜像..."
+  docker image prune -a -f
+
   echo "✅ 更新完成"
 }
 
