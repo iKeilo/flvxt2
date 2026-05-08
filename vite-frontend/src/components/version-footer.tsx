@@ -20,6 +20,7 @@ const FALLBACK_GITHUB_REPO = "https://github.com/abai569/flvx";
 
 interface VersionFooterProps {
   version: string;
+  showUpdateInfo?: boolean;
   containerClassName?: string;
   versionClassName?: string;
   poweredClassName?: string;
@@ -28,6 +29,7 @@ interface VersionFooterProps {
 
 export function VersionFooter({
   version,
+  showUpdateInfo = true,
   containerClassName,
   versionClassName,
   poweredClassName,
@@ -149,7 +151,7 @@ export function VersionFooter({
       <div className={containerClassName}>
         <p className={versionClassName}>
           v{version}
-          {updateAvailable && latestUpdateVersion && (
+          {showUpdateInfo && updateAvailable && latestUpdateVersion && (
             <>
               {" → "}
               <span className={updateBadgeClassName} role="status">
@@ -158,15 +160,17 @@ export function VersionFooter({
             </>
           )}
           {" "}
-          <Button
-            size="sm"
-            color="primary"
-            className="inline-flex h-[18px] px-1.5 text-[10px] min-w-0 rounded-sm font-semibold"
-            onPress={handleOpenUpgradeModal}
-            isLoading={upgrading}
-          >
-            升级
-          </Button>
+          {showUpdateInfo && (
+            <Button
+              size="sm"
+              color="primary"
+              className="inline-flex h-[18px] px-1.5 text-[10px] min-w-0 rounded-sm font-semibold"
+              onPress={handleOpenUpgradeModal}
+              isLoading={upgrading}
+            >
+              升级
+            </Button>
+          )}
         </p>
         <p className={poweredClassName}>
           Powered by Flvx
