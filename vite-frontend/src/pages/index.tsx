@@ -7,13 +7,10 @@ import { motion } from "framer-motion";
 import { Card, CardBody, CardHeader } from "@/shadcn-bridge/heroui/card";
 import { Input } from "@/shadcn-bridge/heroui/input";
 import { Button } from "@/shadcn-bridge/heroui/button";
-import { siteConfig } from "@/config/site";
 import { title } from "@/components/primitives";
-import { VersionFooter } from "@/components/version-footer";
 import DefaultLayout from "@/layouts/default";
 import { login, LoginData, checkCaptcha, getConfigByName } from "@/api";
 import { writeLoginSession } from "@/utils/session";
-import { useWebViewMode } from "@/hooks/useWebViewMode";
 
 interface LoginForm {
   username: string;
@@ -32,7 +29,6 @@ export default function IndexPage() {
   const [showCaptcha, setShowCaptcha] = useState(false);
   const [siteKey, setSiteKey] = useState("");
   const navigate = useNavigate();
-  const isWebView = useWebViewMode();
 
   // 验证表单
   const validateForm = (): boolean => {
@@ -211,16 +207,6 @@ export default function IndexPage() {
             </CardBody>
           </Card>
         </motion.div>
-
-        {/* 版权信息 - 固定在底部，不占据布局空间 */}
-
-        <VersionFooter
-          containerClassName="fixed inset-x-0 bottom-4 text-center py-4"
-          poweredClassName="text-xs text-gray-400 dark:text-gray-500"
-          updateBadgeClassName="inline-flex items-center h-[18px] px-1.5 rounded-sm bg-rose-500/90 text-[10px] font-semibold text-white"
-          version={isWebView ? siteConfig.app_version : siteConfig.version}
-          versionClassName="text-xs text-gray-400 dark:text-gray-500 mt-1"
-        />
 
         {/* 验证码弹层 */}
         {showCaptcha && siteKey && (
