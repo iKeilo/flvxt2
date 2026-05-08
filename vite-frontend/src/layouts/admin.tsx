@@ -509,12 +509,13 @@ export default function AdminLayout({
           <div
             className={`transition-all duration-300 overflow-hidden flex items-center ${isCollapsed ? "max-w-0 opacity-0" : "max-w-[200px] opacity-100"}`}
           >
-            <VersionFooter
-              poweredClassName="text-xs text-gray-400 dark:text-gray-500"
-              updateBadgeClassName="inline-flex items-center h-[18px] px-1.5 rounded-sm bg-rose-500/90 text-[10px] font-semibold text-white"
-              version={siteConfig.version}
-              versionClassName="text-xs text-gray-400 dark:text-gray-500"
-            />
+          <VersionFooter
+            showUpdateInfo={isAdmin}
+            poweredClassName="text-xs text-gray-400 dark:text-gray-500"
+            updateBadgeClassName="inline-flex items-center h-[18px] px-1.5 rounded-sm bg-rose-500/90 text-[10px] font-semibold text-white"
+            version={siteConfig.version}
+            versionClassName="text-xs text-gray-400 dark:text-gray-500"
+          />
           </div>
 
           {/* 桌面端折叠按钮 */}
