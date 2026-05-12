@@ -624,10 +624,13 @@ update_panel() {
     return 1
   fi
 
-  # 清理旧版本镜像（精准强制删除，避免 Docker 容器状态残留导致旧镜像滞留）
-  echo "🧹 清理旧版本镜像..."
-  docker rmi $(docker images --filter "reference=ghcr.io/abai569/flux-panel-backend:*" --format "{{.Tag}} {{.ID}}" | grep -v "${LATEST_VERSION}" | awk '{print $2}') 2>/dev/null || true
-  docker rmi $(docker images --filter "reference=ghcr.io/abai569/vite-frontend:*" --format "{{.Tag}} {{.ID}}" | grep -v "${LATEST_VERSION}" | awk '{print $2}') 2>/dev/null || true
+  # 等待 Docker 引擎释放旧镜像资源引用（缓冲 10 秒以确保清理彻底）
+  echo "⏳ 准备清理旧镜像..."
+  sleep 10
+  
+  # 清理旧镜像
+  echo "🧹 清理旧镜像..."
+  docker image prune -a -f
 
   echo "✅ 更新完成"
 }
