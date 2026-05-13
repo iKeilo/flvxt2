@@ -186,7 +186,15 @@ func (e *systemUpgradeExecutor) helperScript() string {
 		"docker compose pull backend frontend",
 		"docker compose up -d backend frontend",
 		"sleep 10",
-		"docker image prune -a -f",
+		"set +e",
+		`NEW_VER=$(grep '^FLUX_VERSION=' .env | cut -d= -f2 | tr -d '\r' | tr -d '"' | tr -d "'" || true)`,
+		`for img in $(docker images | grep 'ghcr.io/abai569' | awk '{print $1":"$2}'); do`,
+		`  if [ -n "$NEW_VER" ] && echo "$img" | grep -q "$NEW_VER"; then`,
+		`    continue`,
+		`  fi`,
+		`  docker rmi "$img" 2>/dev/null || true`,
+		`done`,
+		"docker image prune -f",
 	}, "\n")
 }
 
