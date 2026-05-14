@@ -39,10 +39,28 @@ func (h *Handler) licenseInfo(w http.ResponseWriter, r *http.Request) {
 		configured = cfg1 != nil || cfg2 != nil
 	}
 
+	hasLicenseKey := licenseKey != ""
+	if !hasLicenseKey {
+		cfg, _ := h.repo.GetConfigByName("license_key")
+		if cfg != nil && cfg.Value != "" {
+			hasLicenseKey = true
+		}
+	}
+
+	domain := os.Getenv("SERVER_DOMAIN")
+	if domain == "" {
+		cfg, _ := h.repo.GetConfigByName("server_domain")
+		if cfg != nil {
+			domain = cfg.Value
+		}
+	}
+
 	response.WriteJSON(w, response.OK(map[string]interface{}{
-		"valid":       valid,
-		"expire_time": expireTime,
-		"reason":      reason,
-		"configured":  configured,
+		"valid":           valid,
+		"expire_time":     expireTime,
+		"reason":          reason,
+		"configured":      configured,
+		"has_license_key": hasLicenseKey,
+		"domain":          domain,
 	}))
 }

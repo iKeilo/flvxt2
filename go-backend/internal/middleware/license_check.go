@@ -270,3 +270,13 @@ func SetLicenseState(valid bool, expireTime int64, reason string) {
 	globalLicenseState.expireTime = expireTime
 	globalLicenseState.reason = reason
 }
+
+// UpdateCheckParams updates the stored check parameters for license verification
+func UpdateCheckParams(serverURL, licenseKey, domain string) {
+	checkParams.mu.Lock()
+	defer checkParams.mu.Unlock()
+	checkParams.serverURL = serverURL
+	checkParams.licenseKey = licenseKey
+	checkParams.domain = domain
+}
+

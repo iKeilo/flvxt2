@@ -12,7 +12,7 @@ func LicenseGuard(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// 1. Whitelist the license check endpoint itself.
 		// Without this, if the license is invalid, the panel cannot refresh status.
-		if r.URL.Path == "/api/v1/license/info" {
+		if r.URL.Path == "/api/v1/license/info" || r.URL.Path == "/api/v1/license/config" {
 			next.ServeHTTP(w, r)
 			return
 		}

@@ -42,7 +42,7 @@ func New(cfg config.Config) (*App, error) {
 	}
 
 	h := handler.New(r, cfg.JWTSecret, cfg.FluxVersion)
-	router := httpserver.NewRouter(h, cfg.JWTSecret)
+	router := httpserver.NewRouter(h, cfg.JWTSecret, r)
 
 	s := &http.Server{
 		Addr:              cfg.Addr,

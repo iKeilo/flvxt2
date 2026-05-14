@@ -72,6 +72,7 @@ export default function AdminLayout({
     expire_time?: number;
     reason?: string;
     configured: boolean;
+    has_license_key: boolean;
   } | null>(null);
   const isMobile = useMobileBreakpoint();
 
@@ -567,8 +568,33 @@ export default function AdminLayout({
       <div
         className={`flex flex-col flex-1 ${isMobile ? "min-h-0" : "h-full overflow-hidden"}`}
       >
-        {/* 授权失效警告横幅 */}
-        {licenseInfo && !licenseInfo.valid && (
+        {/* 授权状态横幅 */}
+        {licenseInfo && !licenseInfo.has_license_key && (
+          <div className="bg-yellow-500 text-white text-center text-sm py-2 font-medium flex items-center justify-center gap-2 z-20 shadow-md">
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+              />
+            </svg>
+            <span>体验模式（资源已限制），请前往</span>
+            <span
+              className="font-bold underline cursor-pointer"
+              onClick={() => navigate("/config")}
+            >
+              设置 {'>'} 配置
+            </span>
+            <span>输入授权码以解除限制</span>
+          </div>
+        )}
+        {licenseInfo && licenseInfo.has_license_key && !licenseInfo.valid && (
           <div className="bg-red-600 text-white text-center text-sm py-2 font-medium flex items-center justify-center gap-2 z-20 shadow-md">
             <svg
               className="w-5 h-5"
@@ -584,9 +610,16 @@ export default function AdminLayout({
               />
             </svg>
             <span>
-              服务受限：{licenseInfo.reason || "授权无效"}
-              ，请立即联系管理员续费。
+              {licenseInfo.reason || "授权无效"}
+              ，请前往
             </span>
+            <span
+              className="font-bold underline cursor-pointer"
+              onClick={() => navigate("/config")}
+            >
+              设置 {'>'} 配置
+            </span>
+            <span>检查授权配置</span>
           </div>
         )}
 
@@ -618,9 +651,26 @@ export default function AdminLayout({
             )}
           </div>
 
-          {/* 中间：授权信息 (全局可见) */}
-          <div className="flex-1 flex justify-start items-center h-full mx-4 overflow-hidden">
-            {licenseInfo && licenseInfo.configured && (
+           {/* 中间：授权信息 (全局可见) */}
+           <div className="flex-1 flex justify-start items-center h-full mx-4 overflow-hidden">
+             {licenseInfo && !licenseInfo.has_license_key ? (
+               <div className="flex items-center gap-1 text-xs text-yellow-600 dark:text-yellow-400">
+                 <svg
+                   className="w-4 h-4"
+                   fill="none"
+                   stroke="currentColor"
+                   viewBox="0 0 24 24"
+                 >
+                   <path
+                     d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                     strokeLinecap="round"
+                     strokeLinejoin="round"
+                     strokeWidth={2}
+                   />
+                 </svg>
+                 体验模式
+               </div>
+             ) : licenseInfo && licenseInfo.configured && (
               <div className="flex items-center justify-start h-full overflow-hidden whitespace-nowrap">
                 {licenseInfo.valid ? (
                   (() => {

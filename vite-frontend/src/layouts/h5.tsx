@@ -52,6 +52,7 @@ export default function H5Layout({ children }: { children: React.ReactNode }) {
   const [licenseInfo, setLicenseInfo] = useState<null | {
     valid: boolean;
     configured: boolean;
+    has_license_key: boolean;
     reason?: string;
     expire_time?: number;
   }>(null);
@@ -336,7 +337,11 @@ export default function H5Layout({ children }: { children: React.ReactNode }) {
 
         {/* 授权信息居左显示 */}
         <div className="flex-1 flex justify-start items-center h-full mx-2 overflow-hidden">
-          {licenseInfo && licenseInfo.configured && (
+          {licenseInfo && !licenseInfo.has_license_key ? (
+            <span className="text-xs text-yellow-600 dark:text-yellow-400">
+              体验模式
+            </span>
+          ) : licenseInfo && licenseInfo.configured && (
             <div className="flex items-center justify-start h-full overflow-hidden whitespace-nowrap">
               {licenseInfo.valid ? (
                 (() => {

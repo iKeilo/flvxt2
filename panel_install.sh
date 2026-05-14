@@ -455,28 +455,26 @@ get_config_params() {
   # 生成 JWT 密钥
   JWT_SECRET=$(generate_random)
   
-  # 授权服务配置
+  # 授权服务配置（可选，跳过后可在面板设置中输入）
   echo ""
   echo "🔐 授权服务配置："
+  read -p "授权码 UUID [留空可跳过，稍后在面板中配置]: " LICENSE_KEY
   
-  # 授权码 UUID（必填）
-  read -p "授权码 UUID: " LICENSE_KEY
-  while [[ -z "$LICENSE_KEY" ]]; do
-    echo "❌ 授权码 UUID 不能为空，请重新输入"
-    read -p "授权码 UUID: " LICENSE_KEY
-  done
-  
-  # 面板域名（必填，自动去除 http/https 前缀）
-  read -p "面板域名（必填，用于授权验证）: " SERVER_DOMAIN
-  while [[ -z "$SERVER_DOMAIN" ]]; do
-    echo "❌ 面板域名不能为空，请重新输入"
+  # 如果填了授权码，则必须填写面板域名
+  if [[ -n "$LICENSE_KEY" ]]; then
     read -p "面板域名（必填，用于授权验证）: " SERVER_DOMAIN
-  done
-  
-  # 自动去除 http:// 或 https:// 前缀和路径
-  SERVER_DOMAIN=$(echo "$SERVER_DOMAIN" | sed -e 's|^[[:space:]]*||' -e 's|[[:space:]]*$||' -e 's|^https\?://||' -e 's|/.*||')
-  
-  echo "✅ 授权配置完成"
+    while [[ -z "$SERVER_DOMAIN" ]]; do
+      echo "❌ 面板域名不能为空，请重新输入"
+      read -p "面板域名（必填，用于授权验证）: " SERVER_DOMAIN
+    done
+    # 自动去除 http:// 或 https:// 前缀和路径
+    SERVER_DOMAIN=$(echo "$SERVER_DOMAIN" | sed -e 's|^[[:space:]]*||' -e 's|[[:space:]]*$||' -e 's|^https\?://||' -e 's|/.*||')
+    echo "✅ 授权配置完成"
+  else
+    LICENSE_KEY=""
+    SERVER_DOMAIN=""
+    echo "⏭️  已跳过授权配置，安装后可在 设置 > 配置 中输入授权码"
+  fi
 }
 
 # 安装功能

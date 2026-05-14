@@ -19,6 +19,9 @@ import {
   getAnnouncement,
   updateAnnouncement,
   type AnnouncementData,
+  getLicenseInfo,
+  updateLicenseConfig,
+  type LicenseInfo,
 } from "@/api";
 // 主题设置暂时放在这里，后续可以独立成一个页面或者组件
 import { isAdmin } from "@/utils/auth";
@@ -194,6 +197,10 @@ export default function ConfigPage() {
     Partial<Record<BrandPreviewKey, boolean>>
   >({});
   const [exportMode, setExportMode] = useState<"core" | "full">("core");
+  const [licenseKey, setLicenseKey] = useState("");
+  const [licenseDomain, setLicenseDomain] = useState("");
+  const [licenseSaving, setLicenseSaving] = useState(false);
+  const [licenseStatus, setLicenseStatus] = useState<LicenseInfo | null>(null);
 
   // 权限检查
   useEffect(() => {
@@ -239,10 +246,49 @@ export default function ConfigPage() {
     const timer = setTimeout(() => {
       loadConfigs(initialConfigs);
       loadAnnouncement();
+      loadLicenseInfo();
     }, 100);
 
     return () => clearTimeout(timer);
   }, []);
+  const loadLicenseInfo = async () => {
+    try {
+      const res = await getLicenseInfo();
+      if (res.code === 0 && res.data) {
+        setLicenseStatus(res.data);
+        if (!res.data.has_license_key) {
+          setLicenseKey("");
+          setLicenseDomain("");
+        }
+      }
+    } catch {
+    }
+  };
+  const handleLicenseSave = async () => {
+    if (!licenseKey.trim()) {
+      toast.error("授权码不能为空");
+      return;
+    }
+    if (!licenseDomain.trim()) {
+      toast.error("面板域名不能为空");
+      return;
+    }
+    setLicenseSaving(true);
+    try {
+      const res = await updateLicenseConfig(licenseKey.trim(), licenseDomain.trim());
+      if (res.code === 0) {
+        toast.success("授权配置已提交，正在后台验证...");
+        await loadLicenseInfo();
+        setTimeout(() => loadLicenseInfo(), 3000);
+      } else {
+        toast.error("保存失败：" + res.msg);
+      }
+    } catch {
+      toast.error("保存出错，请重试");
+    } finally {
+      setLicenseSaving(false);
+    }
+  };
   const loadAnnouncement = async () => {
     setAnnouncementLoading(true);
     try {
@@ -865,6 +911,70 @@ export default function ConfigPage() {
               </motion.div>
             )}
           </AnimatePresence>
+        </CardBody>
+      </Card>
+      {/* 授权码配置 */}
+      <Card className="mt-6 shadow-md">
+        <CardHeader className="pb-6">
+          <div className="flex justify-between items-center w-full gap-4">
+            <div>
+              <h2 className="text-xl font-semibold">授权码配置</h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                输入授权码和面板域名以激活授权服务
+              </p>
+            </div>
+          </div>
+        </CardHeader>
+        <Divider />
+        <CardBody className="space-y-6 pt-8 md:pt-8">
+          <div className="space-y-5">
+            <div className="space-y-3">
+              <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                授权码 UUID
+              </label>
+              <Input
+                classNames={{ input: "text-sm" }}
+                placeholder="请输入授权码 UUID"
+                size="md"
+                value={licenseKey}
+                variant="bordered"
+                onChange={(e) => setLicenseKey(e.target.value)}
+              />
+            </div>
+            <div className="space-y-3">
+              <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                面板域名
+              </label>
+              <Input
+                classNames={{ input: "text-sm" }}
+                placeholder="例如：panel.example.com"
+                size="md"
+                value={licenseDomain}
+                variant="bordered"
+                onChange={(e) => setLicenseDomain(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="flex justify-between items-center pt-4 border-t border-divider/50">
+            <div className="flex items-center gap-2">
+              {licenseStatus && (
+                <span className={`text-xs font-medium ${licenseStatus.has_license_key ? (licenseStatus.valid ? "text-green-600" : "text-red-600") : "text-yellow-600"}`}>
+                  {licenseStatus.has_license_key
+                    ? (licenseStatus.valid
+                        ? `授权有效，剩余 ${licenseStatus.expire_time ? Math.floor((licenseStatus.expire_time - Date.now()) / 86400000) : "？"} 天`
+                        : `授权无效：${licenseStatus.reason || "未知原因"}`)
+                    : "当前为体验模式（资源已限制）"}
+                </span>
+              )}
+            </div>
+            <Button
+              color="primary"
+              isLoading={licenseSaving}
+              onPress={handleLicenseSave}
+            >
+              {licenseSaving ? "保存中" : "保存并验证"}
+            </Button>
+          </div>
         </CardBody>
       </Card>
       <Card className="mt-6 shadow-md">

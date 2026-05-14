@@ -605,7 +605,7 @@ func setupContractRouter(t *testing.T, jwtSecret string) (http.Handler, *repo.Re
 	})
 
 	h := handler.New(r, jwtSecret, "test")
-	return httpserver.NewRouter(h, jwtSecret), r
+	return httpserver.NewRouter(h, jwtSecret, r), r
 }
 
 func TestOpenMigratesLegacyNodeDualStackColumns(t *testing.T) {
