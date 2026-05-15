@@ -626,7 +626,7 @@ export default function AdminLayout({
               className="font-bold underline cursor-pointer"
               onClick={() => navigate("/config")}
             >
-              设置 {'>'} 配置
+              设置 {'>'} 授权码配置
             </span>
             <span>检查授权配置</span>
           </div>

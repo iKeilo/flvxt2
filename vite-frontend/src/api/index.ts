@@ -565,6 +565,7 @@ export interface LicenseInfo {
 export const getLicenseInfo = () => Network.post<LicenseInfo>("/license/info");
 export const updateLicenseConfig = (licenseKey: string, domain: string) =>
   Network.post("/license/config", { license_key: licenseKey, domain });
+export const removeLicenseConfig = () => Network.post("/license/remove");
 
 export const getNodeMetrics = (
   nodeId: number,
