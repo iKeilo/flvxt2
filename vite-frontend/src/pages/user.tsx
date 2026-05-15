@@ -3369,7 +3369,7 @@ export default function UserPage() {
                       <span className="text-sm font-medium text-default-600">
                         {item.resetReason === "管理员手动归零"
                           ? "admin"
-                          : "系统自动"}
+                          : "归零时间"}
                       </span>
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-default-500">
