@@ -517,8 +517,64 @@ export default function DashboardPage() {
             iconClassName="bg-orange-100 dark:bg-orange-500/20"
             title="已用规则"
             value={forwardList.length}
-        {/* 7. 到期时间 */}
-        <div className=order-7
+          />
+        </div>
+        {/* 5. 续费信息 */}
+        <div className="order-5 flex flex-col [&>*]:flex-1">
+          <MetricCard
+            icon={
+              <svg
+                aria-hidden="true"
+                className="w-4 h-4 lg:w-5 lg:h-5 text-blue-600 dark:text-blue-400"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z" />
+                <path
+                  clipRule="evenodd"
+                  d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z"
+                  fillRule="evenodd"
+                />
+              </svg>
+            }
+            iconClassName="bg-blue-100 dark:bg-blue-500/20"
+            title="续费金额"
+            value={
+              userInfo.renewalAmount && userInfo.renewalAmount > 0
+                ? userInfo.renewalAmount
+                : "未设置"
+            }
+            bottomContent={
+              userInfo.autoRenew === 1 ? (
+                <div className="mt-1 flex items-center gap-1">
+                  <div className="w-1.5 h-1.5 rounded-full bg-success"></div>
+                  <span className="text-xs text-success">自动续费已启用</span>
+                </div>
+              ) : null
+            }
+          />
+        </div>
+        {/* 6. 可用余额 */}
+        <div className="order-6 flex flex-col [&>*]:flex-1">
+          <MetricCard
+            icon={
+              <svg
+                aria-hidden="true"
+                className="w-4 h-4 lg:w-5 lg:h-5 text-green-600 dark:text-green-400"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.301 2.301 0 01-.567.267z" />
+                <path
+                  clipRule="evenodd"
+                  d="M17 6a3 3 0 013 3v5.275a1 1 0 11-2 0V9a1 1 0 00-1-1H3a1 1 0 00-1 1v5.275a1 1 0 11-2 0V9a3 3 0 013-3h14zM12 13a1 1 0 10-2 0v.755a.756.756 0 01-.242.553l-.01.01A1.99 1.99 0 019 14.99a1.99 1.99 0 01-.75-.292l-.008-.01A.756.756 0 018 14.245V13a1 1 0 10-2 0v.755a2.756 2.756 0 00.892 2.052A3.99 3.99 0 009 16.99c.82 0 1.574-.293 2.158-.783a2.756 2.756 0 00.892-2.052V13z"
+                  fillRule="evenodd"
+                />
+              </svg>
+            }
+            iconClassName="bg-green-100 dark:bg-green-500/20"
+            title="可用余额"
+            value={userInfo.balance ?? 0}
           />
         </div>
       </div>
