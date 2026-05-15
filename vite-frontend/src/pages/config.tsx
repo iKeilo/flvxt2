@@ -256,10 +256,6 @@ export default function ConfigPage() {
       const res = await getLicenseInfo();
       if (res.code === 0 && res.data) {
         setLicenseStatus(res.data);
-        if (!res.data.has_license_key) {
-          setLicenseKey("");
-          setLicenseDomain("");
-        }
       }
     } catch {
     }
@@ -278,8 +274,7 @@ export default function ConfigPage() {
       const res = await updateLicenseConfig(licenseKey.trim(), licenseDomain.trim());
       if (res.code === 0) {
         toast.success("授权配置已提交，正在后台验证...");
-        await loadLicenseInfo();
-        setTimeout(() => loadLicenseInfo(), 3000);
+        setTimeout(() => window.location.reload(), 1500);
       } else {
         toast.error("保存失败：" + res.msg);
       }
