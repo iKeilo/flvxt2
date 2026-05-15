@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"log"
 	"net/http"
 	"os"
 	"time"
@@ -49,13 +50,23 @@ func (h *Handler) licenseConfig(w http.ResponseWriter, r *http.Request) {
 	}
 
 	const defaultLicenseServerURL = "https://sq.abai.eu.org"
-	if os.Getenv("LICENSE_SERVER_URL") == "" {
-		middleware.UpdateCheckParams(defaultLicenseServerURL, req.LicenseKey, req.Domain)
-		go middleware.TriggerAsyncCheck()
-	} else {
-		middleware.UpdateCheckParams(os.Getenv("LICENSE_SERVER_URL"), req.LicenseKey, req.Domain)
-		go middleware.TriggerAsyncCheck()
+	url := defaultLicenseServerURL
+	if os.Getenv("LICENSE_SERVER_URL") != "" {
+		url = os.Getenv("LICENSE_SERVER_URL")
 	}
+
+	if err := h.repo.UpsertConfig("license_server_url", url, now); err != nil {
+		log.Printf("⚠️  sync config license_server_url failed: %v", err)
+	}
+
+	middleware.UpdateCheckParams(url, req.LicenseKey, req.Domain)
+	go middleware.TriggerAsyncCheck()
+
+	go func() {
+		if err := UpdateEnvFile(req.LicenseKey, req.Domain, url); err != nil {
+			log.Printf("⚠️  failed to write .env persistence: %v", err)
+		}
+	}()
 
 	response.WriteJSON(w, response.OK(map[string]interface{}{
 		"triggered_check": true,

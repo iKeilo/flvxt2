@@ -92,6 +92,14 @@ func (v *LicenseVerifier) Verify(ctx context.Context) (*VerifyResponse, error) {
 
 // GetServerDomain extracts domain from environment or hostname
 func GetServerDomain() string {
+	// Check if a domain was recovered from DB config at startup
+	checkParams.mu.RLock()
+	domainFromConfig := checkParams.domainFromConfig
+	checkParams.mu.RUnlock()
+	if domainFromConfig != "" {
+		return domainFromConfig
+	}
+
 	domain := os.Getenv("SERVER_DOMAIN")
 	if domain != "" {
 		return domain
@@ -105,10 +113,11 @@ func GetServerDomain() string {
 }
 
 var checkParams struct {
-	serverURL  string
-	licenseKey string
-	domain     string
-	mu         sync.Mutex
+	serverURL        string
+	licenseKey       string
+	domain           string
+	domainFromConfig string
+	mu               sync.RWMutex
 }
 
 // StartLicenseVerification starts license verification and stores the result
@@ -269,6 +278,15 @@ func SetLicenseState(valid bool, expireTime int64, reason string) {
 	globalLicenseState.valid = valid
 	globalLicenseState.expireTime = expireTime
 	globalLicenseState.reason = reason
+}
+
+// UpdateServerDomainFromConfig sets the domain recovered from DB config.
+// This is used by main.go to override the domain before verification starts
+// if it was missing from environment variables but present in the database.
+func UpdateServerDomainFromConfig(domain string) {
+	checkParams.mu.Lock()
+	checkParams.domainFromConfig = domain
+	checkParams.mu.Unlock()
 }
 
 // UpdateCheckParams updates the stored check parameters for license verification
