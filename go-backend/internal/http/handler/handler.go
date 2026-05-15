@@ -227,6 +227,8 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/forward/traffic-reset-log/delete", h.deleteForwardTrafficResetLog)
 	mux.HandleFunc("/api/v1/node/traffic-reset-logs", h.nodeTrafficResetLogs)
 	mux.HandleFunc("/api/v1/node/traffic-reset-log/delete", h.deleteNodeTrafficResetLog)
+	mux.HandleFunc("/api/v1/traffic-history/list", h.trafficHistoryList)
+	mux.HandleFunc("/api/v1/traffic-history/delete", h.trafficHistoryDelete)
 	mux.HandleFunc("/api/v1/panel/upgrade/check", h.panelUpgradeCheck)
 	mux.HandleFunc("/api/v1/panel/upgrade/releases", h.panelReleases)
 	mux.HandleFunc("/api/v1/panel/upgrade", h.panelUpgrade)

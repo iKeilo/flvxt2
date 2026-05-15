@@ -1,4 +1,4 @@
-import type { ForwardApiItem, NodeApiItem } from "@/api/types";
+import type { ForwardApiItem, NodeApiItem, UserQuotaHistoryItem } from "@/api/types";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
@@ -7,12 +7,15 @@ import {
   getAnnouncement,
   getDashboardNodeExpiryList,
   getUserPackageInfo,
+  getUserQuotaHistory,
+  deleteUserQuotaHistory,
   type AnnouncementData,
 } from "@/api";
 import { getNodeRenewalSnapshot } from "@/pages/node/renewal";
 import { getAdminFlag } from "@/utils/session";
 
 export interface DashboardUserInfo {
+  id: number;
   flow: number;
   inFlow: number;
   outFlow: number;
@@ -96,6 +99,9 @@ interface DashboardDataState {
   nodeExpiryReminders: DashboardNodeExpiryItem[];
   isAdmin: boolean;
   announcement: AnnouncementData | null;
+  quotaHistory: UserQuotaHistoryItem[];
+  fetchQuotaHistory: () => Promise<void>;
+  deleteQuotaHistory: (id: number) => Promise<void>;
 }
 
 const checkExpirationNotifications = (
@@ -265,6 +271,7 @@ export const useDashboardData = (): DashboardDataState => {
   const [announcement, setAnnouncement] = useState<AnnouncementData | null>(
     null,
   );
+  const [quotaHistory, setQuotaHistory] = useState<UserQuotaHistoryItem[]>([]);
   const isMountedRef = useRef(true);
   const packageRequestInFlightRef = useRef(false);
   const nodeExpiryRequestInFlightRef = useRef(false);
@@ -394,6 +401,35 @@ export const useDashboardData = (): DashboardDataState => {
     };
   }, [loadAnnouncement, loadNodeExpiryData, loadPackageData]);
 
+  const fetchQuotaHistory = useCallback(
+    async () => {
+      try {
+        const res = await getUserQuotaHistory(userInfo.id, 50);
+        if (isMountedRef.current && res.code === 0) {
+          setQuotaHistory(res.data || []);
+        }
+      } catch {
+        // silent
+      }
+    },
+    [userInfo.id],
+  );
+
+  const deleteQuotaHistory = useCallback(
+    async (id: number) => {
+      try {
+        const res = await deleteUserQuotaHistory(id);
+        if (isMountedRef.current && res.code === 0) {
+          setQuotaHistory((prev) => prev.filter((item) => item.id !== id));
+          toast.success("已删除");
+        }
+      } catch {
+        toast.error("删除失败");
+      }
+    },
+    [],
+  );
+
   useEffect(() => {
     if (typeof document === "undefined") {
       return;
@@ -436,5 +472,8 @@ export const useDashboardData = (): DashboardDataState => {
     nodeExpiryReminders,
     isAdmin,
     announcement,
+    quotaHistory,
+    fetchQuotaHistory,
+    deleteQuotaHistory,
   };
 };

@@ -164,6 +164,30 @@ func createUserQuotaHistory(tx *gorm.DB, userID int64, periodType string, period
 	return tx.Create(history).Error
 }
 
+func (r *Repository) RecordFlowResetHistory(snapshots []model.UserFlowSnapshot, periodKey int64, nowMs int64, resetReason string) {
+	if r == nil || r.db == nil {
+		return
+	}
+	for _, s := range snapshots {
+		totalBytes := s.InFlow + s.OutFlow
+		if totalBytes <= 0 {
+			continue
+		}
+		history := &model.UserQuotaHistory{
+			UserID:        s.UserID,
+			PeriodType:    "monthly",
+			PeriodKey:     periodKey,
+			InFlowBefore:  s.InFlow,
+			OutFlowBefore: s.OutFlow,
+			UsedBytes:     totalBytes,
+			ResetTime:     nowMs,
+			CreatedTime:   nowMs,
+			ResetReason:   resetReason,
+		}
+		_ = r.db.Create(history).Error
+	}
+}
+
 func (r *Repository) SaveUserQuotaConfigTx(tx *gorm.DB, userID, dailyLimitGB, monthlyLimitGB int64, now int64) error {
 	if tx == nil {
 		return errors.New("database unavailable")
@@ -449,20 +473,20 @@ func (r *Repository) RollUserQuotaWindows(now time.Time, resetReason string) ([]
 		nowMs := now.UnixMilli()
 		for _, row := range rows {
 			q := row
-			oldDayKey := q.DayKey
-			oldMonthKey := q.MonthKey
-			oldDailyUsed := q.DailyUsedBytes
-			oldMonthlyUsed := q.MonthlyUsedBytes
+			// oldDayKey := q.DayKey
+			// oldMonthKey := q.MonthKey
+			// oldDailyUsed := q.DailyUsedBytes
+			// oldMonthlyUsed := q.MonthlyUsedBytes
 			
 			changed := applyUserQuotaWindowRoll(&q, now)
 			
-			// 记录流量历史
-			if oldDayKey != q.DayKey && oldDailyUsed > 0 {
-				createUserQuotaHistory(tx, q.UserID, "daily", oldDayKey, oldDailyUsed, nowMs, resetReason)
-			}
-			if oldMonthKey != q.MonthKey && oldMonthlyUsed > 0 {
-				createUserQuotaHistory(tx, q.UserID, "monthly", oldMonthKey, oldMonthlyUsed, nowMs, resetReason)
-			}
+			// 记录流量历史 - 已移至 resetMonthlyFlow 按 flow_reset_time 记录
+			// if oldDayKey != q.DayKey && oldDailyUsed > 0 {
+			// 	createUserQuotaHistory(tx, q.UserID, "daily", oldDayKey, oldDailyUsed, nowMs, resetReason)
+			// }
+			// if oldMonthKey != q.MonthKey && oldMonthlyUsed > 0 {
+			// 	createUserQuotaHistory(tx, q.UserID, "monthly", oldMonthKey, oldMonthlyUsed, nowMs, resetReason)
+			// }
 			
 			release := UserQuotaRelease{UserID: q.UserID}
 			if q.DisabledByQuota == 1 && !userQuotaExceeded(cloneUserQuotaView(q)) {

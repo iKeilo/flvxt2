@@ -30,12 +30,12 @@ import type {
   UserTunnelPermissionApiItem,
   TunnelApiItem,
   UserTunnelApiItem,
+  UserTunnelListQuery,
   UserMutationPayload,
   NodeMutationPayload,
   TunnelMutationPayload,
   UserQuotaResetPayload,
   UserTunnelAssignPayload,
-  UserTunnelListQuery,
   UserTunnelRemovePayload,
   ForwardMutationPayload,
   SpeedLimitMutationPayload,
@@ -55,6 +55,7 @@ import type {
   SystemUpgradeCheckApiData,
   SystemUpgradeRunApiData,
   SystemUpgradeVersionApiData,
+  TrafficHistoryItem,
 } from "./types";
 
 import axios from "axios";
@@ -294,6 +295,14 @@ export const getUserQuotaHistory = (userId: number, limit: number = 50) =>
   });
 export const deleteUserQuotaHistory = (id: number) =>
   Network.post("/user/quota/history/delete", { id });
+
+export const getTrafficHistoryList = (userId?: number, limit: number = 50) =>
+  Network.post<TrafficHistoryItem[]>("/traffic-history/list", {
+    userId,
+    limit,
+  });
+export const deleteTrafficHistoryItem = (id: number) =>
+  Network.post("/traffic-history/delete", { id });
 
 export const getUserGroups = (id: number) =>
   Network.post<number[]>("/user/groups", { id });

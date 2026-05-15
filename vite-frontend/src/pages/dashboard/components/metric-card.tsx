@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { Card, CardBody } from "@/shadcn-bridge/heroui/card";
 
 interface MetricCardProps {
-  title: string;
+  title: ReactNode;
   value: string | number;
   iconClassName: string;
   icon: ReactNode;

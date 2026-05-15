@@ -179,6 +179,19 @@ type UserQuotaHistory struct {
 
 func (UserQuotaHistory) TableName() string { return "user_quota_history" }
 
+// UserTrafficHistory 用户月度已用流量历史记录
+type UserTrafficHistory struct {
+	ID          int64  `gorm:"primaryKey;autoIncrement"`
+	UserID      int64  `gorm:"column:user_id;not null;uniqueIndex:idx_user_traffic_period"`
+	PeriodKey   int64  `gorm:"column:period_key;not null;uniqueIndex:idx_user_traffic_period"` // YYYYMM
+	InFlow      int64  `gorm:"column:in_flow;not null;default:0"`
+	OutFlow     int64  `gorm:"column:out_flow;not null;default:0"`
+	UsedBytes   int64  `gorm:"column:used_bytes;not null;default:0"`
+	CreatedTime int64  `gorm:"column:created_time;not null"`
+}
+
+func (UserTrafficHistory) TableName() string { return "user_traffic_history" }
+
 type ChainTunnel struct {
 	ID            int64          `gorm:"primaryKey;autoIncrement"`
 	TunnelID      int64          `gorm:"column:tunnel_id;not null"`

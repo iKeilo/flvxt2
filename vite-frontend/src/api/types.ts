@@ -263,6 +263,7 @@ export interface NodeReleaseApiItem {
 
 export interface UserPackageInfoApiData {
   userInfo: {
+    id: number;
     flow: number;
     inFlow: number;
     outFlow: number;
@@ -630,6 +631,17 @@ export interface UserQuotaHistoryItem {
   resetTime: number;
   createdTime: number;
   resetReason?: string;
+}
+
+export interface TrafficHistoryItem {
+  id: number;
+  userId: number;
+  userName: string;
+  periodKey: number; // YYYYMM
+  inFlow: number;
+  outFlow: number;
+  usedBytes: number;
+  createdTime: number;
 }
 
 export interface SystemUpgradeCapabilityApiData {

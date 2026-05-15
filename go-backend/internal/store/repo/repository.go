@@ -203,6 +203,7 @@ func autoMigrateAll(db *gorm.DB) error {
 		&model.NodeTagNode{},
 		&model.ForwardTrafficResetLog{},
 		&model.NodeTrafficResetLog{},
+		&model.UserTrafficHistory{},
 	}
 
 	if db.Dialector.Name() != "sqlite" {
@@ -2960,17 +2961,30 @@ func (r *Repository) CreateStatisticsFlow(userID, flow, totalFlow int64, timeTex
 	}).Error
 }
 
-func (r *Repository) ResetUserMonthlyFlow(day int, lastDay int) error {
+func (r *Repository) ResetUserMonthlyFlow(day int, lastDay int) ([]model.UserFlowSnapshot, error) {
 	if r == nil || r.db == nil {
-		return errors.New("repository not initialized")
+		return nil, errors.New("repository not initialized")
 	}
+
+	var snapshots []model.UserFlowSnapshot
+	query := r.db.Model(&model.User{}).Select("id, in_flow, out_flow")
+	if day == lastDay {
+		query = query.Where("flow_reset_time != 0 AND (flow_reset_time = ? OR flow_reset_time > ?)", day, lastDay)
+	} else {
+		query = query.Where("flow_reset_time != 0 AND flow_reset_time = ?", day)
+	}
+	if err := query.Find(&snapshots).Error; err != nil {
+		return nil, err
+	}
+
 	updates := map[string]interface{}{"in_flow": 0, "out_flow": 0}
 	if day == lastDay {
-		return r.db.Model(&model.User{}).
+		err := r.db.Model(&model.User{}).
 			Where("flow_reset_time != 0 AND (flow_reset_time = ? OR flow_reset_time > ?)", day, lastDay).
 			Updates(updates).Error
+		return snapshots, err
 	}
-	return r.db.Model(&model.User{}).
+	return snapshots, r.db.Model(&model.User{}).
 		Where("flow_reset_time != 0 AND flow_reset_time = ?", day).
 		Updates(updates).Error
 }

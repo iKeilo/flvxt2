@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
 import { AnimatedPage } from "@/components/animated-page";
@@ -9,6 +9,7 @@ import {
   ModalContent,
   ModalHeader,
   ModalBody,
+  ModalFooter,
 } from "@/shadcn-bridge/heroui/modal";
 import { PageEmptyState, PageLoadingState } from "@/components/page-state";
 import { AnnouncementBanner } from "@/pages/dashboard/components/announcement-banner";
@@ -41,10 +42,17 @@ export default function DashboardPage() {
     nodeExpiryReminders,
     isAdmin,
     announcement,
+    quotaHistory,
+    fetchQuotaHistory,
+    deleteQuotaHistory,
   } = useDashboardData();
   const [addressModalOpen, setAddressModalOpen] = useState(false);
   const [addressModalTitle, setAddressModalTitle] = useState("");
   const [addressList, setAddressList] = useState<AddressItem[]>([]);
+  const [quotaHistoryModalOpen, setQuotaHistoryModalOpen] = useState(false);
+  useEffect(() => {
+    fetchQuotaHistory();
+  }, [fetchQuotaHistory]);
   const formatFlow = (value: number, unit: string = "bytes"): string => {
     // 99999 表示无限制
     if (value === 99999) {
@@ -644,7 +652,19 @@ export default function DashboardPage() {
               </svg>
             }
             iconClassName="bg-green-100 dark:bg-green-500/20"
-            title="已用流量"
+            title={
+              <button
+                type="button"
+                className="inline-flex items-center cursor-pointer hover:text-primary transition-colors"
+                onClick={() => setQuotaHistoryModalOpen(true)}
+                title="流量历史记录"
+              >
+                <span>已用流量</span>
+                <svg className="ml-0.5 w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path clipRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" fillRule="evenodd" />
+                </svg>
+              </button>
+            }
             value={formatFlow(calculateUserTotalUsedFlow())}
           />
         </div>
@@ -1069,6 +1089,85 @@ export default function DashboardPage() {
               ))}
             </div>
           </ModalBody>
+        </ModalContent>
+      </Modal>
+      <Modal
+        backdrop="blur"
+        classNames={{
+          base: "!w-[calc(100%-32px)] !mx-auto sm:!w-full rounded-2xl overflow-hidden",
+        }}
+        isOpen={quotaHistoryModalOpen}
+        placement="center"
+        scrollBehavior="outside"
+        size="md"
+        onOpenChange={setQuotaHistoryModalOpen}
+      >
+        <ModalContent>
+          {(onClose) => (
+            <>
+              <ModalHeader className="flex flex-col gap-1">
+                <h2 className="text-xl font-bold">流量历史记录</h2>
+              </ModalHeader>
+              <ModalBody>
+                {quotaHistory.length > 0 ? (
+                  <div className="space-y-3 max-h-96 overflow-y-auto">
+                    {quotaHistory.map((log) => (
+                      <div
+                        key={log.id}
+                        className="p-3 rounded-lg border border-divider bg-default-50/50"
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs text-default-500">
+                            {new Date(log.resetTime).toLocaleString("zh-CN", { hour12: false }).replace(/\//g, "-")}
+                          </span>
+                          <Button
+                            isIconOnly
+                            className="w-6 h-6 min-w-6 text-danger hover:bg-danger/10"
+                            size="sm"
+                            variant="flat"
+                            onPress={() => {
+                              if (window.confirm("确定要删除该条记录吗？")) {
+                                deleteQuotaHistory(log.id);
+                              }
+                            }}
+                          >
+                            <svg
+                              className="w-3.5 h-3.5"
+                              fill="currentColor"
+                              viewBox="0 0 20 20"
+                            >
+                              <path
+                                clipRule="evenodd"
+                                d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
+                                fillRule="evenodd"
+                              />
+                            </svg>
+                          </Button>
+                        </div>
+                        <div className="text-sm text-default-600">
+                          归零前流量：<span className="text-blue-600">{(log.inFlowBefore / 1024 / 1024 / 1024).toFixed(2)} GB</span> ↑ <span className="text-orange-600">{(log.outFlowBefore / 1024 / 1024 / 1024).toFixed(2)} GB</span> ↓ <span className="font-medium">总 {(log.usedBytes / 1024 / 1024 / 1024).toFixed(2)} GB</span>
+                        </div>
+                        {log.resetReason && (
+                          <div className="text-xs text-default-500 mt-1">
+                            归零原因：{log.resetReason}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center text-default-500 py-8">
+                    暂无流量历史记录
+                  </div>
+                )}
+              </ModalBody>
+              <ModalFooter>
+                <Button size="sm" variant="flat" onPress={onClose}>
+                  关闭
+                </Button>
+              </ModalFooter>
+            </>
+          )}
         </ModalContent>
       </Modal>
     </AnimatedPage>

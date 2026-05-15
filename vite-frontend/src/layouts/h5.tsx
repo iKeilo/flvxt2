@@ -485,7 +485,7 @@ export default function H5Layout({ children }: { children: React.ReactNode }) {
             <svg className="w-5 h-5 mr-1.5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
             </svg>*/}
-            <span className="text-sm font-bold text-gray-700 dark:text-gray-300">导航菜单</span>
+            <span className="text-md font-bold text-gray-700 dark:text-gray-300">导航</span>
           </div>
         </div>
 
