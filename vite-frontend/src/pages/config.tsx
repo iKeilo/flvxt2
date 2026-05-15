@@ -377,6 +377,10 @@ export default function ConfigPage() {
           )
         ) {
           await updateSiteConfig(configs);
+          setTimeout(() => {
+            window.location.reload();
+          }, 800);
+          return;
         }
         // 触发配置更新事件，通知其他组件
         window.dispatchEvent(
