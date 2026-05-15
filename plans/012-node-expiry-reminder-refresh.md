@@ -1,11 +1,11 @@
 # 012-node-expiry-reminder-refresh
 
 ## 背景
-当前节点"关闭提醒"的功能仅是将 `expiry_reminder_dismissed` 设为 `1`，导致提醒永久关闭。对于包月/包季的用户，点击后应重置提醒周期（如剩 7 天时重置，变成 30 天后）并恢复提醒状态。
+当前节点"关闭提醒"的功能仅是将 `expiry_reminder_dismissed` 设为 `1`，导致提醒永久关闭。对于包月/包季的用户，点击后应归零提醒周期（如剩 7 天时归零，变成 30 天后）并恢复提醒状态。
 
 ## 目标
 点击"更新提醒周期"按钮后，执行以下逻辑：
-1. **重置 dismissed 状态**：将 `expiry_reminder_dismissed` 恢复为 `0`。
+1. **归零 dismissed 状态**：将 `expiry_reminder_dismissed` 恢复为 `0`。
 2. **更新 dismissed 截止时间**：将 `expiry_reminder_dismissed_until` 设置为 `当前时间 + RenewalCycle`（月付+30天等）。
 
 ## 方案

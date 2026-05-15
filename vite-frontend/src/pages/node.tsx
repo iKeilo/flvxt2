@@ -1418,7 +1418,7 @@ export default function NodePage() {
     const selectedLocalIds = Array.from(selectedIds);
 
     if (selectedLocalIds.length === 0) {
-      toast.error("请选择节点进行重置");
+      toast.error("请选择节点进行归零");
       setBatchResetTrafficModalOpen(false);
 
       return;
@@ -1440,7 +1440,7 @@ export default function NodePage() {
 
       const res = await batchResetNodeTraffic(
         selectedLocalIds,
-        "管理员手动重置",
+        "管理员手动归零",
         totalInFlow,
         totalOutFlow,
       );
@@ -1451,13 +1451,13 @@ export default function NodePage() {
             .length || 0;
 
         toast.success(
-          `已成功重置 ${successCount}/${selectedLocalIds.length} 个节点的流量统计`,
+          `已成功归零 ${successCount}/${selectedLocalIds.length} 个节点的流量统计`,
         );
         setBatchResetTrafficModalOpen(false);
         setSelectMode(false);
         setSelectedIds(new Set());
       } else {
-        toast.error(res.msg || "批量重置失败");
+        toast.error(res.msg || "批量归零失败");
       }
     } catch {
       toast.error("网络错误，请重试");
@@ -2202,7 +2202,7 @@ export default function NodePage() {
                         )}
                         {displayNext && displayNext > 0 ? (
                           <div className="flex items-center gap-1.5">
-                            <span>下次重置</span>
+                            <span>下次归零</span>
                             <span className="font-medium text-primary">
                               {formatDateOnly(displayNext)}
                             </span>
@@ -2487,7 +2487,7 @@ export default function NodePage() {
                         setLocalSearchKeyword("");
                       }}
                     >
-                      重置
+                      归零
                     </Button>
                   )}
               </>
@@ -2552,7 +2552,7 @@ export default function NodePage() {
                       setLocalSearchKeyword("");
                     }}
                   >
-                    重置筛选
+                    归零筛选
                   </Button>
                 </CardBody>
               </Card>
@@ -2593,7 +2593,7 @@ export default function NodePage() {
                       setLocalSearchKeyword("");
                     }}
                   >
-                    重置筛选
+                    归零筛选
                   </Button>
                 </CardBody>
               </Card>
@@ -3534,7 +3534,7 @@ export default function NodePage() {
           }}
         </ModalContent>
       </Modal>
-      {/* 批量重置流量确认模态框 */}
+      {/* 批量归零流量确认模态框 */}
       <Modal
         backdrop="blur"
         classNames={{
@@ -3550,16 +3550,16 @@ export default function NodePage() {
           {(onClose) => (
             <>
               <ModalHeader className="flex flex-col gap-1">
-                <h2 className="text-xl font-bold">确认批量重置流量</h2>
+                <h2 className="text-xl font-bold">确认批量归零流量</h2>
               </ModalHeader>
               <ModalBody>
                 <p>
-                  确定要重置以下{" "}
+                  确定要归零以下{" "}
                   <strong>{Array.from(selectedIds).length}</strong>{" "}
                   个节点的流量统计吗？
                 </p>
                 <p className="text-small text-default-500 mt-2">
-                  重置后，当前周期流量将归档到历史，新周期从 0 开始统计。
+                  归零后，当前周期流量将归档到历史，新周期从 0 开始统计。
                 </p>
                 <ul className="text-small text-default-500 mt-2 space-y-1">
                   {Array.from(selectedIds)
@@ -3587,7 +3587,7 @@ export default function NodePage() {
                   isLoading={batchResetTrafficLoading}
                   onPress={handleBatchResetTraffic}
                 >
-                  确认重置
+                  确认归零
                 </Button>
               </ModalFooter>
             </>
@@ -3777,7 +3777,7 @@ export default function NodePage() {
               确定要删除这条归零记录吗？此操作不可恢复。
             </p>
           </ModalBody>
-          <ModalFooter className="border-t border-default-200">
+          <ModalFooter>
             <Button
               variant="flat"
               onPress={() => setDeleteLogModalOpen(false)}
@@ -3889,7 +3889,7 @@ export default function NodePage() {
                     setFilterGroupId(null);
                   }}
                 >
-                  重置
+                  归零
                 </Button>
               </ModalFooter>
             </>

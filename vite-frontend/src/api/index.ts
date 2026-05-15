@@ -283,7 +283,7 @@ export const deleteSpeedLimit = (id: number) =>
 export const updatePassword = (data: UpdatePasswordPayload) =>
   Network.post("/user/updatePassword", data);
 
-// 重置流量接口
+// 归零流量接口
 export const resetUserFlow = (data: { id: number; type: number }) =>
   Network.post("/user/reset", data);
 export const resetUserQuota = (data: UserQuotaResetPayload) =>

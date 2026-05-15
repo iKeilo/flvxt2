@@ -646,7 +646,7 @@ export default function UserPage() {
       if (response.code === 0) {
         setTunnels(Array.isArray(response.data) ? response.data : []);
       }
-    } catch {}
+    } catch { }
   }, []);
   const loadSpeedLimits = useCallback(async () => {
     try {
@@ -655,15 +655,15 @@ export default function UserPage() {
       if (response.code === 0) {
         const speedLimitList = Array.isArray(response.data)
           ? response.data.map((item) => ({
-              ...item,
-              uploadSpeed: item.uploadSpeed ?? item.speed ?? 0,
-              downloadSpeed: item.downloadSpeed ?? item.speed ?? 0,
-            }))
+            ...item,
+            uploadSpeed: item.uploadSpeed ?? item.speed ?? 0,
+            downloadSpeed: item.downloadSpeed ?? item.speed ?? 0,
+          }))
           : [];
 
         setSpeedLimits(speedLimitList);
       }
-    } catch {}
+    } catch { }
   }, []);
   const loadUserGroups = useCallback(async () => {
     try {
@@ -672,7 +672,7 @@ export default function UserPage() {
       if (response.code === 0) {
         setUserGroups(Array.isArray(response.data) ? response.data : []);
       }
-    } catch {}
+    } catch { }
   }, []);
   const loadUserTunnels = useCallback(async (userId: number) => {
     setTunnelListLoading(true);
@@ -836,7 +836,7 @@ export default function UserPage() {
       if (groupRes.code === 0) {
         currentGroupIds = groupRes.data || [];
       }
-    } catch {}
+    } catch { }
     setUserForm({
       id: user.id,
       name: user.name || "",
@@ -1034,10 +1034,10 @@ export default function UserPage() {
             speedLimitName:
               normalizeSpeedId(editTunnelForm.speedId) !== null
                 ? speedLimits.find(
-                    (speedLimit) =>
-                      speedLimit.id ===
-                      normalizeSpeedId(editTunnelForm.speedId),
-                  )?.name
+                  (speedLimit) =>
+                    speedLimit.id ===
+                    normalizeSpeedId(editTunnelForm.speedId),
+                )?.name
                 : undefined,
           });
 
@@ -1390,13 +1390,12 @@ export default function UserPage() {
     return (
       <TableRow
         ref={setNodeRef}
-        className={`cursor-default transition-colors ${
-          selectedUserIds.has(user.id)
+        className={`cursor-default transition-colors ${selectedUserIds.has(user.id)
             ? "bg-primary-50 dark:bg-primary-900/30"
             : selectedUserId === user.id
               ? "bg-primary-50 dark:bg-primary-900/30"
               : "hover:bg-default-50/50"
-        }`}
+          }`}
         style={style}
         onClick={() => {
           if (!batchMode) {
@@ -1658,11 +1657,10 @@ export default function UserPage() {
                         </TableCell>
                         <TableCell className="whitespace-nowrap">
                           <div
-                            className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${
-                              monitorPermissionUserIds.has(user.id)
+                            className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${monitorPermissionUserIds.has(user.id)
                                 ? "bg-success-500/10 text-success-600 dark:text-success-400"
                                 : "bg-default-500/10 text-default-500"
-                            }`}
+                              }`}
                           >
                             {monitorPermissionUserIds.has(user.id) ? (
                               <>
@@ -1722,14 +1720,14 @@ export default function UserPage() {
                               className="w-24 mt-1"
                               color={
                                 usedFlow / (user.flow * 1024 * 1024 * 1024) >
-                                0.8
+                                  0.8
                                   ? "danger"
                                   : "primary"
                               }
                               size="sm"
                               value={Math.min(
                                 (usedFlow / (user.flow * 1024 * 1024 * 1024)) *
-                                  100,
+                                100,
                                 100,
                               )}
                             />
@@ -1840,19 +1838,18 @@ export default function UserPage() {
             const flowPercent =
               user.flow > 0
                 ? Math.min(
-                    (usedFlow / (user.flow * 1024 * 1024 * 1024)) * 100,
-                    100,
-                  )
+                  (usedFlow / (user.flow * 1024 * 1024 * 1024)) * 100,
+                  100,
+                )
                 : 0;
 
             return (
               <StaggerItem key={user.id}>
                 <div
-                  className={`shadow-sm border border-divider hover:shadow-md transition-shadow duration-200 overflow-hidden h-full rounded-xl cursor-default ${
-                    selectedUserIds.has(user.id)
+                  className={`shadow-sm border border-divider hover:shadow-md transition-shadow duration-200 overflow-hidden h-full rounded-xl cursor-default ${selectedUserIds.has(user.id)
                       ? "bg-primary-50 dark:bg-primary-900/30 border-primary-300 dark:border-primary-700"
                       : ""
-                  }`}
+                    }`}
                   onClick={() => toggleUserSelection(user.id)}
                 >
                   <Card className="shadow-none border-0">
@@ -1981,11 +1978,10 @@ export default function UserPage() {
                           <div className="flex justify-between text-sm">
                             <span className="text-default-600">监控权限</span>
                             <div
-                              className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${
-                                monitorPermissionUserIds.has(user.id)
+                              className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${monitorPermissionUserIds.has(user.id)
                                   ? "bg-success-500/10 text-success-600 dark:text-success-400"
                                   : "bg-default-500/10 text-default-500"
-                              }`}
+                                }`}
                             >
                               {monitorPermissionUserIds.has(user.id) ? (
                                 <>
@@ -2293,11 +2289,10 @@ export default function UserPage() {
                   {/* 👇 核心修复 2：分配按钮必须和选择框放在同一行！用 flex-1 min-w-0 压制选择框宽度 */}
                   <div className="flex flex-row items-center gap-2 sm:gap-3 w-full">
                     <div
-                      className={`group flex items-center px-3 sm:px-4 h-10 rounded-xl border-2 transition-all cursor-pointer shadow-sm overflow-hidden flex-1 min-w-0 ${
-                        isTunnelListExpanded
+                      className={`group flex items-center px-3 sm:px-4 h-10 rounded-xl border-2 transition-all cursor-pointer shadow-sm overflow-hidden flex-1 min-w-0 ${isTunnelListExpanded
                           ? "border-primary bg-primary-50/20 ring-4 ring-primary/10"
                           : "border-default-200 bg-default-50 hover:border-primary-300"
-                      }`}
+                        }`}
                       onClick={() =>
                         setIsTunnelListExpanded(!isTunnelListExpanded)
                       }
@@ -2307,12 +2302,12 @@ export default function UserPage() {
                       >
                         {batchTunnelSelections.size > 0
                           ? `已选 ${batchTunnelSelections.size} 项：` +
-                            Array.from(batchTunnelSelections.keys())
-                              .map(
-                                (id) => tunnels.find((t) => t.id === id)?.name,
-                              )
-                              .filter(Boolean)
-                              .join("、")
+                          Array.from(batchTunnelSelections.keys())
+                            .map(
+                              (id) => tunnels.find((t) => t.id === id)?.name,
+                            )
+                            .filter(Boolean)
+                            .join("、")
                           : "请选择隧道（勾选后配置）"}
                       </span>
                       <svg
@@ -2360,9 +2355,9 @@ export default function UserPage() {
                                   tunnels.filter((t) => !isTunnelAssigned(t.id))
                                     .length > 0 &&
                                   batchTunnelSelections.size ===
-                                    tunnels.filter(
-                                      (t) => !isTunnelAssigned(t.id),
-                                    ).length
+                                  tunnels.filter(
+                                    (t) => !isTunnelAssigned(t.id),
+                                  ).length
                                 }
                                 size="sm"
                                 onValueChange={(isSelected) => {
@@ -2637,9 +2632,9 @@ export default function UserPage() {
                               <span className="text-xs sm:text-sm text-default-600 bg-default-100 px-1.5 py-0.5 sm:px-2 sm:py-1 rounded">
                                 {userTunnel.speedLimitName
                                   ? userTunnel.speedLimitName.replace(
-                                      /^限速\s*/,
-                                      "",
-                                    )
+                                    /^限速\s*/,
+                                    "",
+                                  )
                                   : "不限速"}
                               </span>
                             </TableCell>
@@ -2768,7 +2763,7 @@ export default function UserPage() {
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 {monitorPermissionLoading ||
-                monitorPermissionMutatingUserId === monitorModalUser?.id ? (
+                  monitorPermissionMutatingUserId === monitorModalUser?.id ? (
                   <Spinner size="sm" />
                 ) : null}
                 <Switch
@@ -2831,9 +2826,9 @@ export default function UserPage() {
                     setEditTunnelForm((prev) =>
                       prev
                         ? {
-                            ...prev,
-                            speedId: selectedKey ? Number(selectedKey) : null,
-                          }
+                          ...prev,
+                          speedId: selectedKey ? Number(selectedKey) : null,
+                        }
                         : null,
                     );
                   }}
@@ -3222,11 +3217,10 @@ export default function UserPage() {
                     </span>
                   </div>
                   <div
-                    className={`inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-medium ${
-                      user.status === 1
+                    className={`inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-medium ${user.status === 1
                         ? "bg-success-500/10 text-success-600 dark:text-success-400"
                         : "bg-danger-500/10 text-danger-600 dark:text-danger-400"
-                    }`}
+                      }`}
                   >
                     {user.status === 1 ? "启用" : "禁用"}
                   </div>
@@ -3291,11 +3285,10 @@ export default function UserPage() {
                     </span>
                   </div>
                   <div
-                    className={`inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-medium ${
-                      user.status === 1
+                    className={`inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-medium ${user.status === 1
                         ? "bg-success-500/10 text-success-600 dark:text-success-400"
                         : "bg-danger-500/10 text-danger-600 dark:text-danger-400"
-                    }`}
+                      }`}
                   >
                     {user.status === 1 ? "启用" : "禁用"}
                   </div>
@@ -3364,8 +3357,8 @@ export default function UserPage() {
           </ModalHeader>
           <ModalBody className="py-6">
             {historyModalUser &&
-            historyModalUser.quotaHistory &&
-            historyModalUser.quotaHistory.length > 0 ? (
+              historyModalUser.quotaHistory &&
+              historyModalUser.quotaHistory.length > 0 ? (
               <div className="space-y-3 max-h-80 overflow-y-auto">
                 {historyModalUser.quotaHistory.map((item) => (
                   <div
@@ -3374,7 +3367,7 @@ export default function UserPage() {
                   >
                     <div className="flex items-center justify-between w-full mb-2">
                       <span className="text-sm font-medium text-default-600">
-                        {item.resetReason === "管理员手动重置"
+                        {item.resetReason === "管理员手动归零"
                           ? "admin"
                           : "系统自动"}
                       </span>
@@ -3446,7 +3439,7 @@ export default function UserPage() {
               </div>
             )}
           </ModalBody>
-          <ModalFooter className="border-t border-default-200">
+          <ModalFooter>
             <Button onPress={onHistoryModalClose}>关闭</Button>
           </ModalFooter>
         </ModalContent>
@@ -3468,10 +3461,10 @@ export default function UserPage() {
           </ModalHeader>
           <ModalBody className="py-4">
             <p className="text-sm text-default-600">
-              确定要删除这条流量历史记录吗？此操作不可恢复。
+              确定要删除这条流量历史记录吗？此操作不可恢复！
             </p>
           </ModalBody>
-          <ModalFooter className="border-t border-default-200">
+          <ModalFooter>
             <Button variant="flat" onPress={onDeleteConfirmClose}>
               取消
             </Button>

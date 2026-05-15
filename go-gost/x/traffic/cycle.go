@@ -4,8 +4,8 @@ import (
 	"time"
 )
 
-// CalculateNextReset 根据续费周期计算下次重置时间
-// 返回零值 time.Time{} 表示不自动重置
+// CalculateNextReset 根据续费周期计算下次归零时间
+// 返回零值 time.Time{} 表示不自动归零
 func CalculateNextReset(renewalCycle string, from time.Time) time.Time {
 	loc := from.Location()
 
@@ -37,12 +37,12 @@ func CalculateNextReset(renewalCycle string, from time.Time) time.Time {
 		return time.Date(from.Year()+1, 1, 1, 0, 0, 0, 0, loc)
 
 	default:
-		// once 或其他值：不自动重置
+		// once 或其他值：不自动归零
 		return time.Time{}
 	}
 }
 
-// IsAutoResetEnabled 检查是否启用自动重置
+// IsAutoResetEnabled 检查是否启用自动归零
 func IsAutoResetEnabled(renewalCycle string) bool {
 	switch renewalCycle {
 	case "daily", "weekly", "monthly", "quarterly", "yearly":

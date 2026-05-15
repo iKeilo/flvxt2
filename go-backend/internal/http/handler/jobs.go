@@ -179,7 +179,7 @@ func (h *Handler) resetMonthlyFlow(now time.Time) {
 	if err == nil && len(snapshots) > 0 {
 		periodKey := int64(now.Year()*100 + int(now.Month()))
 		nowMs := now.UnixMilli()
-		h.repo.RecordFlowResetHistory(snapshots, periodKey, nowMs, "自动周期重置")
+		h.repo.RecordFlowResetHistory(snapshots, periodKey, nowMs, "自动周期归零")
 	}
 	_ = h.repo.ResetUserTunnelMonthlyFlow(currentDay, lastDay)
 }
@@ -264,7 +264,7 @@ func (h *Handler) runNodeRenewalCycleJob(now time.Time) {
 		return
 	}
 
-	// 重置流量并记录日志
+	// 归零流量并记录日志
 	for _, result := range results {
 		// 获取节点当前流量（从实时数据）
 		// 由于这里无法直接获取实时流量，传入 0 作为归零前流量
@@ -275,7 +275,7 @@ func (h *Handler) runNodeRenewalCycleJob(now time.Time) {
 			ResetTime:     now.UnixMilli(),
 			OperatorID:    0, // 系统自动
 			OperatorName:  "系统自动",
-			Reason:        "自动周期重置",
+			Reason:        "自动周期归零",
 			InFlowBefore:  0,
 			OutFlowBefore: 0,
 		}); err != nil {
@@ -283,12 +283,12 @@ func (h *Handler) runNodeRenewalCycleJob(now time.Time) {
 			continue
 		}
 
-		// 发送重置命令到节点
+		// 发送归零命令到节点
 		_, _ = h.sendNodeCommandWithTimeout(
 			result.NodeID,
 			"ResetTraffic",
 			map[string]interface{}{
-				"reason": "自动周期重置",
+				"reason": "自动周期归零",
 				"nodeId": result.NodeID,
 			},
 			10*time.Second,

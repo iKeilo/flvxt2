@@ -175,17 +175,8 @@ func (r *Repository) ResetUserFlowByUser(userID int64, now int64) {
 
 	_ = r.db.Where("user_id = ?", userID).First(&quota).Error
 
-	var tunnelFlow struct {
-		TotalInFlow  int64 `gorm:"column:total_in_flow"`
-		TotalOutFlow int64 `gorm:"column:total_out_flow"`
-	}
-	r.db.Model(&model.UserTunnel{}).
-		Select("SUM(in_flow) as total_in_flow, SUM(out_flow) as total_out_flow").
-		Where("user_id = ?", userID).
-		Scan(&tunnelFlow)
-
-	inFlowBefore := tunnelFlow.TotalInFlow
-	outFlowBefore := tunnelFlow.TotalOutFlow
+	inFlowBefore := user.InFlow
+	outFlowBefore := user.OutFlow
 	totalBytes := inFlowBefore + outFlowBefore
 
 	_ = r.db.Model(&model.User{}).
@@ -213,7 +204,7 @@ func (r *Repository) ResetUserFlowByUser(userID int64, now int64) {
 			UsedBytes:     totalBytes,
 			ResetTime:     now,
 			CreatedTime:   now,
-			ResetReason:   "管理员手动重置",
+			ResetReason:   "管理员手动归零",
 		}
 		r.db.Create(history)
 	}
@@ -239,7 +230,7 @@ func (r *Repository) ResetUserFlowByUserTunnel(userTunnelID int64) {
 		Where("id = ?", userTunnelID).
 		Updates(map[string]interface{}{"in_flow": 0, "out_flow": 0}).Error
 
-	// 记录隧道流量重置历史
+	// 记录隧道流量归零历史
 	if utFlow.InFlow > 0 || utFlow.OutFlow > 0 {
 		var user model.User
 		var tunnel model.Tunnel
@@ -251,13 +242,15 @@ func (r *Repository) ResetUserFlowByUserTunnel(userTunnelID int64) {
 
 		totalBytes := utFlow.InFlow + utFlow.OutFlow
 		history := model.UserQuotaHistory{
-			UserID:      utFlow.UserID,
-			PeriodType:  "tunnel",
-			PeriodKey:   userTunnel.TunnelID,
-			UsedBytes:   totalBytes,
-			ResetTime:   time.Now().UnixMilli(),
-			CreatedTime: time.Now().UnixMilli(),
-			ResetReason: "管理员手动重置",
+			UserID:        utFlow.UserID,
+			PeriodType:    "tunnel",
+			PeriodKey:     userTunnel.TunnelID,
+			InFlowBefore:  utFlow.InFlow,
+			OutFlowBefore: utFlow.OutFlow,
+			UsedBytes:     totalBytes,
+			ResetTime:     time.Now().UnixMilli(),
+			CreatedTime:   time.Now().UnixMilli(),
+			ResetReason:   "管理员手动归零",
 		}
 		r.db.Create(&history)
 	}

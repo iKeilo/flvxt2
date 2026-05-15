@@ -325,10 +325,10 @@ func (r *Repository) ResetUserQuotaUsage(userID int64, scope string, now time.Ti
 			return err
 		}
 		applyUserQuotaWindowRoll(q, now)
-		
+
 		nowMs := now.UnixMilli()
-		
-		// 保存历史流量记录（重置前）
+
+		// 保存历史流量记录（归零前）
 		if scope == "daily" || scope == "all" {
 			if q.DailyUsedBytes > 0 {
 				history := model.UserQuotaHistory{
@@ -361,7 +361,7 @@ func (r *Repository) ResetUserQuotaUsage(userID int64, scope string, now time.Ti
 				}
 			}
 		}
-		
+
 		switch scope {
 		case "daily":
 			q.DailyUsedBytes = 0
@@ -400,14 +400,14 @@ func (r *Repository) ResetUserQuotaUsage(userID int64, scope string, now time.Ti
 // UserQuotaHistoryItem 用户流量历史项
 type UserQuotaHistoryItem struct {
 	ID            int64  `json:"id"`
-	PeriodType    string `json:"periodType"`   // daily/monthly
-	PeriodKey     int64  `json:"periodKey"`    // YYYYMMDD 或 YYYYMM
-	InFlowBefore  int64  `json:"inFlowBefore"` // 上行流量 (bytes)
-	OutFlowBefore int64  `json:"outFlowBefore"`// 下行流量 (bytes)
+	PeriodType    string `json:"periodType"`    // daily/monthly
+	PeriodKey     int64  `json:"periodKey"`     // YYYYMMDD 或 YYYYMM
+	InFlowBefore  int64  `json:"inFlowBefore"`  // 上行流量 (bytes)
+	OutFlowBefore int64  `json:"outFlowBefore"` // 下行流量 (bytes)
 	UsedBytes     int64  `json:"usedBytes"`
-	InFlowGB      string `json:"inFlowGB"`     // 上行流量 (GB)
-	OutFlowGB     string `json:"outFlowGB"`    // 下行流量 (GB)
-	UsedGB        string `json:"usedGB"`       // 格式化后的 GB 值
+	InFlowGB      string `json:"inFlowGB"`  // 上行流量 (GB)
+	OutFlowGB     string `json:"outFlowGB"` // 下行流量 (GB)
+	UsedGB        string `json:"usedGB"`    // 格式化后的 GB 值
 	ResetTime     int64  `json:"resetTime"`
 	CreatedTime   int64  `json:"createdTime"`
 	ResetReason   string `json:"resetReason"`
@@ -424,7 +424,7 @@ func (r *Repository) GetUserQuotaHistory(userID int64, limit int) ([]UserQuotaHi
 	if limit <= 0 {
 		limit = 50
 	}
-	
+
 	var histories []model.UserQuotaHistory
 	err := r.db.Where("user_id = ?", userID).
 		Order("created_time DESC").
@@ -433,10 +433,10 @@ func (r *Repository) GetUserQuotaHistory(userID int64, limit int) ([]UserQuotaHi
 	if err != nil {
 		return nil, err
 	}
-	
+
 	items := make([]UserQuotaHistoryItem, 0, len(histories))
 	bytesPerGB := int64(1024 * 1024 * 1024)
-	
+
 	for _, h := range histories {
 		inFlowGB := fmt.Sprintf("%.2f", float64(h.InFlowBefore)/float64(bytesPerGB))
 		outFlowGB := fmt.Sprintf("%.2f", float64(h.OutFlowBefore)/float64(bytesPerGB))
@@ -456,7 +456,7 @@ func (r *Repository) GetUserQuotaHistory(userID int64, limit int) ([]UserQuotaHi
 			ResetReason:   h.ResetReason,
 		})
 	}
-	
+
 	return items, nil
 }
 
@@ -477,9 +477,9 @@ func (r *Repository) RollUserQuotaWindows(now time.Time, resetReason string) ([]
 			// oldMonthKey := q.MonthKey
 			// oldDailyUsed := q.DailyUsedBytes
 			// oldMonthlyUsed := q.MonthlyUsedBytes
-			
+
 			changed := applyUserQuotaWindowRoll(&q, now)
-			
+
 			// 记录流量历史 - 已移至 resetMonthlyFlow 按 flow_reset_time 记录
 			// if oldDayKey != q.DayKey && oldDailyUsed > 0 {
 			// 	createUserQuotaHistory(tx, q.UserID, "daily", oldDayKey, oldDailyUsed, nowMs, resetReason)
@@ -487,7 +487,7 @@ func (r *Repository) RollUserQuotaWindows(now time.Time, resetReason string) ([]
 			// if oldMonthKey != q.MonthKey && oldMonthlyUsed > 0 {
 			// 	createUserQuotaHistory(tx, q.UserID, "monthly", oldMonthKey, oldMonthlyUsed, nowMs, resetReason)
 			// }
-			
+
 			release := UserQuotaRelease{UserID: q.UserID}
 			if q.DisabledByQuota == 1 && !userQuotaExceeded(cloneUserQuotaView(q)) {
 				release.UnblockUser = true

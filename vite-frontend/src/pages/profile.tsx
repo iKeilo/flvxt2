@@ -180,7 +180,7 @@ export default function ProfilePage() {
       setPasswordLoading(false);
     }
   };
-  // 重置密码表单
+  // 归零密码表单
   const resetPasswordForm = () => {
     setPasswordForm({
       newUsername: "",

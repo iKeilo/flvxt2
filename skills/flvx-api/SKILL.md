@@ -107,7 +107,7 @@ User request → Check env vars → Auto-login if needed → Call API → Return
 | "登录" / "查看我的信息" | `/api/v1/user/package` | [auth](references/auth.md) |
 | "创建用户" / "添加用户" | `/api/v1/user/create` | [users](references/users.md) |
 | "查看用户列表" / "所有用户" | `/api/v1/user/list` | [users](references/users.md) |
-| "重置流量" | `/api/v1/user/reset` | [users](references/users.md) |
+| "归零流量" | `/api/v1/user/reset` | [users](references/users.md) |
 | "添加节点" / "新建节点" | `/api/v1/node/create` | [nodes](references/nodes.md) |
 | "查看节点" / "节点状态" | `/api/v1/node/list` | [nodes](references/nodes.md) |
 | "安装命令" / "部署节点" | `/api/v1/node/install` | [nodes](references/nodes.md) |

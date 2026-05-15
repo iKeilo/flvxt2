@@ -67,37 +67,37 @@ type ForwardPort struct {
 func (ForwardPort) TableName() string { return "forward_port" }
 
 type Node struct {
-	ID                      int64          `gorm:"primaryKey;autoIncrement"`
-	Name                    string         `gorm:"type:varchar(100);not null"`
-	Remark                  sql.NullString `gorm:"column:remark;type:text"`
-	ExpiryTime              sql.NullInt64  `gorm:"column:expiry_time"`
-	RenewalCycle            sql.NullString `gorm:"column:renewal_cycle;type:varchar(20)"`
-	Secret                  string         `gorm:"type:varchar(100);not null"`
-	ServerIP                string         `gorm:"column:server_ip;type:varchar(100);not null"`
-	IntranetIP              sql.NullString `gorm:"column:intranet_ip;type:varchar(100)"`
-	ServerIPV4              sql.NullString `gorm:"column:server_ip_v4;type:varchar(100)"`
-	ServerIPV6              sql.NullString `gorm:"column:server_ip_v6;type:varchar(100)"`
-	ExtraIPs                sql.NullString `gorm:"column:extra_ips;type:text"`
-	Port                    string         `gorm:"type:text;not null"`
-	InterfaceName           sql.NullString `gorm:"column:interface_name;type:varchar(200)"`
-	Version                 sql.NullString `gorm:"type:varchar(100)"`
-	HTTP                    int            `gorm:"column:http;not null;default:0"`
-	TLS                     int            `gorm:"column:tls;not null;default:0"`
-	Socks                   int            `gorm:"not null;default:0"`
-	CreatedTime             int64          `gorm:"column:created_time;not null"`
-	UpdatedTime             sql.NullInt64  `gorm:"column:updated_time"`
-	Status                  int            `gorm:"not null"`
-	TCPListenAddr           string         `gorm:"column:tcp_listen_addr;type:varchar(100);not null;default:'[::]'"`
-	UDPListenAddr           string         `gorm:"column:udp_listen_addr;type:varchar(100);not null;default:'[::]'"`
-	Inx                     int            `gorm:"not null;default:0"`
-	IsRemote                int            `gorm:"column:is_remote;default:0"`
-	RemoteURL               sql.NullString `gorm:"column:remote_url;type:text"`
-	RemoteToken             sql.NullString `gorm:"column:remote_token;type:text"`
-	RemoteConfig            sql.NullString `gorm:"column:remote_config;type:text"`
+	ID                           int64          `gorm:"primaryKey;autoIncrement"`
+	Name                         string         `gorm:"type:varchar(100);not null"`
+	Remark                       sql.NullString `gorm:"column:remark;type:text"`
+	ExpiryTime                   sql.NullInt64  `gorm:"column:expiry_time"`
+	RenewalCycle                 sql.NullString `gorm:"column:renewal_cycle;type:varchar(20)"`
+	Secret                       string         `gorm:"type:varchar(100);not null"`
+	ServerIP                     string         `gorm:"column:server_ip;type:varchar(100);not null"`
+	IntranetIP                   sql.NullString `gorm:"column:intranet_ip;type:varchar(100)"`
+	ServerIPV4                   sql.NullString `gorm:"column:server_ip_v4;type:varchar(100)"`
+	ServerIPV6                   sql.NullString `gorm:"column:server_ip_v6;type:varchar(100)"`
+	ExtraIPs                     sql.NullString `gorm:"column:extra_ips;type:text"`
+	Port                         string         `gorm:"type:text;not null"`
+	InterfaceName                sql.NullString `gorm:"column:interface_name;type:varchar(200)"`
+	Version                      sql.NullString `gorm:"type:varchar(100)"`
+	HTTP                         int            `gorm:"column:http;not null;default:0"`
+	TLS                          int            `gorm:"column:tls;not null;default:0"`
+	Socks                        int            `gorm:"not null;default:0"`
+	CreatedTime                  int64          `gorm:"column:created_time;not null"`
+	UpdatedTime                  sql.NullInt64  `gorm:"column:updated_time"`
+	Status                       int            `gorm:"not null"`
+	TCPListenAddr                string         `gorm:"column:tcp_listen_addr;type:varchar(100);not null;default:'[::]'"`
+	UDPListenAddr                string         `gorm:"column:udp_listen_addr;type:varchar(100);not null;default:'[::]'"`
+	Inx                          int            `gorm:"not null;default:0"`
+	IsRemote                     int            `gorm:"column:is_remote;default:0"`
+	RemoteURL                    sql.NullString `gorm:"column:remote_url;type:text"`
+	RemoteToken                  sql.NullString `gorm:"column:remote_token;type:text"`
+	RemoteConfig                 sql.NullString `gorm:"column:remote_config;type:text"`
 	ExpiryReminderDismissed      int            `gorm:"column:expiry_reminder_dismissed;not null;default:0"`
 	ExpiryReminderDismissedUntil sql.NullInt64  `gorm:"column:expiry_reminder_dismissed_until"`
 	GroupID                      sql.NullInt64  `gorm:"column:group_id;index:idx_node_group_id"`
-	ServiceName             sql.NullString `gorm:"column:service_name;type:varchar(100)"`
+	ServiceName                  sql.NullString `gorm:"column:service_name;type:varchar(100)"`
 }
 
 func (Node) TableName() string { return "node" }
@@ -168,26 +168,26 @@ type UserQuotaHistory struct {
 	ID            int64  `gorm:"primaryKey;autoIncrement"`
 	UserID        int64  `gorm:"column:user_id;not null;index:idx_user_period"`
 	PeriodType    string `gorm:"column:period_type;type:varchar(10);not null;index:idx_user_period"` // daily/monthly
-	PeriodKey     int64  `gorm:"column:period_key;not null;index:idx_user_period"`                    // YYYYMMDD 或 YYYYMM
+	PeriodKey     int64  `gorm:"column:period_key;not null;index:idx_user_period"`                   // YYYYMMDD 或 YYYYMM
 	InFlowBefore  int64  `gorm:"column:in_flow_before;not null;default:0"`
 	OutFlowBefore int64  `gorm:"column:out_flow_before;not null;default:0"`
 	UsedBytes     int64  `gorm:"column:used_bytes;not null;default:0"`
 	ResetTime     int64  `gorm:"column:reset_time;not null"`
 	CreatedTime   int64  `gorm:"column:created_time;not null"`
-	ResetReason   string `gorm:"column:reset_reason;type:varchar(50)"` // 重置原因：管理员手动重置/自动周期重置
+	ResetReason   string `gorm:"column:reset_reason;type:varchar(50)"` // 归零原因：管理员手动归零/自动周期归零
 }
 
 func (UserQuotaHistory) TableName() string { return "user_quota_history" }
 
 // UserTrafficHistory 用户月度已用流量历史记录
 type UserTrafficHistory struct {
-	ID          int64  `gorm:"primaryKey;autoIncrement"`
-	UserID      int64  `gorm:"column:user_id;not null;uniqueIndex:idx_user_traffic_period"`
-	PeriodKey   int64  `gorm:"column:period_key;not null;uniqueIndex:idx_user_traffic_period"` // YYYYMM
-	InFlow      int64  `gorm:"column:in_flow;not null;default:0"`
-	OutFlow     int64  `gorm:"column:out_flow;not null;default:0"`
-	UsedBytes   int64  `gorm:"column:used_bytes;not null;default:0"`
-	CreatedTime int64  `gorm:"column:created_time;not null"`
+	ID          int64 `gorm:"primaryKey;autoIncrement"`
+	UserID      int64 `gorm:"column:user_id;not null;uniqueIndex:idx_user_traffic_period"`
+	PeriodKey   int64 `gorm:"column:period_key;not null;uniqueIndex:idx_user_traffic_period"` // YYYYMM
+	InFlow      int64 `gorm:"column:in_flow;not null;default:0"`
+	OutFlow     int64 `gorm:"column:out_flow;not null;default:0"`
+	UsedBytes   int64 `gorm:"column:used_bytes;not null;default:0"`
+	CreatedTime int64 `gorm:"column:created_time;not null"`
 }
 
 func (UserTrafficHistory) TableName() string { return "user_traffic_history" }
@@ -872,17 +872,17 @@ type NodeTagNode struct {
 func (NodeTagNode) TableName() string { return "node_tag_node" }
 
 type ForwardTrafficResetLog struct {
-	ID           int64  `gorm:"primaryKey;autoIncrement"`
-	ForwardID    int64  `gorm:"column:forward_id;not null;index:idx_forward_reset_time"`
-	ForwardName  string `gorm:"type:varchar(100);not null"`
-	UserID       int64  `gorm:"column:user_id;not null"`
-	UserName     string `gorm:"column:user_name;type:varchar(100);not null"`
-	ResetTime    int64  `gorm:"column:reset_time;not null"`
-	InFlowBefore int64  `gorm:"column:in_flow_before;not null;default:0"`
-	OutFlowBefore int64 `gorm:"column:out_flow_before;not null;default:0"`
-	OperatorID   int64  `gorm:"column:operator_id;not null"`
-	OperatorName string `gorm:"column:operator_name;type:varchar(100);not null"`
-	CreatedTime  int64  `gorm:"column:created_time;not null"`
+	ID            int64  `gorm:"primaryKey;autoIncrement"`
+	ForwardID     int64  `gorm:"column:forward_id;not null;index:idx_forward_reset_time"`
+	ForwardName   string `gorm:"type:varchar(100);not null"`
+	UserID        int64  `gorm:"column:user_id;not null"`
+	UserName      string `gorm:"column:user_name;type:varchar(100);not null"`
+	ResetTime     int64  `gorm:"column:reset_time;not null"`
+	InFlowBefore  int64  `gorm:"column:in_flow_before;not null;default:0"`
+	OutFlowBefore int64  `gorm:"column:out_flow_before;not null;default:0"`
+	OperatorID    int64  `gorm:"column:operator_id;not null"`
+	OperatorName  string `gorm:"column:operator_name;type:varchar(100);not null"`
+	CreatedTime   int64  `gorm:"column:created_time;not null"`
 }
 
 func (ForwardTrafficResetLog) TableName() string { return "forward_traffic_reset_log" }

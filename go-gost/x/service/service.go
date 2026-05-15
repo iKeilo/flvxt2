@@ -437,7 +437,7 @@ func (s *defaultService) observeStats(ctx context.Context) {
 					globalManager := GetGlobalTrafficManager()
 					globalManager.AddTraffic(s.name, int64(outputBytes), int64(inputBytes))
 
-					// 立即重置流量计数（因为已经记录到全局管理器中）
+					// 立即归零流量计数（因为已经记录到全局管理器中）
 					if xstats, ok := st.(*xstats.Stats); ok {
 						xstats.ResetTraffic(st.Get(stats.KindInputBytes)-inputBytes, st.Get(stats.KindOutputBytes)-outputBytes)
 					}

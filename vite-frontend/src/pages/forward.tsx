@@ -1370,12 +1370,12 @@ export default function ForwardPage() {
   // isSearchVisible removed
   const [compactMode, setCompactMode] = useState(false);
 
-  // 用户切换时重置筛选条件
+  // 用户切换时归零筛选条件
   useEffect(() => {
     const currentUserId = tokenUserId ? tokenUserId.toString() : null;
     const prevUserId = localStorage.getItem("forward-last-user-id");
 
-    // 只有用户真正切换时才重置（不是页面刷新）
+    // 只有用户真正切换时才归零（不是页面刷新）
     if (prevUserId !== null && prevUserId !== currentUserId) {
       setSearchParams({
         name: "",
@@ -3321,7 +3321,7 @@ export default function ForwardPage() {
     const selectedLocalIds = Array.from(selectedIds);
 
     if (selectedLocalIds.length === 0) {
-      toast.error("请选择规则进行重置");
+      toast.error("请选择规则进行归零");
       setBatchResetTrafficModalOpen(false);
 
       return;
@@ -3336,14 +3336,14 @@ export default function ForwardPage() {
             .length || 0;
 
         toast.success(
-          `已成功重置 ${successCount}/${selectedLocalIds.length} 个规则的流量统计`,
+          `已成功归零 ${successCount}/${selectedLocalIds.length} 个规则的流量统计`,
         );
         setBatchResetTrafficModalOpen(false);
         setSelectMode(false);
         setSelectedIds(new Set());
         await refreshForwardList(false);
       } else {
-        toast.error(res.msg || "批量重置失败");
+        toast.error(res.msg || "批量归零失败");
       }
     } catch {
       toast.error("网络错误，请重试");
@@ -4402,7 +4402,7 @@ export default function ForwardPage() {
                     setSearchKeyword("");
                   }}
                 >
-                  重置
+                  归零
                 </Button>
               )}
             </>
@@ -6468,16 +6468,16 @@ export default function ForwardPage() {
           {(onClose) => (
             <>
               <ModalHeader className="flex flex-col gap-1">
-                <h2 className="text-xl font-bold">确认批量重置流量</h2>
+                <h2 className="text-xl font-bold">确认批量归零流量</h2>
               </ModalHeader>
               <ModalBody>
                 <p>
-                  确定要重置以下{" "}
+                  确定要归零以下{" "}
                   <strong>{Array.from(selectedIds).length}</strong>{" "}
                   个规则的流量统计吗？
                 </p>
                 <p className="text-small text-default-500 mt-2">
-                  重置后，当前周期流量将归档到历史，新周期从 0 开始统计。
+                  归零后，当前周期流量将归档到历史，新周期从 0 开始统计。
                 </p>
                 <ul className="text-small text-default-500 mt-2 space-y-1">
                   {Array.from(selectedIds)
@@ -6505,7 +6505,7 @@ export default function ForwardPage() {
                   isLoading={batchResetTrafficLoading}
                   onPress={handleBatchResetTraffic}
                 >
-                  确认重置
+                  确认归零
                 </Button>
               </ModalFooter>
             </>
@@ -6646,7 +6646,7 @@ export default function ForwardPage() {
               确定要删除这条归零记录吗？此操作不可恢复。
             </p>
           </ModalBody>
-          <ModalFooter className="border-t border-default-200">
+          <ModalFooter>
             <Button
               variant="flat"
               onPress={() => setDeleteLogModalOpen(false)}
@@ -6831,7 +6831,7 @@ export default function ForwardPage() {
                     });
                   }}
                 >
-                  重置
+                  归零
                 </Button>
               </ModalFooter>
             </>

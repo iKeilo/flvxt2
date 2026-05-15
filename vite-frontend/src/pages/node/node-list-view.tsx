@@ -883,7 +883,7 @@ export function NodeListView({
                     setNodeFilterMode?.("all");
                   }}
                 >
-                  重置筛选
+                  归零筛选
                 </Button>
               </div>
             </TableCell>

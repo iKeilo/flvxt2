@@ -251,10 +251,10 @@ export default function PanelSharingPage() {
       const res = await resetPeerShareFlow(id);
 
       if (res.code === 0) {
-        toast.success("共享流量已重置");
+        toast.success("共享流量已归零");
         loadShares();
       } else {
-        toast.error(res.msg || "重置流量失败");
+        toast.error(res.msg || "归零流量失败");
       }
     } catch {
       toast.error("网络错误");
@@ -455,7 +455,7 @@ export default function PanelSharingPage() {
                             variant="flat"
                             onPress={() => handleResetShareFlow(share.id)}
                           >
-                            重置流量
+                            归零流量
                           </Button>
                           <Button
                             color="danger"

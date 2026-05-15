@@ -14,7 +14,7 @@ export interface User {
   flow: number; // 流量限制(GB)
   num: number; // 转发数量
   expTime?: number; // 过期时间戳
-  flowResetTime?: number; // 流量重置日期(1-31号)
+  flowResetTime?: number; // 流量归零日期(1-31号)
   createdTime?: number; // 创建时间戳
   inFlow?: number; // 下载流量(字节)
   outFlow?: number; // 上传流量(字节)
@@ -56,7 +56,7 @@ export interface UserTunnel {
   flow: number; // 流量限制(GB)
   num: number; // 转发数量
   expTime: number; // 过期时间戳
-  flowResetTime: number; // 流量重置日期
+  flowResetTime: number; // 流量归零日期
   speedId?: number | null; // 限速规则ID
   speedLimitName?: string; // 限速规则名称
   inFlow?: number; // 下载流量(字节)

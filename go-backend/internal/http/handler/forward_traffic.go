@@ -80,7 +80,7 @@ func (h *Handler) forwardBatchResetTraffic(w http.ResponseWriter, r *http.Reques
 			OperatorID:    actorUserID,
 			OperatorName:  actorUserName,
 		}); err != nil {
-			result.Error = "重置成功但记录日志失败：" + err.Error()
+			result.Error = "归零成功但记录日志失败：" + err.Error()
 			results = append(results, result)
 			continue
 		}

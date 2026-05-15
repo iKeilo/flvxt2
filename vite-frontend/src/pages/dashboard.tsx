@@ -335,7 +335,7 @@ export default function DashboardPage() {
   };
   const formatResetTime = (resetDay?: number): string => {
     if (resetDay === undefined || resetDay === null) return "";
-    if (resetDay === 0) return "不重置";
+    if (resetDay === 0) return "不归零";
     const now = new Date();
     const currentDay = now.getDate();
     let daysUntilReset: number;
@@ -355,11 +355,11 @@ export default function DashboardPage() {
       daysUntilReset = 0;
     }
     if (daysUntilReset === 0) {
-      return "今日重置";
+      return "今日归零";
     } else if (daysUntilReset === 1) {
-      return "明日重置";
+      return "明日归零";
     } else {
-      return `${daysUntilReset}天后重置`;
+      return `${daysUntilReset}天后归零`;
     }
   };
   const groupedForwards = () => {

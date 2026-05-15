@@ -265,7 +265,7 @@ export default function LimitPage() {
               variant="flat"
               onPress={() => setSearchKeyword("")}
             >
-              重置
+              归零
             </Button>
           )}
         </div>

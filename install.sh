@@ -485,8 +485,8 @@ EOF
       sleep 3
     done
     
-    # 安装完成后重置流量
-    echo "重置流量统计..."
+    # 安装完成后归零流量
+    echo "归零流量统计..."
     
     # 从 config.json 读取 NODE_ID（支持 nodeId 和 node_id 两种格式）
     NODE_ID=$(cat "$INSTALL_DIR/config.json" 2>/dev/null | grep -o '"node_id"[[:space:]]*:[[:space:]]*[0-9]*' | grep -o '[0-9]*')
@@ -502,13 +502,13 @@ EOF
         CURL_CMD="curl"
       fi
       
-      # 调用重置流量 API
+      # 调用归零流量 API
       ${CURL_CMD} -X POST "${SERVER_ADDR}/api/v1/node/batch-reset-traffic" \
         -H "Content-Type: application/json" \
         -d "{\"nodeIds\": [${NODE_ID}], \"reason\": \"节点安装\"}" \
-        2>/dev/null && echo "✅ 流量已重置" || echo "⚠️ 流量重置失败"
+        2>/dev/null && echo "✅ 流量已归零" || echo "⚠️ 流量归零失败"
     else
-      echo "⚠️ 无法获取节点 ID，跳过流量重置"
+      echo "⚠️ 无法获取节点 ID，跳过流量归零"
     fi
     
     

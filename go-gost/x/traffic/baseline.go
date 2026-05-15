@@ -154,7 +154,7 @@ func (m *BaselineManager) CreateInitialBaseline(initialRX, initialTX uint64, ren
 	return baseline, nil
 }
 
-// CreateManualBaseline 手动重置基线
+// CreateManualBaseline 手动归零基线
 func (m *BaselineManager) CreateManualBaseline(currentRX, currentTX uint64, reason string) (*Baseline, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -205,8 +205,8 @@ func (m *BaselineManager) CreateManualBaseline(currentRX, currentTX uint64, reas
 	return baseline, nil
 }
 
-// CheckAndAutoReset 检查并执行自动重置
-// 返回 (新基线, 是否执行了重置)
+// CheckAndAutoReset 检查并执行自动归零
+// 返回 (新基线, 是否执行了归零)
 func (m *BaselineManager) CheckAndAutoReset(currentRX, currentTX uint64) (*Baseline, bool) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -215,7 +215,7 @@ func (m *BaselineManager) CheckAndAutoReset(currentRX, currentTX uint64) (*Basel
 		return nil, false
 	}
 
-	// 检查是否到达重置时间
+	// 检查是否到达归零时间
 	if m.data.CurrentBaseline.NextResetAt.IsZero() {
 		return m.data.CurrentBaseline, false
 	}
@@ -297,7 +297,7 @@ func (m *BaselineManager) GetHistory() []HistoryBaseline {
 	return m.data.History
 }
 
-// GetNextResetAt 获取下次重置时间
+// GetNextResetAt 获取下次归零时间
 func (m *BaselineManager) GetNextResetAt() time.Time {
 	m.mu.RLock()
 	defer m.mu.RUnlock()

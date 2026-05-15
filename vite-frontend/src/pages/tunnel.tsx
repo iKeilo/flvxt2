@@ -2082,7 +2082,7 @@ export default function TunnelPage() {
                   setSearchKeyword("");
                 }}
               >
-                重置
+                归零
               </Button>
             )}
           </>
@@ -2239,7 +2239,7 @@ export default function TunnelPage() {
                                 setSearchKeyword("");
                               }}
                             >
-                              重置筛选
+                              归零筛选
                             </Button>
                           </div>
                         </td>

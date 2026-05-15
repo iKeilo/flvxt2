@@ -41,27 +41,27 @@ import (
 
 // SystemInfo 系统信息结构体
 type SystemInfo struct {
-	Uptime                 uint64         `json:"uptime"`
-	BytesReceived          uint64         `json:"bytes_received"`
-	BytesTransmitted       uint64         `json:"bytes_transmitted"`
-	PeriodBytesReceived    uint64         `json:"period_bytes_received"`    // 周期内接收流量
-	PeriodBytesTransmitted uint64         `json:"period_bytes_transmitted"` // 周期内发送流量
-	BaselineRecordedAt     int64          `json:"baseline_recorded_at"`     // 基线时间戳
-	NextResetAt            int64          `json:"next_reset_at"`            // 下次重置时间戳
-	RenewalCycle           string         `json:"renewal_cycle,omitempty"`  // 续费周期
-	CPUUsage               float64        `json:"cpu_usage"`
-	MemoryUsage            float64        `json:"memory_usage"`
-	DiskUsage              float64        `json:"disk_usage"`
-	Load1                  float64        `json:"load1"`
-	Load5                  float64        `json:"load5"`
-	Load15                 float64        `json:"load15"`
-	TCPConns               int64          `json:"tcp_conns"`
-	UDPConns               int64          `json:"udp_conns"`
-	NetInSpeed             int64          `json:"net_in_speed"`
-	NetOutSpeed            int64          `json:"net_out_speed"`
-	ServiceName            string                      `json:"service_name,omitempty"` // 服务名
-	ServiceConnections     map[string]int              `json:"serviceConnections"`
-	ForwardMetrics         []ForwardMetric             `json:"forward_metrics,omitempty"` // 转发规则指标
+	Uptime                 uint64          `json:"uptime"`
+	BytesReceived          uint64          `json:"bytes_received"`
+	BytesTransmitted       uint64          `json:"bytes_transmitted"`
+	PeriodBytesReceived    uint64          `json:"period_bytes_received"`    // 周期内接收流量
+	PeriodBytesTransmitted uint64          `json:"period_bytes_transmitted"` // 周期内发送流量
+	BaselineRecordedAt     int64           `json:"baseline_recorded_at"`     // 基线时间戳
+	NextResetAt            int64           `json:"next_reset_at"`            // 下次归零时间戳
+	RenewalCycle           string          `json:"renewal_cycle,omitempty"`  // 续费周期
+	CPUUsage               float64         `json:"cpu_usage"`
+	MemoryUsage            float64         `json:"memory_usage"`
+	DiskUsage              float64         `json:"disk_usage"`
+	Load1                  float64         `json:"load1"`
+	Load5                  float64         `json:"load5"`
+	Load15                 float64         `json:"load15"`
+	TCPConns               int64           `json:"tcp_conns"`
+	UDPConns               int64           `json:"udp_conns"`
+	NetInSpeed             int64           `json:"net_in_speed"`
+	NetOutSpeed            int64           `json:"net_out_speed"`
+	ServiceName            string          `json:"service_name,omitempty"` // 服务名
+	ServiceConnections     map[string]int  `json:"serviceConnections"`
+	ForwardMetrics         []ForwardMetric `json:"forward_metrics,omitempty"` // 转发规则指标
 }
 
 // ForwardMetric 转发规则指标（与 stats 包保持一致）
@@ -69,8 +69,8 @@ type ForwardMetric struct {
 	ForwardID   int64  `json:"forward_id"`
 	UserID      int64  `json:"user_id"`
 	TunnelID    int64  `json:"tunnel_id"`
-	NodeID      int64  `json:"node_id"`      // 新增：节点 ID
-	Port        int    `json:"port"`         // 新增：入口端口
+	NodeID      int64  `json:"node_id"` // 新增：节点 ID
+	Port        int    `json:"port"`    // 新增：入口端口
 	ServiceName string `json:"service_name"`
 	InSpeed     uint64 `json:"in_speed"`
 	OutSpeed    uint64 `json:"out_speed"`
@@ -276,7 +276,7 @@ func (w *WebSocketReporter) run() {
 						return
 					}
 				}
-				// 连接成功：重置退避
+				// 连接成功：归零退避
 				w.curBackoff = initialBackoff
 			}
 
@@ -893,7 +893,7 @@ func (w *WebSocketReporter) collectSystemInfo() SystemInfo {
 	var renewalCycle string
 
 	if bm := traffic.GetManager(); bm != nil {
-		// 检查并执行自动重置
+		// 检查并执行自动归零
 		bm.CheckAndAutoReset(networkStats.BytesReceived, networkStats.BytesTransmitted)
 
 		// 计算周期流量
@@ -1474,13 +1474,13 @@ func (w *WebSocketReporter) handleResetTraffic(data interface{}) error {
 	// 获取当前网卡流量
 	networkStats := getNetworkStats()
 
-	// 创建手动重置基线（归档当前周期，创建新周期）
+	// 创建手动归零基线（归档当前周期，创建新周期）
 	_, err = bm.CreateManualBaseline(networkStats.BytesReceived, networkStats.BytesTransmitted, req.Reason)
 	if err != nil {
 		return fmt.Errorf("创建基线失败：%v", err)
 	}
 
-	fmt.Printf("✅ 流量已重置：%s\n", req.Reason)
+	fmt.Printf("✅ 流量已归零：%s\n", req.Reason)
 	return nil
 }
 
