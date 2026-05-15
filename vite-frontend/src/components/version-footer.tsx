@@ -162,9 +162,9 @@ export function VersionFooter({
           {" "}
           {showUpdateInfo && (
             <Button
-              size="xs"
+              size="sm"
               color="primary"
-              className="inline-flex h-[16px] px-1.5 text-[8px] min-w-0 rounded-xs font-semibold"
+              className="inline-flex h-[16px] px-1.5 text-[9px] min-w-0 rounded-xs font-semibold [&>span]:text-[9px]"
               onPress={handleOpenUpgradeModal}
               isLoading={upgrading}
             >
