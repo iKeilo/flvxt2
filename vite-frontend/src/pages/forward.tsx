@@ -4729,6 +4729,7 @@ export default function ForwardPage() {
                 </div>
               </SortableContext>
             </DndContext>
+            {paginationUI}
           </>
         ) : (
           <Card className="shadow-sm border border-gray-200 dark:border-gray-700 bg-default-50/50">
