@@ -25,6 +25,7 @@ export interface DashboardUserInfo {
   renewalAmount?: number;
   balance?: number;
   autoRenew?: number;
+  autoBuyTraffic?: number;
 }
 
 export interface DashboardUserTunnel {

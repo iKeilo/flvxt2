@@ -27,6 +27,10 @@ export interface User {
   renewalAmount?: number; // 续费金额 (分)
   balance?: number; // 可用余额 (分)
   autoRenew?: number; // 自动续费开关 (0/1)
+  autoBuyTraffic?: number; // 自动购买流量开关 (0/1)
+  buyTrafficAmount?: number; // 每次购买流量量 (GB)
+  buyTrafficPrice?: number; // 每次购买价格 (分)
+  baseFlow?: number; // 初始流量配额 (GB)
 }
 
 export interface UserGroup {

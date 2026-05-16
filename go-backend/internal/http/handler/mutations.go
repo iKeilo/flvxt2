@@ -108,6 +108,13 @@ func (h *Handler) userCreate(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if _, ok := req["autoBuyTraffic"]; ok {
+		autoBuyTraffic := asInt(req["autoBuyTraffic"], 0)
+		buyTrafficAmount := asInt64(req["buyTrafficAmount"], 0)
+		buyTrafficPrice := asInt64(req["buyTrafficPrice"], 0)
+		_ = h.repo.UpdateUserBuyTrafficConfig(userID, autoBuyTraffic, buyTrafficAmount, buyTrafficPrice)
+	}
+
 	response.WriteJSON(w, response.OKEmpty())
 }
 
@@ -230,6 +237,13 @@ func (h *Handler) userUpdate(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if _, ok := req["autoBuyTraffic"]; ok {
+		autoBuyTraffic := asInt(req["autoBuyTraffic"], 0)
+		buyTrafficAmount := asInt64(req["buyTrafficAmount"], 0)
+		buyTrafficPrice := asInt64(req["buyTrafficPrice"], 0)
+		_ = h.repo.UpdateUserBuyTrafficConfig(id, autoBuyTraffic, buyTrafficAmount, buyTrafficPrice)
+	}
+
 	response.WriteJSON(w, response.OKEmpty())
 }
 
@@ -254,6 +268,33 @@ func (h *Handler) userToggleAutoRenew(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.repo.UpdateUserAutoRenew(id, autoRenew); err != nil {
+		response.WriteJSON(w, response.Err(-2, err.Error()))
+		return
+	}
+	response.WriteJSON(w, response.OKEmpty())
+}
+
+func (h *Handler) userToggleAutoBuyTraffic(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		response.WriteJSON(w, response.ErrDefault("请求失败"))
+		return
+	}
+	var req map[string]interface{}
+	if err := decodeJSON(r.Body, &req); err != nil {
+		response.WriteJSON(w, response.ErrDefault("请求参数错误"))
+		return
+	}
+	id := asInt64(req["id"], 0)
+	if id <= 0 {
+		response.WriteJSON(w, response.ErrDefault("用户ID不能为空"))
+		return
+	}
+	autoBuyTraffic := asInt(req["autoBuyTraffic"], 0)
+	if autoBuyTraffic != 0 && autoBuyTraffic != 1 {
+		response.WriteJSON(w, response.ErrDefault("自动购买流量参数错误"))
+		return
+	}
+	if err := h.repo.UpdateUserAutoBuyTraffic(id, autoBuyTraffic); err != nil {
 		response.WriteJSON(w, response.Err(-2, err.Error()))
 		return
 	}

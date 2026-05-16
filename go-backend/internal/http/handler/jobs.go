@@ -165,6 +165,7 @@ func (h *Handler) runResetAndExpiryJob(now time.Time) {
 	h.resetMonthlyFlow(now)
 	h.resetUserQuotaWindows(now)
 	h.disableExpiredUsers(now.UnixMilli())
+	h.handleAutoBuyTraffic(now.UnixMilli())
 	h.disableExpiredUserTunnels(now.UnixMilli())
 	h.disableExpiredForwards(now.UnixMilli())
 	h.resetNodeMonthlyTraffic(now)
@@ -256,6 +257,10 @@ func (h *Handler) disableExpiredUsers(nowMs int64) {
 				if renewErr := h.repo.RenewUserWithBalance(userID, user.RenewalAmount, newExpTime, nowMs); renewErr == nil {
 					log.Printf("用户 %d 自动续费成功：扣款 %d 分，新到期时间 %v",
 						userID, user.RenewalAmount, time.UnixMilli(newExpTime))
+					// 续费成功后重置流量配额为初始值
+					if user.BaseFlow > 0 && user.Flow != user.BaseFlow {
+						_ = h.repo.ResetUserFlowToBase(userID, user.BaseFlow, nowMs)
+					}
 					continue // 续费成功，跳过禁用
 				} else {
 					log.Printf("用户 %d 自动续费失败：%v，将执行禁用", userID, renewErr)
@@ -303,6 +308,42 @@ func (h *Handler) disableExpiredForwards(nowMs int64) {
 			log.Printf("ERROR: pauseForward %d failed: %v", forward.ID, pauseErr)
 		} else {
 			log.Printf("Forward %d paused: expired at %v", forward.ID, time.UnixMilli(forward.ExpiryTime.Int64))
+		}
+	}
+}
+
+func (h *Handler) handleAutoBuyTraffic(nowMs int64) {
+	if h == nil || h.repo == nil {
+		return
+	}
+
+	users, err := h.repo.ListAutoBuyTrafficCandidates(nowMs)
+	if err != nil {
+		return
+	}
+
+	const triggerRemainingGB int64 = 10
+	triggerBytes := triggerRemainingGB * 1024 * 1024 * 1024
+
+	for _, user := range users {
+		usedBytes := user.InFlow + user.OutFlow
+		totalBytes := user.Flow * 1024 * 1024 * 1024
+		remainingBytes := totalBytes - usedBytes
+
+		if remainingBytes >= triggerBytes {
+			continue
+		}
+		if user.Balance < user.BuyTrafficPrice {
+			log.Printf("用户 %d 自动购买流量余额不足：余额 %d 分，需要 %d 分",
+				user.ID, user.Balance, user.BuyTrafficPrice)
+			continue
+		}
+
+		if err := h.repo.BuyTrafficWithBalance(user.ID, user.BuyTrafficPrice, user.BuyTrafficAmount, user.Flow, nowMs); err != nil {
+			log.Printf("用户 %d 自动购买流量失败：%v", user.ID, err)
+		} else {
+			log.Printf("用户 %d 自动购买流量成功：扣款 %d 分，增加 %d GB",
+				user.ID, user.BuyTrafficPrice, user.BuyTrafficAmount)
 		}
 	}
 }

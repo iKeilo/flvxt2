@@ -54,9 +54,10 @@ func (r *Repository) CreateUser(username, pwdHash string, roleID int, expTime, f
 		CreatedTime:   now,
 		UpdatedTime:   sql.NullInt64{Int64: now, Valid: true},
 		Status:        status,
-		RenewalAmount: renewalAmount,
-		Balance:       balance,
-		AutoRenew:     int(autoRenew),
+		RenewalAmount:   renewalAmount,
+		Balance:         balance,
+		AutoRenew:       int(autoRenew),
+		BaseFlow:        flow,
 	}
 	if err := r.db.Create(&user).Error; err != nil {
 		return 0, err
@@ -499,6 +500,100 @@ func (r *Repository) UpdateUserAutoRenew(userID int64, autoRenew int) error {
 	return r.db.Model(&model.User{}).
 		Where("id = ?", userID).
 		Update("auto_renew", autoRenew).Error
+}
+
+func (r *Repository) UpdateUserAutoBuyTraffic(userID int64, autoBuyTraffic int) error {
+	if r == nil || r.db == nil {
+		return errors.New("repository not initialized")
+	}
+	return r.db.Model(&model.User{}).
+		Where("id = ?", userID).
+		Update("auto_buy_traffic", autoBuyTraffic).Error
+}
+
+func (r *Repository) BuyTrafficWithBalance(userID, buyPrice, buyAmount, flowBefore, now int64) error {
+	if r == nil || r.db == nil {
+		return errors.New("repository not initialized")
+	}
+
+	user, err := r.GetUserByID(userID)
+	if err != nil {
+		return err
+	}
+	if user.Balance < buyPrice {
+		return errors.New("insufficient balance")
+	}
+
+	tx := r.db.Begin()
+	defer func() { tx.Rollback() }()
+
+	newFlow := user.Flow + buyAmount
+	err = tx.Model(&model.User{}).
+		Where("id = ?", userID).
+		Updates(map[string]interface{}{
+			"balance":      user.Balance - buyPrice,
+			"flow":         newFlow,
+			"updated_time": sql.NullInt64{Int64: now, Valid: true},
+		}).Error
+	if err != nil {
+		return err
+	}
+
+	log := &model.UserTrafficBuyLog{
+		UserID:        userID,
+		UserName:      user.User,
+		BuyAmount:     buyAmount,
+		BuyPrice:      buyPrice,
+		BalanceBefore: user.Balance,
+		BalanceAfter:  user.Balance - buyPrice,
+		FlowBefore:    flowBefore,
+		FlowAfter:     newFlow,
+		BuyTime:       now,
+		Reason:        "自动购买流量",
+	}
+	err = tx.Create(log).Error
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit().Error
+}
+
+func (r *Repository) UpdateUserBuyTrafficConfig(userID int64, autoBuyTraffic int, buyTrafficAmount, buyTrafficPrice int64) error {
+	if r == nil || r.db == nil {
+		return errors.New("repository not initialized")
+	}
+	return r.db.Model(&model.User{}).
+		Where("id = ?", userID).
+		Updates(map[string]interface{}{
+			"auto_buy_traffic":   autoBuyTraffic,
+			"buy_traffic_amount": buyTrafficAmount,
+			"buy_traffic_price":  buyTrafficPrice,
+		}).Error
+}
+
+func (r *Repository) ResetUserFlowToBase(userID, baseFlow, now int64) error {
+	if r == nil || r.db == nil {
+		return errors.New("repository not initialized")
+	}
+	return r.db.Model(&model.User{}).
+		Where("id = ?", userID).
+		Updates(map[string]interface{}{
+			"flow":         baseFlow,
+			"in_flow":      0,
+			"out_flow":     0,
+			"updated_time": sql.NullInt64{Int64: now, Valid: true},
+		}).Error
+}
+
+func (r *Repository) ListAutoBuyTrafficCandidates(nowMs int64) ([]model.User, error) {
+	if r == nil || r.db == nil {
+		return nil, errors.New("repository not initialized")
+	}
+	var users []model.User
+	err := r.db.Where("status = 1 AND exp_time > ? AND auto_buy_traffic = 1 AND buy_traffic_amount > 0 AND buy_traffic_price > 0", nowMs).
+		Find(&users).Error
+	return users, err
 }
 
 func (r *Repository) RefreshNodeExpiryReminder(nodeID int64) error {

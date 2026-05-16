@@ -179,6 +179,10 @@ const normalizeUserItem = (item: Partial<User>): UserWithHistory => {
     renewalAmount: Number(item.renewalAmount ?? 0),
     balance: Number(item.balance ?? 0),
     autoRenew: Number(item.autoRenew ?? 0),
+    autoBuyTraffic: Number(item.autoBuyTraffic ?? 0),
+    buyTrafficAmount: Number(item.buyTrafficAmount ?? 0),
+    buyTrafficPrice: Number(item.buyTrafficPrice ?? 0),
+    baseFlow: Number(item.baseFlow ?? 0),
     quotaHistory: [],
     showHistory: false,
   };
@@ -249,6 +253,9 @@ export default function UserPage() {
     renewalAmount: number;
     balance: number;
     autoRenew: number;
+    autoBuyTraffic: number;
+    buyTrafficAmount: number;
+    buyTrafficPrice: number;
   }>({
     user: "",
     name: "",
@@ -264,6 +271,9 @@ export default function UserPage() {
     renewalAmount: 0,
     balance: 0,
     autoRenew: 0,
+    autoBuyTraffic: 0,
+    buyTrafficAmount: 0,
+    buyTrafficPrice: 0,
   });
   const [userFormLoading, setUserFormLoading] = useState(false);
   const editingUser = useMemo(
@@ -760,6 +770,9 @@ export default function UserPage() {
       renewalAmount: 0,
       balance: 0,
       autoRenew: 0,
+      autoBuyTraffic: 0,
+      buyTrafficAmount: 0,
+      buyTrafficPrice: 0,
     });
     onUserModalOpen();
   };
@@ -870,6 +883,9 @@ export default function UserPage() {
       renewalAmount: user.renewalAmount ?? 0,
       balance: user.balance ?? 0,
       autoRenew: user.autoRenew ?? 0,
+      autoBuyTraffic: user.autoBuyTraffic ?? 0,
+      buyTrafficAmount: user.buyTrafficAmount ?? 0,
+      buyTrafficPrice: user.buyTrafficPrice ?? 0,
     });
     onUserModalOpen();
   };
@@ -1714,6 +1730,9 @@ export default function UserPage() {
                   <TableColumn className="whitespace-nowrap flex-shrink-0 w-[100px] text-left">
                     自动续费
                   </TableColumn>
+                  <TableColumn className="whitespace-nowrap flex-shrink-0 w-[100px] text-left">
+                    自动购买
+                  </TableColumn>
                   <TableColumn className="whitespace-nowrap flex-shrink-0 w-[240px] text-left">
                     操作
                   </TableColumn>
@@ -1949,6 +1968,17 @@ export default function UserPage() {
                             }`}
                           >
                             {user.autoRenew === 1 ? "启用" : "禁用"}
+                          </div>
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap">
+                          <div
+                            className={`inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-medium ${
+                              user.autoBuyTraffic === 1
+                                ? "bg-success-500/10 text-success-600 dark:text-success-400"
+                                : "bg-danger-500/10 text-danger-600 dark:text-danger-400"
+                            }`}
+                          >
+                            {user.autoBuyTraffic === 1 ? "启用" : "禁用"}
                           </div>
                         </TableCell>
                         <TableCell className="whitespace-nowrap">
@@ -2228,7 +2258,19 @@ export default function UserPage() {
                             </div>
                           </div>
                         </div>
-                      </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-default-600">自动购买</span>
+                            <div
+                              className={`inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-medium ${
+                                user.autoBuyTraffic === 1
+                                  ? "bg-success-500/10 text-success-600 dark:text-success-400"
+                                  : "bg-danger-500/10 text-danger-600 dark:text-danger-400"
+                              }`}
+                            >
+                              {user.autoBuyTraffic === 1 ? "启用" : "禁用"}
+                            </div>
+                          </div>
+                        </div>
                       <div className="space-y-1.5 mt-3">
                         {/* 第一行：编辑和归零 */}
                         <div className="flex gap-1.5">
@@ -2537,6 +2579,55 @@ export default function UserPage() {
                     <Radio value="0">禁用</Radio>
                   </RadioGroup>
                 </div>               
+              </div>
+              <div className="border-t border-divider pt-3 mt-3">
+                <div className="text-sm font-medium text-foreground mb-3">自动购买流量</div>
+                <div className="grid grid-cols-2 gap-4 mb-3">
+                  <Input
+                    label="每次购买量 (GB)"
+                    placeholder="选填"
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={userForm.buyTrafficAmount > 0 ? userForm.buyTrafficAmount.toString() : ""}
+                    onChange={(e) => {
+                      const value = Number(e.target.value);
+                      setUserForm((prev) => ({
+                        ...prev,
+                        buyTrafficAmount: Math.round(value),
+                      }));
+                    }}
+                  />
+                  <Input
+                    label="每次购买价格 (元)"
+                    placeholder="选填"
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={userForm.buyTrafficPrice > 0 ? userForm.buyTrafficPrice.toString() : ""}
+                    onChange={(e) => {
+                      const value = Number(e.target.value);
+                      setUserForm((prev) => ({
+                        ...prev,
+                        buyTrafficPrice: Math.round(value),
+                      }));
+                    }}
+                  />
+                </div>
+                <RadioGroup
+                  label="状态"
+                  orientation="horizontal"
+                  value={userForm.autoBuyTraffic.toString()}
+                  onValueChange={(value: string) =>
+                    setUserForm((prev) => ({
+                      ...prev,
+                      autoBuyTraffic: Number(value),
+                    }))
+                  }
+                >
+                  <Radio value="1">启用</Radio>
+                  <Radio value="0">禁用</Radio>
+                </RadioGroup>
               </div>
             </div>
           </ModalBody>

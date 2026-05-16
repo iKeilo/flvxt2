@@ -25,9 +25,13 @@ type User struct {
 	CreatedTime   int64         `gorm:"column:created_time;not null"`
 	UpdatedTime   sql.NullInt64 `gorm:"column:updated_time"`
 	Status        int           `gorm:"not null"`
-	RenewalAmount int64         `gorm:"column:renewal_amount;default:0"` // 续费金额 (分)
-	Balance       int64         `gorm:"column:balance;default:0"`        // 可用余额 (分)
-	AutoRenew     int           `gorm:"column:auto_renew;default:0"`     // 自动续费开关 (0=禁用，1=启用)
+	RenewalAmount   int64         `gorm:"column:renewal_amount;default:0"`   // 续费金额 (分)
+	Balance         int64         `gorm:"column:balance;default:0"`          // 可用余额 (分)
+	AutoRenew       int           `gorm:"column:auto_renew;default:0"`       // 自动续费开关 (0=禁用，1=启用)
+	AutoBuyTraffic  int           `gorm:"column:auto_buy_traffic;default:0"` // 自动购买流量开关 (0=禁用，1=启用)
+	BuyTrafficAmount int64        `gorm:"column:buy_traffic_amount;default:0"` // 每次购买流量量 (GB)
+	BuyTrafficPrice int64         `gorm:"column:buy_traffic_price;default:0"`  // 每次购买价格 (分)
+	BaseFlow        int64         `gorm:"column:base_flow;default:0"`          // 初始流量配额 (GB)
 }
 
 func (User) TableName() string { return "user" }
@@ -921,3 +925,19 @@ type UserRenewalLog struct {
 }
 
 func (UserRenewalLog) TableName() string { return "user_renewal_log" }
+
+type UserTrafficBuyLog struct {
+	ID            int64  `gorm:"primaryKey;autoIncrement"`
+	UserID        int64  `gorm:"column:user_id;not null;index:idx_user_buy_time"`
+	UserName      string `gorm:"column:user_name;type:varchar(100);not null"`
+	BuyAmount     int64  `gorm:"column:buy_amount;not null"`        // 购买流量量 (GB)
+	BuyPrice      int64  `gorm:"column:buy_price;not null"`         // 扣款金额 (分)
+	BalanceBefore int64  `gorm:"column:balance_before;not null"`    // 扣款前余额
+	BalanceAfter  int64  `gorm:"column:balance_after;not null"`     // 扣款后余额
+	FlowBefore    int64  `gorm:"column:flow_before;not null"`       // 购买前流量配额 (GB)
+	FlowAfter     int64  `gorm:"column:flow_after;not null"`        // 购买后流量配额 (GB)
+	BuyTime       int64  `gorm:"column:buy_time;not null"`          // 购买时间
+	Reason        string `gorm:"column:reason;type:varchar(200);default:'自动购买流量'"`
+}
+
+func (UserTrafficBuyLog) TableName() string { return "user_traffic_buy_log" }

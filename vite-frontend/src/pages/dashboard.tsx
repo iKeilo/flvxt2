@@ -621,6 +621,16 @@ export default function DashboardPage() {
             bottomContent={userInfo.autoRenew === 1 ? (<div className="mt-1 flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-success"></div><span className="text-xs text-success">自动续费运行中</span></div>) : (<div className="mt-1 flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-default-400"></div><span className="text-xs text-default-500">到期后将停用</span></div>)}
           />
             </div>
+            {/* 8. 自动购买流量 */}
+            <div className="order-9 flex flex-col [&>*]:flex-1">
+              <MetricCard
+                icon={<svg aria-hidden="true" className="w-4 h-4 lg:w-5 lg:h-5 text-teal-600 dark:text-teal-400" fill="currentColor" viewBox="0 0 20 20"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" /></svg>}
+                iconClassName="bg-teal-100 dark:bg-teal-500/20"
+                title="自动购买流量"
+                value={userInfo.autoBuyTraffic === 1 ? "启用" : "禁用"}
+                bottomContent={userInfo.autoBuyTraffic === 1 ? (<div className="mt-1 flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-success"></div><span className="text-xs text-success">自动购买流量运行中</span></div>) : (<div className="mt-1 flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-default-400"></div><span className="text-xs text-default-500">用完流量后将停用</span></div>)}
+              />
+            </div>
           </>
         )}
       </div>

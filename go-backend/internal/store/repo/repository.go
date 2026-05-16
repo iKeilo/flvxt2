@@ -204,6 +204,7 @@ func autoMigrateAll(db *gorm.DB) error {
 		&model.ForwardTrafficResetLog{},
 		&model.NodeTrafficResetLog{},
 		&model.UserRenewalLog{},
+		&model.UserTrafficBuyLog{},
 		&model.UserTrafficHistory{},
 	}
 
@@ -255,6 +256,9 @@ func autoMigrateAll(db *gorm.DB) error {
 	if err := migrateTunnelGroupNew(db); err != nil {
 		return fmt.Errorf("migrate tunnel group new: %w", err)
 	}
+
+	// 迁移：为现有用户设置初始流量配额
+	_ = db.Model(&model.User{}).Where("base_flow = 0").Update("base_flow", gorm.Expr("\"flow\""))
 
 	return nil
 }
@@ -904,9 +908,13 @@ func (r *Repository) ListUsers() ([]map[string]interface{}, error) {
 			"flowResetTime": u.FlowResetTime, "createdTime": u.CreatedTime,
 			"updatedTime": nullableInt64(u.UpdatedTime),
 			"inFlow":      u.InFlow, "outFlow": u.OutFlow,
-			"renewalAmount": u.RenewalAmount,
-			"balance":       u.Balance,
-			"autoRenew":     u.AutoRenew,
+			"renewalAmount":    u.RenewalAmount,
+			"balance":          u.Balance,
+			"autoRenew":        u.AutoRenew,
+			"autoBuyTraffic":   u.AutoBuyTraffic,
+			"buyTrafficAmount": u.BuyTrafficAmount,
+			"buyTrafficPrice":  u.BuyTrafficPrice,
+			"baseFlow":         u.BaseFlow,
 		}
 		if quota := quotaMap[u.ID]; quota != nil {
 			item["dailyQuotaGB"] = quota.DailyLimitGB

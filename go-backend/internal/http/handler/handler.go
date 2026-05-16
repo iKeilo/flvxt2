@@ -160,6 +160,7 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/user/quota/history/delete", h.userQuotaHistoryDelete)
 	mux.HandleFunc("/api/v1/user/renewal-logs", h.userRenewalLogs)
 	mux.HandleFunc("/api/v1/user/toggle-auto-renew", h.userToggleAutoRenew)
+	mux.HandleFunc("/api/v1/user/toggle-auto-buy-traffic", h.userToggleAutoBuyTraffic)
 	mux.HandleFunc("/api/v1/user/update-order", h.userUpdateOrder)
 	mux.HandleFunc("/api/v1/user/groups", h.userGroups)
 	mux.HandleFunc("/api/v1/config/get", h.getConfigByName)
@@ -1137,9 +1138,13 @@ func (h *Handler) userPackage(w http.ResponseWriter, r *http.Request) {
 			"flowResetTime": user.FlowResetTime,
 			"createdTime":   user.CreatedTime,
 			"updatedTime":   nullableNullInt64(user.UpdatedTime),
-			"renewalAmount": user.RenewalAmount,
-			"balance":       user.Balance,
-			"autoRenew":     user.AutoRenew,
+			"renewalAmount":    user.RenewalAmount,
+			"balance":          user.Balance,
+			"autoRenew":        user.AutoRenew,
+			"autoBuyTraffic":   user.AutoBuyTraffic,
+			"buyTrafficAmount": user.BuyTrafficAmount,
+			"buyTrafficPrice":  user.BuyTrafficPrice,
+			"baseFlow":         user.BaseFlow,
 		},
 		"tunnelPermissions": tunnelOut,
 		"forwards":          forwardOut,
