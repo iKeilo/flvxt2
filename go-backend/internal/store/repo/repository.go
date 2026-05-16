@@ -904,6 +904,9 @@ func (r *Repository) ListUsers() ([]map[string]interface{}, error) {
 			"flowResetTime": u.FlowResetTime, "createdTime": u.CreatedTime,
 			"updatedTime": nullableInt64(u.UpdatedTime),
 			"inFlow":      u.InFlow, "outFlow": u.OutFlow,
+			"renewalAmount": u.RenewalAmount,
+			"balance":       u.Balance,
+			"autoRenew":     u.AutoRenew,
 		}
 		if quota := quotaMap[u.ID]; quota != nil {
 			item["dailyQuotaGB"] = quota.DailyLimitGB

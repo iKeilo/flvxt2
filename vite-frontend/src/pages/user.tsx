@@ -177,6 +177,9 @@ const normalizeUserItem = (item: Partial<User>): UserWithHistory => {
     monthlyUsedBytes: Number(item.monthlyUsedBytes ?? 0),
     disabledByQuota: Number(item.disabledByQuota ?? 0),
     quotaDisabledAt: Number(item.quotaDisabledAt ?? 0),
+    renewalAmount: Number(item.renewalAmount ?? 0),
+    balance: Number(item.balance ?? 0),
+    autoRenew: Number(item.autoRenew ?? 0),
     quotaHistory: [],
     showHistory: false,
   };
