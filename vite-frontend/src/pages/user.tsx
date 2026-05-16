@@ -1731,7 +1731,7 @@ export default function UserPage() {
                     自动续费
                   </TableColumn>
                   <TableColumn className="whitespace-nowrap flex-shrink-0 w-[100px] text-left">
-                    自动购买
+                    自动购流
                   </TableColumn>
                   <TableColumn className="whitespace-nowrap flex-shrink-0 w-[240px] text-left">
                     操作
@@ -2259,7 +2259,7 @@ export default function UserPage() {
                           </div>
                         </div>
                           <div className="flex justify-between text-sm">
-                            <span className="text-default-600">自动购买</span>
+                            <span className="text-default-600">自动购流</span>
                             <div
                               className={`inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-medium ${
                                 user.autoBuyTraffic === 1
@@ -2581,7 +2581,7 @@ export default function UserPage() {
                 </div>               
               </div>
               <div className="border-t border-divider pt-3 mt-3">
-                <div className="text-sm font-medium text-foreground mb-3">自动购买流量</div>
+                <div className="text-sm font-medium text-foreground mb-3">自动购流</div>
                 <div className="grid grid-cols-2 gap-4 mb-3">
                   <Input
                     label="每次购买量 (GB)"

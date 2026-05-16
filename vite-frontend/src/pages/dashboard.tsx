@@ -571,14 +571,14 @@ export default function DashboardPage() {
                       <span className="text-xs text-default-500">续费金额</span>
                       <span className="text-sm font-semibold">
                         {userInfo.renewalAmount && userInfo.renewalAmount > 0
-                          ? userInfo.renewalAmount
+                          ? `${userInfo.renewalAmount}元`
                           : "未设置"}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-default-500">可用余额</span>
                       <span className={`text-sm font-semibold ${userInfo.balance && userInfo.balance > 0 ? "text-success" : ""}`}>
-                        {userInfo.balance ?? 0}
+                        {userInfo.balance ?? 0}元
                       </span>
                     </div>
                   </div>
@@ -624,10 +624,14 @@ export default function DashboardPage() {
             {/* 8. 自动购买流量 */}
             <div className="order-9 flex flex-col [&>*]:flex-1">
               <MetricCard
-                icon={<svg aria-hidden="true" className="w-4 h-4 lg:w-5 lg:h-5 text-teal-600 dark:text-teal-400" fill="currentColor" viewBox="0 0 20 20"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" /></svg>}
+                icon={<svg aria-hidden="true" className="w-4 h-4 lg:w-5 lg:h-5 text-teal-600 dark:text-teal-400" fill="currentColor" viewBox="0 0 20 20"><path d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 000-2H6.414l1-1H14a1 1 0 00.894-.553l3-6A1 1 0 0017 3H6.28l-.31-1.243A1 1 0 005 1H3zM16 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM6.5 18a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" /></svg>}
                 iconClassName="bg-teal-100 dark:bg-teal-500/20"
-                title="自动购买流量"
-                value={userInfo.autoBuyTraffic === 1 ? "启用" : "禁用"}
+                title="自动购流"
+                value={
+                  userInfo.autoBuyTraffic === 1
+                    ? `${userInfo.buyTrafficAmount ?? 0}G/${userInfo.buyTrafficPrice ?? 0}元`
+                    : "禁用"
+                }
                 bottomContent={userInfo.autoBuyTraffic === 1 ? (<div className="mt-1 flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-success"></div><span className="text-xs text-success">自动购买流量运行中</span></div>) : (<div className="mt-1 flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-default-400"></div><span className="text-xs text-default-500">用完流量后将停用</span></div>)}
               />
             </div>
