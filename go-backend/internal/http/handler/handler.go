@@ -553,25 +553,65 @@ func (h *Handler) forwardList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var req struct {
+		Current int `json:"current"`
+		Size    int `json:"size"`
+	}
+	if err := decodeJSON(r.Body, &req); err != nil {
+		req.Current = 1
+		req.Size = 0
+	}
+	if req.Current < 1 {
+		req.Current = 1
+	}
+	if req.Size < 1 {
+		req.Size = 0
+	}
+
 	userID, roleID, err := userRoleFromRequest(r)
 	if err != nil {
 		response.WriteJSON(w, response.Err(401, "无效的token或token已过期"))
 		return
 	}
 
-	items, err := h.repo.ListForwards()
-	if err != nil {
-		response.WriteJSON(w, response.Err(-2, err.Error()))
-		return
-	}
-	if roleID != 0 {
-		filtered := make([]map[string]interface{}, 0, len(items))
-		for _, item := range items {
-			if asInt64(item["userId"], 0) == userID {
-				filtered = append(filtered, item)
-			}
+	var items []map[string]interface{}
+	var total int64
+	if req.Size > 0 {
+		items, err = h.repo.ListForwardsPage(req.Current, req.Size)
+		if err != nil {
+			response.WriteJSON(w, response.Err(-2, err.Error()))
+			return
 		}
-		items = filtered
+		total, err = h.repo.CountForwards()
+		if err != nil {
+			response.WriteJSON(w, response.Err(-2, err.Error()))
+			return
+		}
+		if roleID != 0 {
+			filtered := make([]map[string]interface{}, 0, len(items))
+			for _, item := range items {
+				if asInt64(item["userId"], 0) == userID {
+					filtered = append(filtered, item)
+				}
+			}
+			items = filtered
+		}
+	} else {
+		items, err = h.repo.ListForwards()
+		if err != nil {
+			response.WriteJSON(w, response.Err(-2, err.Error()))
+			return
+		}
+		if roleID != 0 {
+			filtered := make([]map[string]interface{}, 0, len(items))
+			for _, item := range items {
+				if asInt64(item["userId"], 0) == userID {
+					filtered = append(filtered, item)
+				}
+			}
+			items = filtered
+		}
+		total = int64(len(items))
 	}
 
 	// 补充当前连接数和实时带宽
@@ -603,7 +643,10 @@ func (h *Handler) forwardList(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	response.WriteJSON(w, response.OK(items))
+	response.WriteJSON(w, response.OK(map[string]interface{}{
+		"items": items,
+		"total": total,
+	}))
 }
 
 func (h *Handler) speedLimitList(w http.ResponseWriter, r *http.Request) {

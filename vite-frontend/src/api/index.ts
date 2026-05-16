@@ -245,8 +245,8 @@ export const userTunnel = () =>
 // 转发CRUD操作 - 全部使用POST请求
 export const createForward = (data: ForwardMutationPayload) =>
   Network.post("/forward/create", data);
-export const getForwardList = () =>
-  Network.post<ForwardApiItem[]>("/forward/list");
+export const getForwardList = (params?: { current?: number; size?: number }) =>
+  Network.post<{ items: ForwardApiItem[]; total: number }>("/forward/list", params || {});
 export const updateForward = (data: ForwardMutationPayload) =>
   Network.post("/forward/update", data);
 export const deleteForward = (id: number) =>

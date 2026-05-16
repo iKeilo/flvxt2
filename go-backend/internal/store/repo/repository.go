@@ -1021,6 +1021,96 @@ func (r *Repository) ListForwards() ([]map[string]interface{}, error) {
 	return items, nil
 }
 
+func (r *Repository) ListForwardsPage(page, pageSize int) ([]map[string]interface{}, error) {
+	if r == nil || r.db == nil {
+		return nil, errors.New("repository not initialized")
+	}
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 10
+	}
+	offset := (page - 1) * pageSize
+
+	type fwdRow struct {
+		ID                int64
+		UserID            int64
+		UserName          string
+		UserRemark        string `gorm:"column:user_remark"`
+		Name              string
+		TunnelID          int64
+		TunnelName        string
+		TrafficRatio      float64
+		RemoteAddr        string
+		Strategy          string
+		InFlow            int64
+		OutFlow           int64
+		CreatedTime       int64
+		Status            int
+		Inx               int
+		SpeedID           sql.NullInt64
+		MaxConnections    int
+		TrafficLimit      int64
+		ExpiryTime        sql.NullInt64
+		SpeedLimitEnabled bool
+		SpeedLimit        int
+	}
+
+	var rows []fwdRow
+	err := r.db.Model(&model.Forward{}).
+		Select("forward.id, forward.user_id, forward.user_name, COALESCE(user.name, '') AS user_remark, forward.name, forward.tunnel_id, COALESCE(tunnel.name, '') AS tunnel_name, COALESCE(tunnel.traffic_ratio, 1.0) AS traffic_ratio, forward.remote_addr, COALESCE(forward.strategy, 'fifo') AS strategy, forward.in_flow, forward.out_flow, forward.created_time, forward.status, forward.inx, forward.speed_id, COALESCE(forward.max_connections, 0) AS max_connections, COALESCE(forward.traffic_limit, 0) AS traffic_limit, forward.expiry_time, COALESCE(forward.speed_limit_enabled, false) AS speed_limit_enabled, COALESCE(forward.speed_limit, 0) AS speed_limit").
+		Joins("LEFT JOIN tunnel ON tunnel.id = forward.tunnel_id").
+		Joins("LEFT JOIN user ON user.id = forward.user_id").
+		Order("forward.inx ASC, forward.id ASC").
+		Limit(pageSize).
+		Offset(offset).
+		Find(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+
+	items := make([]map[string]interface{}, 0, len(rows))
+	for _, row := range rows {
+		inIP, inPort, err := resolveForwardIngress(r.db, row.ID, row.TunnelID)
+		if err != nil {
+			return nil, err
+		}
+		item := map[string]interface{}{
+			"id": row.ID, "userId": row.UserID, "userName": row.UserName, "userRemark": row.UserRemark,
+			"name": row.Name, "tunnelId": row.TunnelID, "tunnelName": row.TunnelName,
+			"tunnelTrafficRatio": row.TrafficRatio,
+			"inIp":               nullableForwardIngress(inIP), "inPort": nullableInt64(inPort),
+			"remoteAddr": row.RemoteAddr, "strategy": row.Strategy,
+			"inFlow": row.InFlow, "outFlow": row.OutFlow,
+			"createdTime": row.CreatedTime, "status": row.Status, "inx": int64(row.Inx),
+			"maxConnections":    row.MaxConnections,
+			"trafficLimit":      row.TrafficLimit,
+			"speedLimitEnabled": row.SpeedLimitEnabled,
+			"speedLimit":        row.SpeedLimit,
+		}
+		if row.SpeedID.Valid {
+			item["speedId"] = row.SpeedID.Int64
+		}
+		if row.ExpiryTime.Valid {
+			item["expiryTime"] = row.ExpiryTime.Int64
+		} else {
+			item["expiryTime"] = nil
+		}
+		items = append(items, item)
+	}
+	return items, nil
+}
+
+func (r *Repository) CountForwards() (int64, error) {
+	if r == nil || r.db == nil {
+		return 0, errors.New("repository not initialized")
+	}
+	var count int64
+	err := r.db.Model(&model.Forward{}).Count(&count).Error
+	return count, err
+}
+
 func (r *Repository) ListUserAccessibleTunnels(userID int64) ([]map[string]interface{}, error) {
 	if r == nil || r.db == nil {
 		return nil, errors.New("repository not initialized")

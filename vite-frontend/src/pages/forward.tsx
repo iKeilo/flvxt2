@@ -1365,6 +1365,9 @@ export default function ForwardPage() {
   const [allTunnels, setAllTunnels] = useState<Tunnel[]>([]);
   const [nodes, setNodes] = useState<Node[]>([]);
   const [speedLimits, setSpeedLimits] = useState<SpeedLimitApiItem[]>([]);
+  const [forwardPage, setForwardPage] = useState(1);
+  const [forwardPageSize, setForwardPageSize] = useState(10);
+  const [forwardTotal, setForwardTotal] = useState(0);
   //   const isMobile = useMobileBreakpoint();
   // searchKeyword removed
   // isSearchVisible removed
@@ -2070,10 +2073,17 @@ export default function ForwardPage() {
         setLoading(true);
       }
       try {
-        const forwardsRes = await getForwardList();
+        const params = compactMode
+          ? { current: forwardPage, size: forwardPageSize }
+          : {};
+        const forwardsRes = await getForwardList(params);
 
         if (forwardsRes.code === 0) {
-          await applyForwardList(mapForwardApiItems(forwardsRes.data || []));
+          const data = forwardsRes.data;
+          const items = data?.items ?? [];
+          const total = data?.total ?? 0;
+          setForwardTotal(total);
+          await applyForwardList(mapForwardApiItems(items));
         } else {
           toast.error(forwardsRes.msg || "获取规则列表失败");
         }
@@ -2085,31 +2095,36 @@ export default function ForwardPage() {
         }
       }
     },
-    [applyForwardList],
+    [applyForwardList, compactMode, forwardPage, forwardPageSize],
   );
   // 加载所有数据
   const loadData = useCallback(
     async (lod = true) => {
       setLoading(lod);
       try {
+        const params = compactMode
+          ? { current: forwardPage, size: forwardPageSize }
+          : {};
         const [tunnelsRes, forwardsRes, speedLimitsRes] = await Promise.all([
           userTunnel(),
-          getForwardList(),
+          getForwardList(params),
           getSpeedLimitList(),
         ]);
 
         if (tunnelsRes.code === 0) {
           setTunnels(tunnelsRes.data || []);
-          // 普通用户直接使用 userTunnel 返回的数据作为 allTunnels
           setAllTunnels((tunnelsRes.data || []) as Tunnel[]);
         }
         if (forwardsRes.code === 0) {
-          await applyForwardList(mapForwardApiItems(forwardsRes.data || []));
+          const data = forwardsRes.data;
+          const items = data?.items ?? [];
+          const total = data?.total ?? 0;
+          setForwardTotal(total);
+          await applyForwardList(mapForwardApiItems(items));
         }
         if (speedLimitsRes.code === 0) {
           setSpeedLimits(speedLimitsRes.data || []);
         }
-        // 管理员额外加载节点列表
         if (isAdmin) {
           const nodesRes = await getNodeList();
 
@@ -2123,7 +2138,7 @@ export default function ForwardPage() {
         setLoading(false);
       }
     },
-    [isAdmin, applyForwardList],
+    [isAdmin, applyForwardList, compactMode, forwardPage, forwardPageSize],
   );
 
   useEffect(() => {
@@ -4644,6 +4659,78 @@ export default function ForwardPage() {
                   </SortableContext>
                 </DndContext>
               </div>
+              {forwardTotal > forwardPageSize && (
+                <div className="flex items-center justify-center gap-2 mt-4">
+                  <Button
+                    size="sm"
+                    variant="flat"
+                    isDisabled={forwardPage === 1}
+                    onPress={() => {
+                      setForwardPage((p) => Math.max(1, p - 1));
+                    }}
+                  >
+                    ←
+                  </Button>
+                  {(() => {
+                    const totalPages = Math.ceil(forwardTotal / forwardPageSize);
+                    const pages: (number | string)[] = [];
+                    const current = forwardPage;
+                    const total = totalPages;
+                    if (total <= 7) {
+                      for (let i = 1; i <= total; i++) pages.push(i);
+                    } else {
+                      pages.push(1);
+                      if (current > 3) pages.push("...");
+                      const start = Math.max(2, current - 1);
+                      const end = Math.min(total - 1, current + 1);
+                      for (let i = start; i <= end; i++) pages.push(i);
+                      if (current < total - 2) pages.push("...");
+                      pages.push(total);
+                    }
+                    return pages.map((p, idx) =>
+                      typeof p === "string" ? (
+                        <span key={`e${idx}`} className="text-default-400 text-sm px-1">
+                          {p}
+                        </span>
+                      ) : (
+                        <Button
+                          key={p}
+                          size="sm"
+                          variant={p === current ? "solid" : "flat"}
+                          color={p === current ? "primary" : "default"}
+                          onPress={() => setForwardPage(p)}
+                        >
+                          {p}
+                        </Button>
+                      ),
+                    );
+                  })()}
+                  <Button
+                    size="sm"
+                    variant="flat"
+                    isDisabled={forwardPage >= Math.ceil(forwardTotal / forwardPageSize)}
+                    onPress={() => {
+                      setForwardPage((p) => Math.min(Math.ceil(forwardTotal / forwardPageSize), p + 1));
+                    }}
+                  >
+                    →
+                  </Button>
+                  <span className="text-default-400 text-sm ml-2">每页</span>
+                  <select
+                    className="text-sm border border-input rounded px-2 py-1 bg-background"
+                    value={forwardPageSize}
+                    onChange={(e) => {
+                      setForwardPageSize(Number(e.target.value));
+                      setForwardPage(1);
+                    }}
+                  >
+                    <option value={10}>10</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                  </select>
+                  <span className="text-default-400 text-sm">条</span>
+                </div>
+              )}
             </>
           ) : (
             <Card className="shadow-sm border border-gray-200 dark:border-gray-700 bg-default-50/50">
