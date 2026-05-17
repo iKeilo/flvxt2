@@ -1,6 +1,6 @@
 # FLVX
 
-> **联系我们**: [Telegram 群组](https://t.me/erflvx) | [文档](https://sagit-chu.github.io/flvx/)
+> **联系我们**: [Telegram 群组](https://t.me/erflvx) | [文档]()
 
 ## 特性
 
