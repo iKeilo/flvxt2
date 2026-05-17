@@ -913,16 +913,16 @@ const SortableTableRow = ({
       <TableCell className={`whitespace-nowrap ${rowBg}`}>
         <div className="flex flex-col gap-1 w-full">
           <span
-            className="block w-full min-h-[20px] px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-500/10 text-blue-600 dark:text-blue-400"
+            className="block w-full min-w-[80px] min-h-[20px] px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-500/10 text-blue-600 dark:text-blue-400"
             title="上行带宽"
           >
-            {(forward.inSpeed || 0) > 0 ? `↑${formatSpeed(forward.inSpeed || 0)}` : ''}
+            <span className="mr-1">↑</span>{formatSpeed(forward.inSpeed || 0)}
           </span>
           <span
-            className="block w-full min-h-[20px] px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-500/10 text-purple-600 dark:text-purple-400"
+            className="block w-full min-w-[80px] min-h-[20px] px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-500/10 text-purple-600 dark:text-purple-400"
             title="下行带宽"
           >
-            {(forward.outSpeed || 0) > 0 ? `↓${formatSpeed(forward.outSpeed || 0)}` : ''}
+            <span className="mr-1">↓</span>{formatSpeed(forward.outSpeed || 0)}
           </span>
         </div>
       </TableCell>
@@ -1224,16 +1224,16 @@ const SortableCompactTableRow = ({
       <TableCell className={`whitespace-nowrap ${rowBg}`}>
         <div className="flex flex-col gap-1 w-full">
           <span
-            className="block w-full min-h-[20px] px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-500/10 text-blue-600 dark:text-blue-400"
+            className="block w-full min-w-[80px] min-h-[20px] px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-500/10 text-blue-600 dark:text-blue-400"
             title="上行带宽"
           >
-            {(forward.inSpeed || 0) > 0 ? `↑${formatSpeed(forward.inSpeed || 0)}` : ''}
+            <span className="mr-1">↑</span>{formatSpeed(forward.inSpeed || 0)}
           </span>
           <span
-            className="block w-full min-h-[20px] px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-500/10 text-purple-600 dark:text-purple-400"
+            className="block w-full min-w-[80px] min-h-[20px] px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-500/10 text-purple-600 dark:text-purple-400"
             title="下行带宽"
           >
-            {(forward.outSpeed || 0) > 0 ? `↓${formatSpeed(forward.outSpeed || 0)}` : ''}
+            <span className="mr-1">↓</span>{formatSpeed(forward.outSpeed || 0)}
           </span>
         </div>
       </TableCell>
