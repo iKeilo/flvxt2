@@ -1367,6 +1367,8 @@ export default function ForwardPage() {
   const [speedLimits, setSpeedLimits] = useState<SpeedLimitApiItem[]>([]);
   const [forwardPage, setForwardPage] = useState(1);
   const [forwardPageSize, setForwardPageSize] = useState(10);
+  const [groupPage, setGroupPage] = useState(1);
+  const [groupPageSize, setGroupPageSize] = useState(10);
   //   const isMobile = useMobileBreakpoint();
   // searchKeyword removed
   // isSearchVisible removed
@@ -1991,20 +1993,17 @@ export default function ForwardPage() {
     },
     [],
   );
-  // 4形态模式切换（分组列表 -> 分组卡片 -> 精简列表 -> 精简卡片）
+  // 3形态模式切换（分组 -> 列表 -> 卡片）
   const handleModeCycle = async () => {
     let nextCompact = compactMode;
-    let nextView: "grouped" | "direct" = viewMode;
+    let nextView = viewMode;
 
     if (!compactMode && viewMode === "grouped") {
-      nextView = "direct"; // 1. 分组列表 -> 分组卡片
-    } else if (!compactMode && viewMode === "direct") {
-      nextCompact = true; // 2. 分组卡片 -> 精简列表
-      nextView = "grouped";
+      nextCompact = true; // 1. 分组 -> 列表
     } else if (compactMode && viewMode === "grouped") {
-      nextView = "direct"; // 3. 精简列表 -> 精简卡片
+      nextView = "direct"; // 2. 列表 -> 卡片
     } else {
-      nextCompact = false; // 4. 精简卡片 -> 分组列表
+      nextCompact = false; // 3. 卡片 -> 分组
       nextView = "grouped";
     }
 
@@ -2036,13 +2035,13 @@ export default function ForwardPage() {
   // 根据当前状态推断按钮文本和颜色
   const getModeButtonConfig = () => {
     if (!compactMode && viewMode === "grouped")
-      return { text: "分组列表", color: "primary" };
-    if (!compactMode && viewMode === "direct")
-      return { text: "分组卡片", color: "warning" };
+      return { text: "分组", color: "primary" };
     if (compactMode && viewMode === "grouped")
-      return { text: "精简列表", color: "success" };
+      return { text: "列表", color: "success" };
+    if (compactMode && viewMode === "direct")
+      return { text: "卡片", color: "secondary" };
 
-    return { text: "精简卡片", color: "secondary" };
+    return { text: "分组", color: "primary" };
   };
   const modeBtnConfig = getModeButtonConfig();
   // 切换精简模式
@@ -3808,6 +3807,7 @@ export default function ForwardPage() {
 
     return groups;
   }, [orderedForwards, isAdmin, tokenUserId, sanitizedGroupOrderMap]);
+
   const sortedForwards = useMemo(() => {
     if (compactMode) {
       return orderedForwards;
@@ -3819,10 +3819,9 @@ export default function ForwardPage() {
   }, [compactMode, orderedForwards, groupedForwards]);
   const forwardTotal = sortedForwards.length;
   const paginatedForwards = useMemo(() => {
-    if (!compactMode) return sortedForwards;
     const start = (forwardPage - 1) * forwardPageSize;
     return sortedForwards.slice(start, start + forwardPageSize);
-  }, [sortedForwards, compactMode, forwardPage, forwardPageSize]);
+  }, [sortedForwards, forwardPage, forwardPageSize]);
 
   useEffect(() => {
     const maxPage = Math.ceil(forwardTotal / forwardPageSize);
@@ -3830,7 +3829,7 @@ export default function ForwardPage() {
   }, [forwardTotal, forwardPageSize, forwardPage]);
 
   const paginationUI = forwardTotal > forwardPageSize && (
-    <div className="flex items-center justify-center gap-2 mt-4">
+    <div className="flex items-center justify-center gap-2 mt-4 mb-4">
       <Button size="sm" variant="flat" isDisabled={forwardPage === 1} onPress={() => setForwardPage((p) => Math.max(1, p - 1))}>←</Button>
       {(() => {
         const totalPages = Math.ceil(forwardTotal / forwardPageSize);
@@ -3862,6 +3861,54 @@ export default function ForwardPage() {
         <option value={100}>100</option>
       </select>
       <span className="text-default-400 text-sm">条</span>
+    </div>
+  );
+
+  // 分组视图分页
+  const groupTotal = groupedForwards.length;
+  const paginatedGroupedForwards = useMemo(() => {
+    const start = (groupPage - 1) * groupPageSize;
+    return groupedForwards.slice(start, start + groupPageSize);
+  }, [groupedForwards, groupPage, groupPageSize]);
+
+  useEffect(() => {
+    const maxPage = Math.ceil(groupTotal / groupPageSize);
+    if (groupPage > maxPage && maxPage > 0) setGroupPage(1);
+  }, [groupTotal, groupPageSize, groupPage]);
+
+  const groupPaginationUI = (
+    <div className="flex items-center justify-center gap-2 mt-4 mb-4">
+      <Button size="sm" variant="flat" isDisabled={groupPage === 1} onPress={() => setGroupPage((p) => Math.max(1, p - 1))}>←</Button>
+      {(() => {
+        const totalPages = Math.ceil(groupTotal / groupPageSize);
+        const pages = [];
+        if (totalPages <= 7) {
+          for (let i = 1; i <= totalPages; i++) pages.push(i);
+        } else {
+          pages.push(1);
+          if (groupPage > 3) pages.push("...");
+          const start = Math.max(2, groupPage - 1);
+          const end = Math.min(totalPages - 1, groupPage + 1);
+          for (let i = start; i <= end; i++) pages.push(i);
+          if (groupPage < totalPages - 2) pages.push("...");
+          pages.push(totalPages);
+        }
+        return pages.map((p, idx) =>
+          typeof p === "string" ? (
+            <span key={"e"+idx} className="text-default-400 text-sm px-1">{p}</span>
+          ) : (
+            <Button key={p} size="sm" variant={p === groupPage ? "solid" : "flat"} color={p === groupPage ? "primary" : "default"} onPress={() => setGroupPage(p)}>{p}</Button>
+          )
+        );
+      })()}
+      <Button size="sm" variant="flat" isDisabled={groupPage >= Math.ceil(groupTotal / groupPageSize)} onPress={() => setGroupPage((p) => Math.min(Math.ceil(groupTotal / groupPageSize), p + 1))}>→</Button>
+      <span className="text-default-400 text-sm ml-2">每页</span>
+      <select className="text-sm border border-input rounded px-2 py-1 bg-background" value={groupPageSize} onChange={(e) => { setGroupPageSize(Number(e.target.value)); setGroupPage(1); }}>
+        <option value={5}>5</option>
+        <option value={10}>10</option>
+        <option value={20}>20</option>
+      </select>
+      <span className="text-default-400 text-sm">个分组</span>
     </div>
   );
   
@@ -4073,6 +4120,7 @@ export default function ForwardPage() {
             </div>
           </div>
         </CardHeader>
+        {/* 卡片视图卡片布局显示 */}
         <CardBody className="flex flex-1 flex-col pt-0 pb-3 md:pt-0 md:pb-3">
           <div className="space-y-3 flex-1 py-1">
             {/* 入口信息区 */}
@@ -4212,8 +4260,7 @@ export default function ForwardPage() {
                 {statusDisplay.text}
               </div>
             </div>
-            {(forward.inFlow || 0) + (forward.outFlow || 0) > 0 ||
-              (forward.inSpeed || 0) + (forward.outSpeed || 0) > 0 ? (
+            {(forward.inFlow || 0) + (forward.outFlow || 0) > 0 ? (
               <div className="flex items-center gap-1">
                 <div className="inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-medium bg-primary-500/10 text-primary-600 dark:text-primary-400">
                   ↑{formatFlow(forward.inFlow || 0)}
@@ -4221,16 +4268,6 @@ export default function ForwardPage() {
                 <div className="inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-medium bg-success-500/10 text-success-600 dark:text-success-400">
                   ↓{formatFlow(forward.outFlow || 0)}
                 </div>
-                {(forward.inSpeed || 0) > 0 && (
-                  <div className="inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-medium bg-blue-500/10 text-blue-600 dark:text-blue-400">
-                    ↑{formatSpeed(forward.inSpeed || 0)}
-                  </div>
-                )}
-                {(forward.outSpeed || 0) > 0 && (
-                  <div className="inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-medium bg-purple-500/10 text-purple-600 dark:text-purple-400">
-                    ↓{formatSpeed(forward.outSpeed || 0)}
-                  </div>
-                )}
               </div>
             ) : (
               <div className="inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-medium bg-default-500/10 text-default-500">
@@ -4479,6 +4516,7 @@ export default function ForwardPage() {
                   _{sortedForwards.length}条
                 </span>
               </div> */}
+              {paginationUI}
               <div className="overflow-hidden rounded-xl border border-divider bg-content1 shadow-md">
                 <DndContext
                   collisionDetection={pointerWithin}
@@ -4681,7 +4719,6 @@ export default function ForwardPage() {
                   </SortableContext>
                 </DndContext>
               </div>
-              {paginationUI}
             </>
           ) : (
             <Card className="shadow-sm border border-gray-200 dark:border-gray-700 bg-default-50/50">
@@ -4706,6 +4743,7 @@ export default function ForwardPage() {
                 _{sortedForwards.length}条
               </span>
             </div> */}
+            {paginationUI}
             <DndContext
               collisionDetection={pointerWithin}
               sensors={sensors}
@@ -4729,7 +4767,6 @@ export default function ForwardPage() {
                 </div>
               </SortableContext>
             </DndContext>
-            {paginationUI}
           </>
         ) : (
           <Card className="shadow-sm border border-gray-200 dark:border-gray-700 bg-default-50/50">
@@ -4743,10 +4780,12 @@ export default function ForwardPage() {
             </CardBody>
           </Card>
         )
-      ) : viewMode === "grouped" ? (
-        sortedForwards.length > 0 ? (
-          <div className="space-y-4">
-            {groupedForwards.map((group) => {
+      ) : (
+        paginatedGroupedForwards.length > 0 ? (
+          <>
+            {groupPaginationUI}
+            <div className="space-y-4">
+            {paginatedGroupedForwards.map((group) => {
               const isSelfGroup =
                 isAdmin && tokenUserId !== null && group.userId === tokenUserId;
               const groupForwardCount = group.tunnels.reduce(
@@ -5007,6 +5046,7 @@ export default function ForwardPage() {
               );
             })}
           </div>
+          </>
         ) : (
           <Card className="shadow-sm border border-gray-200 dark:border-gray-700 bg-default-50/50">
             <CardBody className="text-center py-20 flex flex-col items-center justify-center min-h-[240px]">
@@ -5019,127 +5059,6 @@ export default function ForwardPage() {
             </CardBody>
           </Card>
         )
-      ) : sortedForwards.length > 0 ? (
-        <div className="space-y-4">
-          {groupedForwards.map((group) => {
-            const isSelfGroup =
-              isAdmin && tokenUserId !== null && group.userId === tokenUserId;
-            const groupForwardCount = group.tunnels.reduce(
-              (total, tunnel) => total + tunnel.items.length,
-              0,
-            );
-
-            return (
-              <div
-                key={`direct-group-${group.userId}-${group.userName}`}
-                className="overflow-hidden rounded-xl border border-divider bg-content1 shadow-md"
-              >
-                {/* 🌟 完美继承：列表视图的高颜值外层大卡片 (注释移到里面安全了) */}
-                <div className="flex items-center justify-between border-b border-divider bg-default-100/40 px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-foreground">
-                      {group.userName}
-                    </span>
-                    {/* 🌟 卡片分组视图 */}
-                    {isSelfGroup && (
-                      <div className="inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-medium bg-primary-500/10 text-primary-600 dark:text-primary-400">
-                        管理员本人
-                      </div>
-                    )}
-                  </div>
-                  <span className="text-xs text-default-600">
-                    {groupForwardCount} 条规则
-                  </span>
-                </div>
-                <div className="space-y-4 p-4">
-                  <DndContext
-                    collisionDetection={pointerWithin}
-                    sensors={sensors}
-                    onDragEnd={handleDragEnd}
-                  >
-                    <SortableContext
-                      items={group.tunnels.map((tunnel) =>
-                        buildTunnelGroupSortableId(
-                          group.userId,
-                          tunnel.tunnelKey,
-                        ),
-                      )}
-                      strategy={verticalListSortingStrategy}
-                    >
-                      {group.tunnels.map((tunnel) => {
-                        const tunnelSortableForwardIds = tunnel.items
-                          .map((item) => item.id)
-                          .filter((id) => id > 0);
-                        const collapsed =
-                          sanitizedCollapsedTunnelGroups[
-                          buildTunnelGroupCollapseKey(
-                            group.userId,
-                            tunnel.tunnelKey,
-                          )
-                          ] === true;
-
-                        return (
-                          <SortableTunnelGroupContainer
-                            key={`direct-tunnel-${group.userId}-${tunnel.tunnelKey}`}
-                            bodyClassName="p-4" // 给网格留点内边距，更好看
-                            collapsed={collapsed}
-                            countClassName="text-xs text-default-600"
-                            groupUserId={group.userId}
-                            headerClassName="flex items-center justify-between border-b border-divider bg-default-100/50 hover:bg-default-200/50 px-4 py-2.5"
-                            titleClassName="truncate text-sm font-semibold text-foreground"
-                            tunnel={tunnel}
-                            wrapperClassName="overflow-hidden rounded-lg border border-divider bg-content1"
-                            onToggleCollapsed={() =>
-                              toggleTunnelGroupCollapsed(
-                                group.userId,
-                                tunnel.tunnelKey,
-                              )
-                            }
-                          >
-                            {/* 🌟 完美继承：列表视图的隧道分组折叠框 (注释移到这里安全) */}
-                            <DndContext
-                              collisionDetection={pointerWithin}
-                              sensors={sensors}
-                              onDragEnd={handleDragEnd}
-                            >
-                              <SortableContext
-                                items={tunnelSortableForwardIds}
-                                strategy={rectSortingStrategy}
-                              >
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
-                                  {tunnel.items.map((forward) =>
-                                    forward && forward.id ? (
-                                      <SortableForwardCard
-                                        key={forward.id}
-                                        forward={forward}
-                                        renderCard={renderForwardCard}
-                                      />
-                                    ) : null,
-                                  )}
-                                </div>
-                              </SortableContext>
-                            </DndContext>
-                          </SortableTunnelGroupContainer>
-                        );
-                      })}
-                    </SortableContext>
-                  </DndContext>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        <Card className="shadow-sm border border-gray-200 dark:border-gray-700 bg-default-50/50">
-          <CardBody className="text-center py-20 flex flex-col items-center justify-center min-h-[240px]">
-            <h3 className="text-xl font-medium text-foreground tracking-tight mb-2">
-              暂无规则配置
-            </h3>
-            <p className="text-default-500 text-sm max-w-xs mx-auto leading-relaxed">
-              还没有创建任何规则配置，点击上方按钮开始创建
-            </p>
-          </CardBody>
-        </Card>
       )}
       {/* 新增/编辑模态框 */}
       <Modal
