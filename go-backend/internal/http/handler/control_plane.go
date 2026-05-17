@@ -1,7 +1,9 @@
-package handler
+﻿package handler
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -104,7 +106,7 @@ func (h *Handler) buildDiagnosisStreamStartItems(workItems []diagnosisWorkItem) 
 			"nodeId":      strconv.FormatInt(workItem.fromNodeID, 10),
 			"targetIp":    targetIP,
 			"targetPort":  targetPort,
-			"message":     "诊断�?..",
+			"message":     "诊断中...",
 		}
 		for key, value := range workItem.metadata {
 			item[key] = value
@@ -121,8 +123,8 @@ const (
 	defaultNodeCommandTimeout  = 6 * time.Second
 	diagnosisCommandTimeout    = 30 * time.Second
 	diagnosisRequestTimeout    = 2 * time.Minute
-	diagnosisCommandTimeoutMsg = "诊断超时�?0秒）"
-	diagnosisRequestTimeoutMsg = "诊断超时�?分钟�?
+	diagnosisCommandTimeoutMsg = "诊断超时（30秒）"
+	diagnosisRequestTimeoutMsg = "诊断超时（2分钟）"
 )
 
 const exitTestCommandTimeout = 18 * time.Second
@@ -170,7 +172,7 @@ func (h *Handler) ensureTunnelPermission(userID int64, roleID int, tunnelID int6
 		return err
 	}
 	if !ok {
-		return errors.New("你没有该隧道的权�?)
+		return errors.New("你没有该隧道的权限")
 	}
 	return nil
 }
@@ -192,7 +194,7 @@ func (h *Handler) getTunnelRecord(tunnelID int64) (*tunnelRecord, error) {
 		return nil, err
 	}
 	if tr == nil {
-		return nil, errors.New("隧道不存�?)
+		return nil, errors.New("隧道不存在")
 	}
 	return tr, nil
 }
@@ -219,7 +221,7 @@ func (h *Handler) getNodeRecord(nodeID int64) (*nodeRecord, error) {
 		return nil, err
 	}
 	if n == nil {
-		return nil, errors.New("节点不存�?)
+		return nil, errors.New("节点不存在")
 	}
 	return n, nil
 }
@@ -257,16 +259,13 @@ func (h *Handler) syncForwardServicesWithWarnings(forward *forwardRecord, method
 	if err != nil {
 		return nil, err
 	}
+	// nftables mode handling
 	ports, err := h.listForwardPorts(forward.ID)
 	if err != nil {
 		return nil, err
 	}
 	if len(ports) == 0 {
-		return nil, errors.New("转发入口端口不存�?)
-	}
-	// nftables ģʽ��֧
-	if strings.EqualFold(forward.Mode, "nftables") {
-		return nil, h.syncNftablesRules(forward, tunnel, ports, nil, userTunnelID, speed)
+		return nil, errors.New("转发入口端口不存在")
 	}
 
 	warnings := make([]string, 0)
@@ -296,12 +295,16 @@ func (h *Handler) syncForwardServicesWithWarnings(forward *forwardRecord, method
 		speed = utSpeed
 	}
 
-	// �?动态限速器名称
+	// nftables mode branch
+	if strings.EqualFold(forward.Mode, "nftables") {
+		return nil, h.syncNftablesRules(forward, tunnel, ports, userTunnelID, speed)
+	}
+
+	// ✅ 动态限速器名称
 	var dynamicLimiterName string
 	if forward.SpeedLimitEnabled && forward.SpeedLimit > 0 {
 		dynamicLimiterName = fmt.Sprintf("forward_%d_speed", forward.ID)
 	}
-
 	serviceBase := buildForwardServiceBaseWithResolvedUserTunnel(forward.ID, forward.UserID, userTunnelID)
 	tunnelTLSProtocol, err := h.isTunnelSelectedTLSProtocol(forward.TunnelID)
 	if err != nil {
@@ -309,7 +312,7 @@ func (h *Handler) syncForwardServicesWithWarnings(forward *forwardRecord, method
 	}
 
 	for _, fp := range ports {
-		// �?应用动态限速器
+		// ✅ 应用动态限速器
 		if dynamicLimiterName != "" {
 			if err := h.ensureDynamicLimiterOnNode(fp.NodeID, dynamicLimiterName, forward.SpeedLimit); err != nil {
 				if isNodeOfflineOrTimeoutError(err) {
@@ -318,7 +321,7 @@ func (h *Handler) syncForwardServicesWithWarnings(forward *forwardRecord, method
 					if node != nil && strings.TrimSpace(node.Name) != "" {
 						nodeName = strings.TrimSpace(node.Name)
 					}
-					warnings = append(warnings, fmt.Sprintf("节点 %s 不在线，已跳过下�?, nodeName))
+					warnings = append(warnings, fmt.Sprintf("节点 %s 不在线，已跳过下发", nodeName))
 				} else {
 					return nil, err
 				}
@@ -332,7 +335,7 @@ func (h *Handler) syncForwardServicesWithWarnings(forward *forwardRecord, method
 					if node != nil && strings.TrimSpace(node.Name) != "" {
 						nodeName = strings.TrimSpace(node.Name)
 					}
-					warnings = append(warnings, fmt.Sprintf("节点 %s 不在线，已跳过下�?, nodeName))
+					warnings = append(warnings, fmt.Sprintf("节点 %s 不在线，已跳过下发", nodeName))
 					continue
 				}
 				return nil, err
@@ -348,7 +351,7 @@ func (h *Handler) syncForwardServicesWithWarnings(forward *forwardRecord, method
 		if err != nil && allowFallbackAdd && method == "UpdateService" {
 			if isNotFoundError(err) {
 				if delErr := h.deleteForwardServicesOnNode(forward, node.ID); delErr != nil && !isNotFoundError(delErr) {
-					return warnings, fmt.Errorf("节点 %s 清理旧服务失�? %w", node.Name, delErr)
+					return warnings, fmt.Errorf("节点 %s 清理旧服务失败: %w", node.Name, delErr)
 				}
 			}
 			_, err = h.sendNodeCommand(node.ID, "AddService", services, true, false)
@@ -366,7 +369,7 @@ func (h *Handler) syncForwardServicesWithWarnings(forward *forwardRecord, method
 		// When a node is offline, skip it with a warning instead of failing.
 		// This lets users modify forward rules even when some entry nodes are down.
 		if err != nil && isNodeOfflineOrTimeoutError(err) {
-			warnings = append(warnings, fmt.Sprintf("节点 %s 不在线，已跳过下�?, node.Name))
+			warnings = append(warnings, fmt.Sprintf("节点 %s 不在线，已跳过下发", node.Name))
 			continue
 		}
 		if err != nil {
@@ -497,16 +500,6 @@ func (h *Handler) controlForwardServices(forward *forwardRecord, commandType str
 	if h == nil || forward == nil {
 		return errors.New("invalid forward control context")
 	}
-	// nftables ģʽ����
-	if strings.EqualFold(forward.Mode, "nftables") {
-		switch commandType {
-		case "DeleteService":
-			return h.deleteNftablesRules(forward, ports)
-		case "PauseService", "ResumeService":
-			return nil
-		}
-	}
-
 	ports, err := h.listForwardPorts(forward.ID)
 	if err != nil {
 		return err
@@ -665,7 +658,7 @@ func (h *Handler) sendNodeCommandWithTimeout(nodeID int64, commandType string, d
 		}
 	}
 	if tolerateNotFound {
-		if strings.Contains(msg, "not found") || strings.Contains(msg, "不存�?) {
+		if strings.Contains(msg, "not found") || strings.Contains(msg, "不存在") {
 			return result, nil
 		}
 	}
@@ -678,7 +671,7 @@ func (h *Handler) sendRemoteNodeCommand(node *nodeRecord, commandType string, da
 
 func (h *Handler) sendRemoteNodeCommandWithTimeout(node *nodeRecord, commandType string, data interface{}, timeout time.Duration) (ws.CommandResult, error) {
 	if node == nil {
-		return ws.CommandResult{}, errors.New("节点不存�?)
+		return ws.CommandResult{}, errors.New("节点不存在")
 	}
 	remoteURL := strings.TrimSpace(node.RemoteURL)
 	remoteToken := strings.TrimSpace(node.RemoteToken)
@@ -698,7 +691,7 @@ func (h *Handler) sendRemoteNodeCommandWithTimeout(node *nodeRecord, commandType
 		return ws.CommandResult{}, err
 	}
 	if res == nil {
-		return ws.CommandResult{}, errors.New("远程节点未返回命令结�?)
+		return ws.CommandResult{}, errors.New("远程节点未返回命令结果")
 	}
 
 	result := ws.CommandResult{
@@ -755,7 +748,7 @@ func (h *Handler) prepareForwardDiagnosis(forward *forwardRecord) (string, []dia
 		return "", nil, err
 	}
 	if len(chainRows) == 0 {
-		return "", nil, errors.New("隧道配置不完�?)
+		return "", nil, errors.New("隧道配置不完整")
 	}
 
 	ipPreference := h.repo.GetTunnelIPPreference(forward.TunnelID)
@@ -783,7 +776,7 @@ func (h *Handler) prepareForwardDiagnosis(forward *forwardRecord) (string, []dia
 		for _, inNode := range inNodes {
 			if len(chainHops) > 0 {
 				for _, firstNode := range chainHops[0] {
-					description := fmt.Sprintf("入口(%s)->�?�?%s)", inNode.NodeName, firstNode.NodeName)
+					description := fmt.Sprintf("入口(%s)->第1跳(%s)", inNode.NodeName, firstNode.NodeName)
 					workItems = append(workItems, diagnosisWorkItem{
 						fromNodeID:    inNode.NodeID,
 						toNode:        firstNode,
@@ -821,7 +814,7 @@ func (h *Handler) prepareForwardDiagnosis(forward *forwardRecord) (string, []dia
 			for _, currentNode := range hop {
 				if i+1 < len(chainHops) {
 					for _, nextNode := range chainHops[i+1] {
-						description := fmt.Sprintf("�?d�?%s)->�?d�?%s)", i+1, currentNode.NodeName, i+2, nextNode.NodeName)
+						description := fmt.Sprintf("第%d跳(%s)->第%d跳(%s)", i+1, currentNode.NodeName, i+2, nextNode.NodeName)
 						workItems = append(workItems, diagnosisWorkItem{
 							fromNodeID:    currentNode.NodeID,
 							toNode:        nextNode,
@@ -839,7 +832,7 @@ func (h *Handler) prepareForwardDiagnosis(forward *forwardRecord) (string, []dia
 					}
 				} else {
 					for _, outNode := range outNodes {
-						description := fmt.Sprintf("�?d�?%s)->出口(%s)", i+1, currentNode.NodeName, outNode.NodeName)
+						description := fmt.Sprintf("第%d跳(%s)->出口(%s)", i+1, currentNode.NodeName, outNode.NodeName)
 						workItems = append(workItems, diagnosisWorkItem{
 							fromNodeID:    currentNode.NodeID,
 							toNode:        outNode,
@@ -923,7 +916,7 @@ func (h *Handler) prepareTunnelDiagnosis(tunnelID int64) (string, string, []diag
 		return "", "", nil, err
 	}
 	if tunnelName == "" {
-		return "", "", nil, errors.New("隧道不存�?)
+		return "", "", nil, errors.New("隧道不存在")
 	}
 
 	chainRows, err := h.listChainNodesForTunnel(tunnelID)
@@ -931,7 +924,7 @@ func (h *Handler) prepareTunnelDiagnosis(tunnelID int64) (string, string, []diag
 		return "", "", nil, err
 	}
 	if len(chainRows) == 0 {
-		return "", "", nil, errors.New("隧道配置不完�?)
+		return "", "", nil, errors.New("隧道配置不完整")
 	}
 
 	ipPreference := h.repo.GetTunnelIPPreference(tunnelID)
@@ -957,7 +950,7 @@ func (h *Handler) prepareTunnelDiagnosis(tunnelID int64) (string, string, []diag
 		for _, inNode := range inNodes {
 			if len(chainHops) > 0 {
 				for _, firstNode := range chainHops[0] {
-					description := fmt.Sprintf("入口(%s)->�?�?%s)", inNode.NodeName, firstNode.NodeName)
+					description := fmt.Sprintf("入口(%s)->第1跳(%s)", inNode.NodeName, firstNode.NodeName)
 					workItems = append(workItems, diagnosisWorkItem{
 						fromNodeID:    inNode.NodeID,
 						toNode:        firstNode,
@@ -995,7 +988,7 @@ func (h *Handler) prepareTunnelDiagnosis(tunnelID int64) (string, string, []diag
 			for _, currentNode := range hop {
 				if i+1 < len(chainHops) {
 					for _, nextNode := range chainHops[i+1] {
-						description := fmt.Sprintf("�?d�?%s)->�?d�?%s)", i+1, currentNode.NodeName, i+2, nextNode.NodeName)
+						description := fmt.Sprintf("第%d跳(%s)->第%d跳(%s)", i+1, currentNode.NodeName, i+2, nextNode.NodeName)
 						workItems = append(workItems, diagnosisWorkItem{
 							fromNodeID:    currentNode.NodeID,
 							toNode:        nextNode,
@@ -1013,7 +1006,7 @@ func (h *Handler) prepareTunnelDiagnosis(tunnelID int64) (string, string, []diag
 					}
 				} else {
 					for _, outNode := range outNodes {
-						description := fmt.Sprintf("�?d�?%s)->出口(%s)", i+1, currentNode.NodeName, outNode.NodeName)
+						description := fmt.Sprintf("第%d跳(%s)->出口(%s)", i+1, currentNode.NodeName, outNode.NodeName)
 						workItems = append(workItems, diagnosisWorkItem{
 							fromNodeID:    currentNode.NodeID,
 							toNode:        outNode,
@@ -1122,7 +1115,7 @@ func diagnosisContextMessage(ctx context.Context) string {
 	case context.DeadlineExceeded:
 		return diagnosisRequestTimeoutMsg
 	case context.Canceled:
-		return "诊断已取�?
+		return "诊断已取消"
 	default:
 		return diagnosisRequestTimeoutMsg
 	}
@@ -1184,7 +1177,7 @@ func (h *Handler) executeDiagnosisWorkItem(workItem diagnosisWorkItem, options d
 		h.appendPathDiagnosis(&single, nodeCache, workItem.fromNodeID, workItem.targetIP, workItem.targetPort, workItem.description, workItem.metadata, options)
 	}
 	if len(single) == 0 {
-		return newDiagnosisTimeoutItem(workItem, "诊断任务未返回结�?)
+		return newDiagnosisTimeoutItem(workItem, "诊断任务未返回结果")
 	}
 	return single[0]
 }
@@ -1436,13 +1429,13 @@ func (h *Handler) appendExitTestRotation(results *[]map[string]interface{}, from
 	}
 	failedDescription := fmt.Sprintf("%s [%s (全部失败)]", description, strings.Join(failedNames, "/"))
 	failedItem := newDiagnosisResultItem(fromNodeID, "", 443, failedDescription, metadata)
-	failedItem["message"] = "所有TCP连接尝试都失�?
+	failedItem["message"] = "所有TCP连接尝试都失败"
 	*results = append(*results, failedItem)
 }
 
 func resolveChainProbeTarget(fromNode, targetNode *nodeRecord, preferredPort int, ipPreference string, connectIpType string) (string, int, error) {
 	if targetNode == nil {
-		return "", 0, errors.New("目标节点不存�?)
+		return "", 0, errors.New("目标节点不存在")
 	}
 	host, _, err := selectTunnelDialHost(fromNode, targetNode, ipPreference, connectIpType)
 	if err != nil {
@@ -1510,14 +1503,14 @@ func (h *Handler) tcpPingViaNode(nodeID int64, ip string, port int, options diag
 		return nil, err
 	}
 	if res.Data == nil {
-		return nil, errors.New("节点未返回诊断数�?)
+		return nil, errors.New("节点未返回诊断数据")
 	}
 	return res.Data, nil
 }
 
 func (h *Handler) tcpPingViaRemoteNode(node *nodeRecord, ip string, port int, options diagnosisExecOptions) (map[string]interface{}, error) {
 	if node == nil {
-		return nil, errors.New("节点不存�?)
+		return nil, errors.New("节点不存在")
 	}
 	remoteURL := strings.TrimSpace(node.RemoteURL)
 	remoteToken := strings.TrimSpace(node.RemoteToken)
@@ -1632,7 +1625,7 @@ func isNotFoundError(err error) bool {
 		return false
 	}
 	msg := strings.ToLower(strings.TrimSpace(err.Error()))
-	return strings.Contains(msg, "not found") || strings.Contains(msg, "不存�?)
+	return strings.Contains(msg, "not found") || strings.Contains(msg, "不存在")
 }
 
 func isAlreadyExistsMessage(message string) bool {
@@ -1644,7 +1637,7 @@ func isAlreadyExistsMessage(message string) bool {
 		return false
 	}
 	compact := compactErrorMessage(msg)
-	return strings.Contains(msg, "already exists") || strings.Contains(msg, "已存�?) || strings.Contains(compact, "alreadyexists")
+	return strings.Contains(msg, "already exists") || strings.Contains(msg, "已存在") || strings.Contains(compact, "alreadyexists")
 }
 
 func isBindAddressInUseError(err error) bool {
@@ -1706,7 +1699,7 @@ func buildForwardServiceConfigs(baseName string, forward *forwardRecord, tunnel 
 		strategy = "fifo"
 	}
 
-	// �?动态限速器名称
+	// ✅ 动态限速器名称
 	var dynamicLimiterName string
 	if forward.SpeedLimitEnabled && forward.SpeedLimit > 0 {
 		dynamicLimiterName = fmt.Sprintf("forward_%d_speed", forward.ID)
@@ -1767,7 +1760,7 @@ func buildForwardServiceConfigs(baseName string, forward *forwardRecord, tunnel 
 		if len(meta) > 0 {
 			service["metadata"] = meta
 		}
-		// �?应用限速器（优先使用动态限速器�?
+		// ✅ 应用限速器（优先使用动态限速器）
 		if dynamicLimiterName != "" {
 			service["limiter"] = dynamicLimiterName
 		} else if limiterID != nil && *limiterID > 0 {
@@ -1872,7 +1865,7 @@ func (h *Handler) ensureLimiterOnNode(nodeID int64, limiterID int64, speed int) 
 	return nil
 }
 
-// �?新增：确�?Forward 动态限速器存在（所有入口节点）
+// ✅ 新增：确保 Forward 动态限速器存在（所有入口节点）
 func (h *Handler) ensureForwardDynamicLimiter(forward *forwardRecord, limiterName string) error {
 	ports, err := h.listForwardPorts(forward.ID)
 	if err != nil {
@@ -1889,15 +1882,15 @@ func (h *Handler) ensureForwardDynamicLimiter(forward *forwardRecord, limiterNam
 	return nil
 }
 
-// �?新增：在节点上创�?更新动态限速器
+// ✅ 新增：在节点上创建/更新动态限速器
 func (h *Handler) ensureDynamicLimiterOnNode(nodeID int64, limiterName string, speedLimit int) error {
 	// 构建限速器配置
-	// gost traffic limiter 使用 MB/s 作为单位（通过 units.ParseBase2Bytes 解析�?
-	// 前端输入�?Mbps，需要转换：MB/s = Mbps / 8
-	// 配置格式�?$ <in> <out>"，其�?$ �?ServiceLimitKey
+	// gost traffic limiter 使用 MB/s 作为单位（通过 units.ParseBase2Bytes 解析）
+	// 前端输入是 Mbps，需要转换：MB/s = Mbps / 8
+	// 配置格式："$ <in> <out>"，其中 $ 是 ServiceLimitKey
 	var limits []string
 	if speedLimit > 0 {
-		// 上下行使用相同的限速�?
+		// 上下行使用相同的限速值
 		speedMB := float64(speedLimit) / 8.0
 		limits = []string{fmt.Sprintf("$ %.1fMB %.1fMB", speedMB, speedMB)}
 	} else {
@@ -1913,7 +1906,7 @@ func (h *Handler) ensureDynamicLimiterOnNode(nodeID int64, limiterName string, s
 		"limiter": limiterName,
 	}, false, true)
 
-	// 等待一小段时间让删除生�?
+	// 等待一小段时间让删除生效
 	time.Sleep(100 * time.Millisecond)
 
 	// 创建新的限速器
@@ -1929,7 +1922,7 @@ func (h *Handler) ensureDynamicLimiterOnNode(nodeID int64, limiterName string, s
 	return nil
 }
 
-// �?新增：删�?Forward 动态限速器
+// ✅ 新增：删除 Forward 动态限速器
 func (h *Handler) deleteForwardDynamicLimiter(forward *forwardRecord) {
 	limiterName := fmt.Sprintf("forward_%d_speed", forward.ID)
 	ports, _ := h.listForwardPorts(forward.ID)
@@ -1981,7 +1974,9 @@ func (h *Handler) upsertLimiterOnNode(nodeID int64, limiterID int64, speed int) 
 	return nil
 }
 
-// NftablesRulePayload nftables 规则负载（与 agent 端保持一致）
+
+
+// NftablesRulePayload nftables rule payload (matches agent side)
 type NftablesRulePayload struct {
 	ForwardID   int64  `json:"forward_id"`
 	NodeID      int64  `json:"node_id"`
@@ -1994,26 +1989,29 @@ type NftablesRulePayload struct {
 	NextHopPort int    `json:"next_hop_port"`
 }
 
-// AddNftablesRulesRequest nftables 规则创建请求
+// AddNftablesRulesRequest nftables rules create request
 type AddNftablesRulesRequest struct {
 	Rules []NftablesRulePayload `json:"rules"`
 }
 
-// DeleteNftablesRulesRequest nftables 规则删除请求
+// DeleteNftablesRulesRequest nftables rules delete request
 type DeleteNftablesRulesRequest struct {
 	ForwardIDs []int64  `json:"forward_ids"`
 	Protocols  []string `json:"protocols"`
 }
 
-// syncNftablesRules 同步 nftables 转发规则到节�?func (h *Handler) syncNftablesRules(forward *forwardRecord, tunnel *tunnelRecord, ports []forwardPortRecord, nodes []*nodeRecord, userTunnelID int64, speedLimit *int) error {
+// syncNftablesRules sync nftables forwarding rules to nodes
+func (h *Handler) syncNftablesRules(forward *forwardRecord, tunnel *tunnelRecord, ports []forwardPortRecord, userTunnelID int64, speedLimit *int) error {
 	if h == nil || forward == nil {
 		return errors.New("invalid nftables sync context")
 	}
 
-	rules := buildNftablesRulePayloads(forward, tunnel, ports, speedLimit)
+	chainNodes, _ := h.listChainNodesForTunnel(forward.TunnelID)
+	rules := buildNftablesRulePayloads(forward, tunnel, ports, chainNodes, speedLimit)
 
-	for _, node := range nodes {
-		if node == nil {
+	for _, fp := range ports {
+		node, err := h.getNodeRecord(fp.NodeID)
+		if err != nil {
 			continue
 		}
 		nodeRules := filterRulesByNodeID(rules, node.ID)
@@ -2022,7 +2020,7 @@ type DeleteNftablesRulesRequest struct {
 		}
 
 		payload := AddNftablesRulesRequest{Rules: nodeRules}
-		if node.IsRemote == 1 `&&` strings.TrimSpace(node.RemoteURL) != "" {
+		if node.IsRemote == 1 && strings.TrimSpace(node.RemoteURL) != "" {
 			if err := h.sendRemoteNftablesCommand(node, payload); err != nil {
 				return fmt.Errorf("remote node %s nftables sync failed: %w", node.Name, err)
 			}
@@ -2038,14 +2036,14 @@ type DeleteNftablesRulesRequest struct {
 	return nil
 }
 
-// buildNftablesRulePayloads 构建 nftables 规则负载
-func buildNftablesRulePayloads(forward *forwardRecord, tunnel *tunnelRecord, ports []forwardPortRecord, speedLimit *int) []NftablesRulePayload {
+// buildNftablesRulePayloads build nftables rule payloads
+func buildNftablesRulePayloads(forward *forwardRecord, tunnel *tunnelRecord, ports []forwardPortRecord, chainNodes []chainNodeRecord, speedLimit *int) []NftablesRulePayload {
 	var rules []NftablesRulePayload
 	protocols := []string{"tcp", "udp"}
 	targets := splitRemoteTargets(forward.RemoteAddr)
 
 	spdLimit := 0
-	if forward.SpeedLimitEnabled `&&` forward.SpeedLimit > 0 {
+	if forward.SpeedLimitEnabled && forward.SpeedLimit > 0 {
 		spdLimit = forward.SpeedLimit
 	} else if speedLimit != nil {
 		spdLimit = *speedLimit
@@ -2065,7 +2063,7 @@ func buildNftablesRulePayloads(forward *forwardRecord, tunnel *tunnelRecord, por
 						ChainType:  1,
 					})
 				} else if tunnel.Type == 2 {
-					rules = append(rules, buildChainNftablesRule(forward, tunnel, fp, protocol, target, spdLimit))
+					rules = append(rules, buildChainNftablesRule(forward.ID, chainNodes, fp, protocol, target, spdLimit))
 				}
 			}
 		}
@@ -2073,11 +2071,11 @@ func buildNftablesRulePayloads(forward *forwardRecord, tunnel *tunnelRecord, por
 	return rules
 }
 
-// buildChainNftablesRule 构建链式隧道�?nftables 规则
-func buildChainNftablesRule(forward *forwardRecord, tunnel *tunnelRecord, fp forwardPortRecord, protocol string, target string, speedLimit int) NftablesRulePayload {
-	nextHopIP, nextHopPort := resolveChainNextHop(tunnel, fp.NodeID, target)
+// buildChainNftablesRule build nftables rule for chained tunnel
+func buildChainNftablesRule(forwardID int64, chainNodes []chainNodeRecord, fp forwardPortRecord, protocol string, target string, speedLimit int) NftablesRulePayload {
+	nextHopIP, nextHopPort := resolveChainNextHop(chainNodes, fp.NodeID, target)
 	return NftablesRulePayload{
-		ForwardID:   forward.ID,
+		ForwardID:   forwardID,
 		NodeID:      fp.NodeID,
 		Protocol:    protocol,
 		Port:        fp.Port,
@@ -2089,15 +2087,16 @@ func buildChainNftablesRule(forward *forwardRecord, tunnel *tunnelRecord, fp for
 	}
 }
 
-// resolveChainNextHop 解析链式隧道中节点的下一�?func resolveChainNextHop(tunnel *tunnelRecord, nodeID int64, finalTarget string) (string, int) {
-	if tunnel == nil || len(tunnel.ChainNodes) == 0 {
+// resolveChainNextHop resolve next hop in chain tunnel
+func resolveChainNextHop(chainNodes []chainNodeRecord, nodeID int64, finalTarget string) (string, int) {
+	if len(chainNodes) == 0 {
 		host, port, _ := net.SplitHostPort(finalTarget)
 		p, _ := strconv.Atoi(port)
 		return host, p
 	}
 
 	var currentNodeIdx int = -1
-	for i, cn := range tunnel.ChainNodes {
+	for i, cn := range chainNodes {
 		if cn.NodeID == nodeID {
 			currentNodeIdx = i
 			break
@@ -2110,9 +2109,9 @@ func buildChainNftablesRule(forward *forwardRecord, tunnel *tunnelRecord, fp for
 		return host, p
 	}
 
-	if currentNodeIdx+1 < len(tunnel.ChainNodes) {
-		nextNode := tunnel.ChainNodes[currentNodeIdx+1]
-		return nextNode.ServerIP, nextNode.Port
+	if currentNodeIdx+1 < len(chainNodes) {
+		nextNode := chainNodes[currentNodeIdx+1]
+		return nextNode.ConnectIP, nextNode.Port
 	}
 
 	host, port, _ := net.SplitHostPort(finalTarget)
@@ -2120,7 +2119,8 @@ func buildChainNftablesRule(forward *forwardRecord, tunnel *tunnelRecord, fp for
 	return host, p
 }
 
-// filterRulesByNodeID 过滤指定节点的规�?func filterRulesByNodeID(rules []NftablesRulePayload, nodeID int64) []NftablesRulePayload {
+// filterRulesByNodeID filter rules by node ID
+func filterRulesByNodeID(rules []NftablesRulePayload, nodeID int64) []NftablesRulePayload {
 	var filtered []NftablesRulePayload
 	for _, r := range rules {
 		if r.NodeID == nodeID {
@@ -2130,7 +2130,7 @@ func buildChainNftablesRule(forward *forwardRecord, tunnel *tunnelRecord, fp for
 	return filtered
 }
 
-// deleteNftablesRules 删除 nftables 转发规则
+// deleteNftablesRules delete nftables forwarding rules
 func (h *Handler) deleteNftablesRules(forward *forwardRecord, ports []forwardPortRecord) error {
 	if h == nil || forward == nil {
 		return errors.New("invalid nftables delete context")
@@ -2151,7 +2151,7 @@ func (h *Handler) deleteNftablesRules(forward *forwardRecord, ports []forwardPor
 		if err != nil {
 			continue
 		}
-		if node.IsRemote == 1 `&&` strings.TrimSpace(node.RemoteURL) != "" {
+		if node.IsRemote == 1 && strings.TrimSpace(node.RemoteURL) != "" {
 			_ = h.sendRemoteNftablesCommand(node, payload)
 		} else {
 			_, _ = h.sendNodeCommand(node.ID, "DeleteNftablesRules", payload, true, false)
@@ -2160,7 +2160,7 @@ func (h *Handler) deleteNftablesRules(forward *forwardRecord, ports []forwardPor
 	return nil
 }
 
-// sendRemoteNftablesCommand 向远程节点发�?nftables 命令
+// sendRemoteNftablesCommand send nftables command to remote node
 func (h *Handler) sendRemoteNftablesCommand(node *nodeRecord, payload interface{}) error {
 	if h == nil || node == nil {
 		return errors.New("invalid remote nftables command context")

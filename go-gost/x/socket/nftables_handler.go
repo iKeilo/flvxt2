@@ -1,4 +1,6 @@
-﻿package socket
+﻿//go:build linux
+
+package socket
 
 import (
 	"encoding/json"

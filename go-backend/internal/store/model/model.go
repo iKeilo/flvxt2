@@ -1,4 +1,4 @@
-// Package model defines GORM model structs for all database tables,
+﻿// Package model defines GORM model structs for all database tables,
 // providing a single source of truth for the schema that works
 // transparently with both SQLite and PostgreSQL.
 package model
@@ -637,6 +637,7 @@ type ForwardRecord struct {
 	SpeedLimit        int
 	UploadSpeed       int
 	DownloadSpeed     int
+	Mode              string
 	InFlow            int64
 	OutFlow           int64
 }
