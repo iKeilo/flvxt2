@@ -857,12 +857,7 @@ export function NodeListView({
           </Select>
         </TableColumn>
         <TableColumn className="whitespace-nowrap flex-shrink-0 w-[160px] text-left">
-          <div className="flex items-center justify-between w-full">
-            <span>操作</span>
-            <span className="text-xs text-default-500 font-normal">
-              {displayNodes.length} 个节点
-            </span>
-          </div>
+          操作
         </TableColumn>
       </TableHeader>
       <TableBody>

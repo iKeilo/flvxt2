@@ -522,6 +522,47 @@ export default function UserPage() {
     localStorage.setItem(USER_VIEW_MODE_KEY, mode);
     setSelectedUserIds(new Set());
   }, []);
+  // 复制到剪贴板
+  const copyToClipboard = (text: string, label: string) => {
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard
+          .writeText(text)
+          .then(() => {
+            toast.success(`${label}已复制到剪贴板`);
+          })
+          .catch(() => {
+            toast.error("复制失败，请手动选择文本复制");
+          });
+      } else {
+        const textArea = document.createElement("textarea");
+
+        textArea.value = text;
+        textArea.style.position = "fixed";
+        textArea.style.top = "0";
+        textArea.style.left = "-9999px";
+        textArea.style.opacity = "0";
+
+        const modalElement = document.querySelector('[role="dialog"]');
+        const targetContainer = modalElement || document.body;
+
+        targetContainer.appendChild(textArea);
+        textArea.select();
+        textArea.setSelectionRange(0, 99999);
+
+        try {
+          document.execCommand("copy");
+          toast.success(`${label}已复制到剪贴板`);
+        } catch {
+          toast.error("复制失败，请手动选择文本复制");
+        }
+
+        targetContainer.removeChild(textArea);
+      }
+    } catch {
+      toast.error("复制失败，请手动选择文本复制");
+    }
+  };
   // 全选/取消全选
   const handleSelectAll = useCallback(
     (isSelected: boolean) => {
@@ -1785,14 +1826,28 @@ export default function UserPage() {
                         </TableCell>
                         <TableCell className="whitespace-nowrap">
                           <div className="flex flex-col">
-                            <span className="font-medium text-foreground truncate">
-                              {user.user}
+                            <span
+                              className="font-medium text-foreground truncate cursor-pointer hover:bg-default-200/50 rounded px-1 transition-colors w-fit max-w-full"
+                              title={user.user}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                copyToClipboard(user.user, "用户名");
+                              }}
+                            >
+                              @{user.user}
                             </span>
                           </div>
                         </TableCell>
                         <TableCell className="whitespace-nowrap">
                           <div className="flex flex-col">
-                            <span className="font-medium text-foreground truncate">
+                            <span
+                              className="text-default-500 truncate cursor-pointer hover:bg-default-200/50 rounded px-1 transition-colors w-fit max-w-full"
+                              title={user.name || user.user}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                copyToClipboard(user.name || user.user, "备注");
+                              }}
+                            >
                               {user.name || user.user}
                             </span>
                           </div>
@@ -1884,7 +1939,7 @@ export default function UserPage() {
                         </TableCell>
                         <TableCell className="whitespace-nowrap">
                           <span className="text-sm text-foreground">
-                            {user.num}条
+                            {user.num}个
                           </span>
                         </TableCell>
                         <TableCell className="whitespace-nowrap">
@@ -2102,12 +2157,26 @@ export default function UserPage() {
                         </div>
                       </div>
                       <div className="flex justify-between items-center w-full mt-1">
-                        <span className="font-semibold text-foreground truncate text-sm">
-                          {user.name || user.user}
-                        </span>
-                        <span className="text-xs text-default-500 truncate ml-2">
+                        <span
+                          className="font-medium text-sm text-foreground truncate cursor-pointer hover:bg-default-200/50 rounded px-1 transition-colors w-fit max-w-full"
+                          title={user.user}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            copyToClipboard(user.user, "用户名");
+                          }}
+                        >
                           @{user.user}
                         </span>
+                        <span
+                          className="text-sm text-default-500 truncate ml-2 cursor-pointer hover:bg-default-200/50 rounded px-1 transition-colors w-fit"
+                          title={user.name || user.user}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            copyToClipboard(user.name || user.user, "备注");
+                          }}
+                        >
+                          {user.name || user.user}
+                        </span>                        
                       </div>
                     </CardHeader>
                     <CardBody className="pt-0 pb-3 md:pt-0 md:pb-3">
@@ -2209,7 +2278,7 @@ export default function UserPage() {
                         <div className="flex justify-between text-sm items-center">
                           <span className="text-default-600 text-xs">规则数量</span>
                           <span className="font-medium text-xs">
-                            {user.num}条
+                            {user.num}个
                           </span>
                         </div>
                         <div className="flex justify-between text-sm items-center">

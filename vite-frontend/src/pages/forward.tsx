@@ -651,7 +651,7 @@ const SortableTunnelGroupContainer = ({
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <span className={countClassName}>{tunnel.items.length} 条规则</span>
+          <span className={countClassName}>{tunnel.items.length} 个规则</span>
           <div
             className="cursor-grab active:cursor-grabbing p-1 text-default-400 flex-shrink-0 hover:text-default-600 transition-colors"
             title="拖拽分组排序"
@@ -4684,7 +4684,7 @@ export default function ForwardPage() {
                         <TableColumn align="left" className="whitespace-nowrap flex-shrink-0 min-w-[220px] pl-4">
                           <div className="flex items-center justify-between w-full">
                             <span>操作</span>
-                            <span className="text-xs text-default-500 font-normal">{sortedForwards.length} 条规则</span>
+                            <span className="text-xs text-default-500 font-normal">{sortedForwards.length} 个规则</span>
                           </div>
                         </TableColumn>
                       </TableHeader>
@@ -4742,7 +4742,7 @@ export default function ForwardPage() {
                     {paginatedForwards[0]?.userRemark?.trim() || paginatedForwards[0]?.userName || "全部规则"}
                   </span>
                 </div>
-                <span className="text-xs text-default-500">{sortedForwards.length} 条规则</span>
+                <span className="text-xs text-default-500">{sortedForwards.length} 个规则</span>
               </div>
               <div className="p-4">
                 <DndContext
@@ -4805,7 +4805,7 @@ export default function ForwardPage() {
                           {group.userName}
                         </span>
                       </div>
-                      <span className="text-xs text-default-500">{groupForwardCount} 条规则</span>
+                      <span className="text-xs text-default-500">{groupForwardCount} 个规则</span>
                     </div>
                     <div className="space-y-4 p-4">
                       <DndContext
