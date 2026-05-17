@@ -93,4 +93,5 @@ volumes:
 
 networks:
   gost-network:
+    driver: bridge
     enable_ipv6: true
