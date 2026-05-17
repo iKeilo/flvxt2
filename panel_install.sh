@@ -566,6 +566,17 @@ update_panel() {
   CURRENT_DB_TYPE=$(get_current_db_type)
   echo "🗄️ 当前数据库类型：$CURRENT_DB_TYPE"
 
+  # 备份数据库（仅 SQLite）
+  if [[ "$CURRENT_DB_TYPE" == "sqlite" ]]; then
+    echo "💾 正在备份 SQLite 数据库..."
+    mkdir -p /root/flvxbackup
+    if docker cp flvx-svc-backend:/app/data/gost.db /root/flvxbackup/gost.db.bak; then
+      echo "✅ 数据库备份成功"
+    else
+      echo "⚠️ 数据库备份失败，请检查容器是否运行"
+    fi
+  fi
+
   echo "🔍 获取最新版本号..."
   LATEST_VERSION=$(resolve_latest_release_tag) || {
     echo "❌ 无法获取最新版本号，更新终止"
@@ -637,6 +648,15 @@ update_panel() {
     echo "✅ 旧版本面板镜像清理完毕"
   else
     echo "✨ 没有需要清理的旧版本面板镜像"
+  fi
+
+  # 显示备份信息
+  if [[ "$CURRENT_DB_TYPE" == "sqlite" && -f "/root/flvxbackup/gost.db.bak" ]]; then
+    BACKUP_SIZE=$(ls -lh /root/flvxbackup/gost.db.bak | awk '{print $5}')
+    echo ""
+    echo " 备份信息："
+    echo "   备份目录：/root/flvxbackup/"
+    echo "   备份文件：gost.db.bak ($BACKUP_SIZE)"
   fi
 
   echo "✅ 更新完成"
