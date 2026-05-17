@@ -4108,7 +4108,12 @@ export default function ForwardPage() {
               >
                 {forward.name}
               </h3>
+              <div className="inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-medium flex-shrink-0 bg-danger-500/10 text-danger-600 dark:text-danger-400">
+                {formatExpiryTime(forward.expiryTime)}
+              </div>
             </div>
+          </div>
+          <div className="flex-1 min-w-0 w-full pl-0.5">
             <div className="text-xs text-foreground font-bold truncate flex items-center mt-0.5">
               <span className="truncate">
                 {normalizeForwardTunnelName(forward.tunnelName)}
@@ -4233,47 +4238,19 @@ export default function ForwardPage() {
               </div>
             </div>
           </div>
-          {/* 有效期横条 - 方案 C */}
-          <div
-            className={`flex items-center justify-between px-2 py-1.5 rounded-md mt-2 ${forward.expiryTime && forward.expiryTime > 0 && isExpirySoon(forward.expiryTime) ? "bg-danger-500/10 dark:bg-danger-900/20" : "bg-default-100/50 dark:bg-default-50/10"}`}
-          >
-            <span className="text-xs text-default-500 font-medium">
-              有效期
-            </span>
-            <span
-              className={`text-xs font-bold ${forward.expiryTime && forward.expiryTime > 0 && isExpirySoon(forward.expiryTime) ? "text-danger-600 dark:text-danger-400" : "text-foreground"}`}
-            >
-              {formatExpiryTime(forward.expiryTime)}
-            </span>
-          </div>
           {/* 底部 Chip 区 */}
-          <div className="flex flex-wrap items-center justify-start pt-2 border-t border-divider gap-1">
+          <div className="flex items-center justify-between pt-2 border-t border-divider gap-1 whitespace-nowrap">
             <div className="flex items-center gap-1">
-              <div
-                className={`inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-medium ${strategyDisplay.color === "primary" ? "bg-primary-500/10 text-primary-600 dark:text-primary-400" : strategyDisplay.color === "success" ? "bg-success-500/10 text-success-600 dark:text-success-400" : strategyDisplay.color === "warning" ? "bg-warning-500/10 text-warning-600 dark:text-warning-400" : strategyDisplay.color === "danger" ? "bg-danger-500/10 text-danger-600 dark:text-danger-400" : "bg-default-500/10 text-default-500"}`}
-              >
+              <div className={`inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-medium ${strategyDisplay.color === "primary" ? "bg-primary-500/10 text-primary-600 dark:text-primary-400" : strategyDisplay.color === "success" ? "bg-success-500/10 text-success-600 dark:text-success-400" : strategyDisplay.color === "warning" ? "bg-warning-500/10 text-warning-600 dark:text-warning-400" : strategyDisplay.color === "danger" ? "bg-danger-500/10 text-danger-600 dark:text-danger-400" : "bg-default-500/10 text-default-500"}`}>
                 {strategyDisplay.text}
               </div>
-              <div
-                className={`inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-medium ${statusDisplay.color === "primary" ? "bg-primary-500/10 text-primary-600 dark:text-primary-400" : statusDisplay.color === "success" ? "bg-success-500/10 text-success-600 dark:text-success-400" : statusDisplay.color === "warning" ? "bg-warning-500/10 text-warning-600 dark:text-warning-400" : statusDisplay.color === "danger" ? "bg-danger-500/10 text-danger-600 dark:text-danger-400" : "bg-default-500/10 text-default-500"}`}
-              >
+              <div className={`inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-medium ${statusDisplay.color === "primary" ? "bg-primary-500/10 text-primary-600 dark:text-primary-400" : statusDisplay.color === "success" ? "bg-success-500/10 text-success-600 dark:text-success-400" : statusDisplay.color === "warning" ? "bg-warning-500/10 text-warning-600 dark:text-warning-400" : statusDisplay.color === "danger" ? "bg-danger-500/10 text-danger-600 dark:text-danger-400" : "bg-default-500/10 text-default-500"}`}>
                 {statusDisplay.text}
               </div>
             </div>
-            {(forward.inFlow || 0) + (forward.outFlow || 0) > 0 ? (
-              <div className="flex items-center gap-1">
-                <div className="inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-medium bg-primary-500/10 text-primary-600 dark:text-primary-400">
-                  ↑{formatFlow(forward.inFlow || 0)}
-                </div>
-                <div className="inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-medium bg-success-500/10 text-success-600 dark:text-success-400">
-                  ↓{formatFlow(forward.outFlow || 0)}
-                </div>
-              </div>
-            ) : (
-              <div className="inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-medium bg-default-500/10 text-default-500">
-                总流量 {formatFlow(0)}
-              </div>
-            )}
+            <div className="inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-medium bg-danger-500/10 text-danger-600 dark:text-default-400">
+              {formatFlow((forward.inFlow || 0) + (forward.outFlow || 0))}
+            </div>
           </div>
           <div className="flex gap-1.5 mt-3">
             <Button
