@@ -1679,7 +1679,7 @@ export default function UserPage() {
               <Table
                 aria-label="用户列表"
                 classNames={{
-                  th: "bg-default-100/50 text-default-600 font-semibold text-sm border-b border-divider py-3 uppercase tracking-wider text-left align-middle",
+                  th: "bg-default-100/50 text-default-600 text-foreground font-semibold text-sm border-b border-divider py-3 uppercase tracking-wider text-left align-middle",
                   td: "py-3 border-b border-divider/50 group-data-[last=true]:border-b-0",
                   tr: "hover:bg-default-50/50 transition-colors",
                 }}
@@ -1699,6 +1699,9 @@ export default function UserPage() {
                   </TableColumn>
                   <TableColumn className="whitespace-nowrap flex-shrink-0 w-[180px] text-left">
                     用户名
+                  </TableColumn>
+                  <TableColumn className="whitespace-nowrap flex-shrink-0 w-[180px] text-left">
+                    备注
                   </TableColumn>
                   <TableColumn className="whitespace-nowrap flex-shrink-0 w-[100px] text-left">
                     用户状态
@@ -1734,7 +1737,12 @@ export default function UserPage() {
                     自动购流
                   </TableColumn>
                   <TableColumn className="whitespace-nowrap flex-shrink-0 w-[240px] text-left">
-                    操作
+                    <div className="flex items-center justify-between w-full">
+                      <span>操作</span>
+                      <span className="text-xs text-default-500 font-normal">
+                        {displayUsers.length} 个用户
+                      </span>
+                    </div>
                   </TableColumn>
                 </TableHeader>
                 <TableBody>
@@ -1778,10 +1786,14 @@ export default function UserPage() {
                         <TableCell className="whitespace-nowrap">
                           <div className="flex flex-col">
                             <span className="font-medium text-foreground truncate">
-                              {user.name || user.user}
+                              {user.user}
                             </span>
-                            <span className="text-xs text-default-500 truncate">
-                              @{user.user}
+                          </div>
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap">
+                          <div className="flex flex-col">
+                            <span className="font-medium text-foreground truncate">
+                              {user.name || user.user}
                             </span>
                           </div>
                         </TableCell>
@@ -2041,8 +2053,18 @@ export default function UserPage() {
           </SortableContext>
         </DndContext>
       ) : (
-        <StaggerList className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
-          {displayUsers.map((user) => {
+        <div className="overflow-hidden rounded-xl border border-divider bg-content1 shadow-md">
+          <div className="flex items-center justify-between border-b border-divider bg-default-100/40 px-4 py-3">
+            <span className="text-sm font-semibold text-foreground">
+              admin
+            </span>
+            <span className="text-xs text-default-500">
+              {displayUsers.length} 个用户
+            </span>
+          </div>
+          <div className="p-4">
+            <StaggerList className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
+              {displayUsers.map((user) => {
             const userStatus = getUserStatus(user);
             const expStatus = user.expTime
               ? getExpireStatus(user.expTime)
@@ -2326,8 +2348,10 @@ export default function UserPage() {
                 </div>
               </StaggerItem>
             );
-          })}
-        </StaggerList>
+            })}
+          </StaggerList>
+          </div>
+        </div>
       )}
       {/* 用户表单模态框 */}
       <Modal
