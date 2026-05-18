@@ -334,6 +334,7 @@ jobs:
           # 创建 release
           gh release create "${VERSION}" \
             --title "Release ${VERSION}" \
+            --latest true \
             --notes "## 📝 Release Information
 
           - **Version**: ${VERSION}
