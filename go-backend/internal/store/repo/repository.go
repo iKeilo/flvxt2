@@ -977,11 +977,12 @@ func (r *Repository) ListForwards() ([]map[string]interface{}, error) {
 		ExpiryTime        sql.NullInt64
 		SpeedLimitEnabled bool
 		SpeedLimit        int
+		Mode              string
 	}
 
 	var rows []fwdRow
 	err := r.db.Model(&model.Forward{}).
-		Select("forward.id, forward.user_id, forward.user_name, COALESCE(user.name, '') AS user_remark, forward.name, forward.tunnel_id, COALESCE(tunnel.name, '') AS tunnel_name, COALESCE(tunnel.traffic_ratio, 1.0) AS traffic_ratio, forward.remote_addr, COALESCE(forward.strategy, 'fifo') AS strategy, forward.in_flow, forward.out_flow, forward.created_time, forward.status, forward.inx, forward.speed_id, COALESCE(forward.max_connections, 0) AS max_connections, COALESCE(forward.traffic_limit, 0) AS traffic_limit, forward.expiry_time, COALESCE(forward.speed_limit_enabled, false) AS speed_limit_enabled, COALESCE(forward.speed_limit, 0) AS speed_limit").
+		Select("forward.id, forward.user_id, forward.user_name, COALESCE(user.name, '') AS user_remark, forward.name, forward.tunnel_id, COALESCE(tunnel.name, '') AS tunnel_name, COALESCE(tunnel.traffic_ratio, 1.0) AS traffic_ratio, forward.remote_addr, COALESCE(forward.strategy, 'fifo') AS strategy, forward.in_flow, forward.out_flow, forward.created_time, forward.status, forward.inx, forward.speed_id, COALESCE(forward.max_connections, 0) AS max_connections, COALESCE(forward.traffic_limit, 0) AS traffic_limit, forward.expiry_time, COALESCE(forward.speed_limit_enabled, false) AS speed_limit_enabled, COALESCE(forward.speed_limit, 0) AS speed_limit, forward.mode").
 		Joins("LEFT JOIN tunnel ON tunnel.id = forward.tunnel_id").
 		Joins("LEFT JOIN user ON user.id = forward.user_id").
 		Order("forward.inx ASC, forward.id ASC").
@@ -1008,6 +1009,7 @@ func (r *Repository) ListForwards() ([]map[string]interface{}, error) {
 			"trafficLimit":      row.TrafficLimit,
 			"speedLimitEnabled": row.SpeedLimitEnabled,
 			"speedLimit":        row.SpeedLimit,
+			"mode":              row.Mode,
 		}
 		if row.SpeedID.Valid {
 			item["speedId"] = row.SpeedID.Int64
@@ -1056,11 +1058,12 @@ func (r *Repository) ListForwardsPage(page, pageSize int) ([]map[string]interfac
 		ExpiryTime        sql.NullInt64
 		SpeedLimitEnabled bool
 		SpeedLimit        int
+		Mode              string
 	}
 
 	var rows []fwdRow
 	err := r.db.Model(&model.Forward{}).
-		Select("forward.id, forward.user_id, forward.user_name, COALESCE(user.name, '') AS user_remark, forward.name, forward.tunnel_id, COALESCE(tunnel.name, '') AS tunnel_name, COALESCE(tunnel.traffic_ratio, 1.0) AS traffic_ratio, forward.remote_addr, COALESCE(forward.strategy, 'fifo') AS strategy, forward.in_flow, forward.out_flow, forward.created_time, forward.status, forward.inx, forward.speed_id, COALESCE(forward.max_connections, 0) AS max_connections, COALESCE(forward.traffic_limit, 0) AS traffic_limit, forward.expiry_time, COALESCE(forward.speed_limit_enabled, false) AS speed_limit_enabled, COALESCE(forward.speed_limit, 0) AS speed_limit").
+		Select("forward.id, forward.user_id, forward.user_name, COALESCE(user.name, '') AS user_remark, forward.name, forward.tunnel_id, COALESCE(tunnel.name, '') AS tunnel_name, COALESCE(tunnel.traffic_ratio, 1.0) AS traffic_ratio, forward.remote_addr, COALESCE(forward.strategy, 'fifo') AS strategy, forward.in_flow, forward.out_flow, forward.created_time, forward.status, forward.inx, forward.speed_id, COALESCE(forward.max_connections, 0) AS max_connections, COALESCE(forward.traffic_limit, 0) AS traffic_limit, forward.expiry_time, COALESCE(forward.speed_limit_enabled, false) AS speed_limit_enabled, COALESCE(forward.speed_limit, 0) AS speed_limit, forward.mode").
 		Joins("LEFT JOIN tunnel ON tunnel.id = forward.tunnel_id").
 		Joins("LEFT JOIN user ON user.id = forward.user_id").
 		Order("forward.inx ASC, forward.id ASC").
@@ -1089,6 +1092,7 @@ func (r *Repository) ListForwardsPage(page, pageSize int) ([]map[string]interfac
 			"trafficLimit":      row.TrafficLimit,
 			"speedLimitEnabled": row.SpeedLimitEnabled,
 			"speedLimit":        row.SpeedLimit,
+			"mode":              row.Mode,
 		}
 		if row.SpeedID.Valid {
 			item["speedId"] = row.SpeedID.Int64

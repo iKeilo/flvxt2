@@ -1,4 +1,4 @@
-package repo
+﻿package repo
 
 import (
 	"errors"
@@ -164,6 +164,7 @@ func (r *Repository) GetForwardRecord(forwardID int64) (*model.ForwardRecord, er
 		ExpiryTime:        f.ExpiryTime,
 		SpeedLimitEnabled: f.SpeedLimitEnabled,
 		SpeedLimit:        f.SpeedLimit,
+		Mode:              f.Mode,
 		InFlow:            f.InFlow,
 		OutFlow:           f.OutFlow,
 	}
