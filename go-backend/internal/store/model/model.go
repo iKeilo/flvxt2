@@ -775,6 +775,8 @@ type NodeMetric struct {
 	TCPConns    int64   `gorm:"column:tcp_conns" json:"tcpConns"`
 	UDPConns    int64   `gorm:"column:udp_conns" json:"udpConns"`
 	Uptime      int64   `gorm:"column:uptime" json:"uptime"`
+	PeriodRx    int64   `gorm:"column:period_rx" json:"periodRx"`
+	PeriodTx    int64   `gorm:"column:period_tx" json:"periodTx"`
 }
 
 func (NodeMetric) TableName() string { return "node_metric" }

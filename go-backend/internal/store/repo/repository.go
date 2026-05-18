@@ -4180,10 +4180,18 @@ func (r *Repository) ListNodesWithTrafficResetDue(now time.Time) ([]NodeTrafficR
 
 	query := `
 		SELECT n.id, n.name, 
-		       COALESCE(nm.net_in_bytes, 0) as period_rx,
-		       COALESCE(nm.net_out_bytes, 0) as period_tx
+		       COALESCE(latest.period_rx, 0) as period_rx,
+		       COALESCE(latest.period_tx, 0) as period_tx
 		FROM node n
-		LEFT JOIN node_metric nm ON nm.node_id = n.id
+		LEFT JOIN (
+		    SELECT nm1.node_id, nm1.period_rx, nm1.period_tx
+		    FROM node_metric nm1
+		    INNER JOIN (
+		        SELECT node_id, MAX(timestamp) as max_ts
+		        FROM node_metric
+		        GROUP BY node_id
+		    ) nm2 ON nm1.node_id = nm2.node_id AND nm1.timestamp = nm2.max_ts
+		) latest ON latest.node_id = n.id
 		WHERE n.status = 1
 		  AND n.expiry_time > ?
 		  AND n.renewal_cycle IN ('month', 'quarter', 'year')

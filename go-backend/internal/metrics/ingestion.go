@@ -85,6 +85,8 @@ func (s *IngestionService) RecordNodeMetric(nodeID int64, info SystemInfo) {
 		TCPConns:    info.TCPConns,
 		UDPConns:    info.UDPConns,
 		Uptime:      int64(info.Uptime),
+		PeriodRx:    int64(info.PeriodBytesReceived),
+		PeriodTx:    int64(info.PeriodBytesTransmitted),
 	}
 
 	s.nodeBufferMu.Lock()
