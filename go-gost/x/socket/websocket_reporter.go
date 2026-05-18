@@ -1279,6 +1279,28 @@ func (w *WebSocketReporter) routeCommand(cmd CommandMessage) {
 		response.Type = "RollbackAgentResponse"
 		// needSaveConfig = false (默认值)
 
+	// Nftables 
+	case "AddNftablesRules":
+		rawData, _ := json.Marshal(cmd.Data)
+		err = w.handleAddNftablesRules(rawData)
+		response.Type = "AddNftablesRulesResponse"
+	case "UpdateNftablesRules":
+		rawData, _ := json.Marshal(cmd.Data)
+		err = w.handleUpdateNftablesRules(rawData)
+		response.Type = "UpdateNftablesRulesResponse"
+	case "DeleteNftablesRules":
+		rawData, _ := json.Marshal(cmd.Data)
+		err = w.handleDeleteNftablesRules(rawData)
+		response.Type = "DeleteNftablesRulesResponse"
+	case "GetNftablesCounters":
+		rawData, _ := json.Marshal(cmd.Data)
+		err = w.handleGetNftablesCounters(rawData)
+		response.Type = "GetNftablesCountersResponse"
+	case "ResetNftablesCounters":
+		rawData, _ := json.Marshal(cmd.Data)
+		err = w.handleResetNftablesCounters(rawData)
+		response.Type = "ResetNftablesCountersResponse"
+
 	default:
 		err = fmt.Errorf("未知命令类型: %s", cmd.Type)
 		response.Type = "UnknownCommandResponse"
