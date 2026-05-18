@@ -63,6 +63,7 @@ func (r *Repository) ListActiveForwardsByUser(userID int64) ([]model.ForwardReco
 			Status:         f.Status,
 			SpeedID:        f.SpeedID,
 			MaxConnections: f.MaxConnections,
+			Mode:           f.Mode,
 		})
 	}
 	for i := range rows {
@@ -95,6 +96,7 @@ func (r *Repository) ListActiveForwardsByUserTunnel(userID, tunnelID int64) ([]m
 			Status:         f.Status,
 			SpeedID:        f.SpeedID,
 			MaxConnections: f.MaxConnections,
+			Mode:           f.Mode,
 		})
 	}
 	for i := range rows {
@@ -127,6 +129,7 @@ func (r *Repository) ListForwardsByUserAndTunnel(userID, tunnelID int64) ([]mode
 			Status:         f.Status,
 			SpeedID:        f.SpeedID,
 			MaxConnections: f.MaxConnections,
+			Mode:           f.Mode,
 		})
 	}
 	for i := range rows {

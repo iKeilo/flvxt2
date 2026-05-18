@@ -1522,6 +1522,10 @@ func (h *Handler) deleteForwardServicesOnNodeBatch(forward *forwardRecord, nodeI
 	if h == nil || forward == nil || nodeID <= 0 {
 		return errors.New("invalid forward service cleanup context")
 	}
+	// nftables mode: skip gost service cleanup
+	if strings.EqualFold(forward.Mode, "nftables") {
+		return nil
+	}
 	bases, err := h.forwardServiceBaseCandidates(forward)
 	if err != nil {
 		return err

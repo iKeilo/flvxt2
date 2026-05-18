@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/nftables"
 	"github.com/google/nftables/expr"
+	"net"
 	"golang.org/x/sys/unix"
 )
 
@@ -115,15 +116,50 @@ func (m *Manager) AddRule(forwardID, nodeID int64, protocol string, port int, ta
 		return fmt.Errorf("rule already exists: %s", key)
 	}
 
-	chainName := fmt.Sprintf("fwd_%d_%s", forwardID, protocol)
-	chain := &nftables.Chain{
-		Name:  chainName,
-		Table: m.table,
-	}
-	m.conn.AddChain(chain)
+	dnatAddr, dnatPort := parseTarget(target)
 
+	// Get prerouting chain
+	preroutingChain := &nftables.Chain{
+		Name:   PreroutingChain,
+		Table:  m.table,
+	}
+
+	// Build match expressions: match protocol and ingress port
 	var ruleExprs []expr.Any
 
+	// Match protocol (tcp/udp)
+	var protoNum uint32
+	switch protocol {
+	case "tcp":
+		protoNum = unix.IPPROTO_TCP
+	case "udp":
+		protoNum = unix.IPPROTO_UDP
+	default:
+		return fmt.Errorf("unsupported protocol: %s", protocol)
+	}
+
+	ruleExprs = append(ruleExprs, &expr.Meta{Key: expr.MetaKeyL4PROTO, Register: 1})
+	ruleExprs = append(ruleExprs, &expr.Cmp{
+		Op:       expr.CmpOpEq,
+		Register: 1,
+		Data:     []byte{byte(protoNum)},
+	})
+
+	// Match ingress (listening) port
+	portBytes := []byte{byte(port >> 8), byte(port & 0xFF)}
+	ruleExprs = append(ruleExprs, &expr.Payload{
+		DestRegister: 1,
+		Base:         expr.PayloadBaseTransportHeader,
+		Offset:       2,
+		Len:          2,
+	})
+	ruleExprs = append(ruleExprs, &expr.Cmp{
+		Op:       expr.CmpOpEq,
+		Register: 1,
+		Data:     portBytes,
+	})
+
+	// Speed limit
 	if speedLimit > 0 {
 		ruleExprs = append(ruleExprs, &expr.Limit{
 			Type: expr.LimitTypePkts,
@@ -131,21 +167,42 @@ func (m *Manager) AddRule(forwardID, nodeID int64, protocol string, port int, ta
 		})
 	}
 
+	// Counter
 	counterName := fmt.Sprintf("ctr_fwd_%d_%s", forwardID, protocol)
 	ruleExprs = append(ruleExprs, &expr.Counter{})
 
-	dnatAddr, dnatPort := parseTarget(target)
-	_ = dnatAddr
-	_ = dnatPort
+	// DNAT: load target address and port into registers, then apply NAT
+	ip := net.ParseIP(dnatAddr)
+	if ip == nil {
+		return fmt.Errorf("invalid target IP: %s", dnatAddr)
+	}
+	ip4 := ip.To4()
+	if ip4 == nil {
+		return fmt.Errorf("target IP is not IPv4: %s", dnatAddr)
+	}
 
+	// Load destination address into register 1
+	ruleExprs = append(ruleExprs, &expr.Immediate{
+		Register: 1,
+		Data:     ip4,
+	})
+	// Load destination port into register 2 (network byte order)
+	portNet := []byte{byte(dnatPort >> 8), byte(dnatPort & 0xFF)}
+	ruleExprs = append(ruleExprs, &expr.Immediate{
+		Register: 2,
+		Data:     portNet,
+	})
+	// Apply DNAT
 	ruleExprs = append(ruleExprs, &expr.NAT{
-		Type:   expr.NATTypeDestNAT,
-		Family: unix.NFPROTO_IPV4,
+		Type:        expr.NATTypeDestNAT,
+		Family:      unix.NFPROTO_IPV4,
+		RegAddrMin:  1,
+		RegProtoMin: 2,
 	})
 
 	rule := &nftables.Rule{
 		Table: m.table,
-		Chain: chain,
+		Chain: preroutingChain,
 		Exprs: ruleExprs,
 	}
 	m.conn.AddRule(rule)
@@ -161,7 +218,7 @@ func (m *Manager) AddRule(forwardID, nodeID int64, protocol string, port int, ta
 		Port:        port,
 		Target:      target,
 		SpeedLimit:  speedLimit,
-		Chain:       chain,
+		Chain:       preroutingChain,
 		Rule:        rule,
 		CounterName: counterName,
 	}
@@ -188,9 +245,7 @@ func (m *Manager) DeleteRule(forwardID int64, protocol string) error {
 	if rs.Rule != nil {
 		m.conn.DelRule(rs.Rule)
 	}
-	if rs.Chain != nil {
-		m.conn.DelChain(rs.Chain)
-	}
+	// Do not delete the chain - rules now use shared prerouting chain
 	delete(m.rules, key)
 	return m.conn.Flush()
 }

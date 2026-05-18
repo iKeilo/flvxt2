@@ -455,6 +455,10 @@ func (h *Handler) deleteForwardServicesOnNode(forward *forwardRecord, nodeID int
 	if h == nil || forward == nil {
 		return errors.New("invalid forward delete context")
 	}
+	// nftables mode: skip gost service deletion
+	if strings.EqualFold(forward.Mode, "nftables") {
+		return nil
+	}
 	bases, err := h.forwardServiceBaseCandidates(forward)
 	if err != nil {
 		return err
@@ -499,6 +503,10 @@ func (h *Handler) deleteForwardServiceBasesOnNode(nodeID int64, bases []string) 
 func (h *Handler) controlForwardServices(forward *forwardRecord, commandType string, tolerateNotFound bool) error {
 	if h == nil || forward == nil {
 		return errors.New("invalid forward control context")
+	}
+	// nftables mode: skip gost service control
+	if strings.EqualFold(forward.Mode, "nftables") {
+		return nil
 	}
 	ports, err := h.listForwardPorts(forward.ID)
 	if err != nil {
