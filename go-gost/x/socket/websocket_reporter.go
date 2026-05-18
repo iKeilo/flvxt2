@@ -382,10 +382,10 @@ func (w *WebSocketReporter) connect() error {
 	// 如果 node_id 未配置，尝试从面板获取并初始化基线管理器
 	if w.nodeID <= 0 {
 		w.fetchAndSaveNodeID()
+	}
 
 	// Initialize nftables manager (Linux-only)
 	w.initNftablesManager()
-	}
 
 	// 获取并上报公网 IPv4 和 IPv6
 	ipv4 := getPublicIPv4()
