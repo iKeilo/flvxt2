@@ -442,6 +442,7 @@ export interface ForwardMutationPayload {
   strategy?: string;
   speedId?: number | null;
   maxConnections?: number;
+  mode?: string;
 }
 
 export interface SpeedLimitMutationPayload {

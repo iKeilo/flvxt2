@@ -571,6 +571,7 @@ const mapForwardApiItems = (items: ForwardApiItem[]): Forward[] => {
     speedLimit: forward.speedLimit ?? 0,
     inSpeed: (forward as any).inSpeed ?? 0,
     outSpeed: (forward as any).outSpeed ?? 0,
+    mode: (forward as any).mode || "gost",
   }));
 };
 const SortableTunnelGroupContainer = ({

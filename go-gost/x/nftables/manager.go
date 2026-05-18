@@ -106,6 +106,17 @@ func (m *Manager) initChains() error {
 		}
 		m.conn.AddChain(chain)
 	}
+	// Add masquerade rule to postrouting chain so that DNAT'd packets
+	// get source-NAT'd, ensuring return traffic goes back through this node.
+	postroutingChain := &nftables.Chain{
+		Name:  PostroutingChain,
+		Table: m.table,
+	}
+	m.conn.AddRule(&nftables.Rule{
+		Table: m.table,
+		Chain: postroutingChain,
+		Exprs: []expr.Any{&expr.Masq{}},
+	})
 	return m.conn.Flush()
 }
 
