@@ -251,6 +251,6 @@ func CheckNftablesSupport() (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("nftables not available: %w", err)
 	}
-	conn.Close()
+	conn.CloseLasting()
 	return true, nil
 }
