@@ -1870,7 +1870,7 @@ func (w *WebSocketReporter) handleUpgradeAgent(data interface{}) error {
 	// 执行重启脚本
 	// 使用 systemd-run 在独立的 transient unit 中运行重启脚本，
 	// 避免 systemctl stop 杀死 flux_agent cgroup 内所有进程（包括此脚本自身）导致 mv 未执行。
-	script := fmt.Sprintf("sleep 1 && systemctl stop flux_agent && mv %s %s && systemctl start flux_agent", tmpPath, binaryPath)
+	script := fmt.Sprintf("sleep 1 && systemctl stop flux_agent && mv %s %s && sed -i 's/^StandardOutput=null$/StandardOutput=journal/' /etc/systemd/system/flux_agent.service && sed -i 's/^StandardError=null$/StandardError=journal/' /etc/systemd/system/flux_agent.service && systemctl daemon-reload && systemctl start flux_agent", tmpPath, binaryPath)
 	cmd := exec.Command("systemd-run", "--quiet", "/bin/sh", "-c", script)
 	if err := cmd.Start(); err != nil {
 		os.Remove(tmpPath)
@@ -1897,7 +1897,7 @@ func (w *WebSocketReporter) handleRollbackAgent(data interface{}) error {
 	w.sendUpgradeProgress("rollback", 0, "准备回退...")
 
 	// 执行回退脚本（同升级逻辑，使用 systemd-run 避免 cgroup 问题）
-	script := fmt.Sprintf("sleep 1 && systemctl stop flux_agent && cp %s %s && systemctl start flux_agent", backupPath, binaryPath)
+	script := fmt.Sprintf("sleep 1 && systemctl stop flux_agent && cp %s %s && sed -i 's/^StandardOutput=null$/StandardOutput=journal/' /etc/systemd/system/flux_agent.service && sed -i 's/^StandardError=null$/StandardError=journal/' /etc/systemd/system/flux_agent.service && systemctl daemon-reload && systemctl start flux_agent", backupPath, binaryPath)
 	cmd := exec.Command("systemd-run", "--quiet", "/bin/sh", "-c", script)
 	if err := cmd.Start(); err != nil {
 		w.sendUpgradeProgress("rollback", 0, "回退失败："+err.Error())
