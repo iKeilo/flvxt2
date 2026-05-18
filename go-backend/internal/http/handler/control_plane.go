@@ -2006,6 +2006,7 @@ type AddNftablesRulesRequest struct {
 type DeleteNftablesRulesRequest struct {
 	ForwardIDs []int64  `json:"forward_ids"`
 	Protocols  []string `json:"protocols"`
+	Ports      []int    `json:"ports"`
 }
 
 // syncNftablesRules sync nftables forwarding rules to nodes
@@ -2031,11 +2032,16 @@ func (h *Handler) syncNftablesRules(forward *forwardRecord, tunnel *tunnelRecord
 		delPayload := DeleteNftablesRulesRequest{
 			ForwardIDs: []int64{forward.ID},
 			Protocols:  []string{"tcp", "udp"},
+			Ports:      []int{fp.Port},
 		}
 		if node.IsRemote == 1 && strings.TrimSpace(node.RemoteURL) != "" {
-			_ = h.sendRemoteNftablesCommand(node, delPayload)
+			if err := h.sendRemoteNftablesCommand(node, delPayload); err != nil {
+				fmt.Printf("️ syncNftablesRules remote delete error: %v\n", err)
+			}
 		} else {
-			_, _ = h.sendNodeCommand(node.ID, "DeleteNftablesRules", delPayload, true, false)
+			if _, err := h.sendNodeCommand(node.ID, "DeleteNftablesRules", delPayload, true, false); err != nil {
+				fmt.Printf("️ syncNftablesRules node delete error: %v\n", err)
+			}
 		}
 
 		payload := AddNftablesRulesRequest{Rules: nodeRules}
@@ -2159,13 +2165,16 @@ func (h *Handler) deleteNftablesRules(forward *forwardRecord, ports []forwardPor
 	}
 
 	nodeIDs := make(map[int64]bool)
+	var portNumbers []int
 	for _, fp := range ports {
 		nodeIDs[fp.NodeID] = true
+		portNumbers = append(portNumbers, fp.Port)
 	}
 
 	payload := DeleteNftablesRulesRequest{
 		ForwardIDs: []int64{forward.ID},
 		Protocols:  []string{"tcp", "udp"},
+		Ports:      portNumbers,
 	}
 
 	for nodeID := range nodeIDs {
@@ -2174,9 +2183,13 @@ func (h *Handler) deleteNftablesRules(forward *forwardRecord, ports []forwardPor
 			continue
 		}
 		if node.IsRemote == 1 && strings.TrimSpace(node.RemoteURL) != "" {
-			_ = h.sendRemoteNftablesCommand(node, payload)
+			if err := h.sendRemoteNftablesCommand(node, payload); err != nil {
+				fmt.Printf("️ deleteNftablesRules remote error: %v\n", err)
+			}
 		} else {
-			_, _ = h.sendNodeCommand(node.ID, "DeleteNftablesRules", payload, true, false)
+			if _, err := h.sendNodeCommand(node.ID, "DeleteNftablesRules", payload, true, false); err != nil {
+				fmt.Printf("️ deleteNftablesRules node error: %v\n", err)
+			}
 		}
 	}
 	return nil

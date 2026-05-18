@@ -295,8 +295,33 @@ func (m *Manager) DeleteRule(forwardID int64, protocol string) error {
 	rs, exists := m.rules[key]
 	if !exists {
 		// 内存中不存在，尝试从内核直接删除（兼容模式切换等场景）
-		fmt.Printf("⚠️ DeleteRule: rule not in memory map %s, attempting kernel deletion\n", key)
+		fmt.Printf("️ DeleteRule: rule not in memory map %s, attempting kernel deletion\n", key)
 		return m.deleteRuleFromKernel(forwardID, protocol)
+	}
+
+	if rs.Rule != nil {
+		m.conn.DelRule(rs.Rule)
+	}
+	delete(m.rules, key)
+	return m.conn.Flush()
+}
+
+// DeleteRuleWithPort 通过 forwardID+协议+端口删除规则（精确匹配）
+func (m *Manager) DeleteRuleWithPort(forwardID int64, protocol string, port int) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	key := ruleKey(forwardID, protocol)
+	rs, exists := m.rules[key]
+	if !exists {
+		// 内存中不存在，尝试从内核直接删除
+		fmt.Printf("️ DeleteRuleWithPort: rule not in memory map %s, attempting kernel deletion\n", key)
+		return m.deleteRuleByPortFromKernel(protocol, port)
+	}
+
+	// 验证端口是否匹配
+	if rs.Port != port {
+		fmt.Printf("️ DeleteRuleWithPort: port mismatch, memory has port %d, requested %d\n", rs.Port, port)
 	}
 
 	if rs.Rule != nil {

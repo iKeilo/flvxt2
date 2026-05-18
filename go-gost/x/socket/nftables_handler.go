@@ -36,8 +36,9 @@ type UpdateNftablesRulesRequest struct {
 
 // DeleteNftablesRulesRequest nftables 规则删除请求
 type DeleteNftablesRulesRequest struct {
-	ForwardIDs []int64 `json:"forward_ids"`
+	ForwardIDs []int64  `json:"forward_ids"`
 	Protocols  []string `json:"protocols"`
+	Ports      []int    `json:"ports"`
 }
 
 // GetNftablesCountersRequest 获取计数器请求
@@ -123,14 +124,24 @@ func (w *WebSocketReporter) handleDeleteNftablesRules(data json.RawMessage) erro
 	var errs []error
 	for _, forwardID := range req.ForwardIDs {
 		for _, protocol := range protocols {
-			if err := w.nftablesMgr.DeleteRule(forwardID, protocol); err != nil {
-				errs = append(errs, fmt.Errorf("delete rule forwardID=%d/%s: %w", forwardID, protocol, err))
+			// 如果有端口信息，使用精确匹配删除
+			if len(req.Ports) > 0 {
+				for _, port := range req.Ports {
+					if err := w.nftablesMgr.DeleteRuleWithPort(forwardID, protocol, port); err != nil {
+						errs = append(errs, fmt.Errorf("delete rule forwardID=%d/%s:%d: %w", forwardID, protocol, port, err))
+					}
+				}
+			} else {
+				// 向后兼容：没有端口信息时使用 forwardID 删除
+				if err := w.nftablesMgr.DeleteRule(forwardID, protocol); err != nil {
+					errs = append(errs, fmt.Errorf("delete rule forwardID=%d/%s: %w", forwardID, protocol, err))
+				}
 			}
 		}
 	}
 
 	if len(errs) > 0 {
-		fmt.Printf("⚠️ DeleteNftablesRules errors: %v\n", errs)
+		fmt.Printf("️ DeleteNftablesRules errors: %v\n", errs)
 		return fmt.Errorf("some rules failed to delete: %v", errs)
 	}
 	return nil
