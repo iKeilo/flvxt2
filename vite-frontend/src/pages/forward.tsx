@@ -5055,7 +5055,7 @@ export default function ForwardPage() {
         isOpen={modalOpen}
         placement="center"
         scrollBehavior="outside"
-        size="xl"
+        size="lg"
         onOpenChange={setModalOpen}
       >
         <ModalContent>
