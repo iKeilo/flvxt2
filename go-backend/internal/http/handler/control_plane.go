@@ -2027,6 +2027,17 @@ func (h *Handler) syncNftablesRules(forward *forwardRecord, tunnel *tunnelRecord
 			continue
 		}
 
+		// 先删除该 forward 的旧规则，防止重复累积
+		delPayload := DeleteNftablesRulesRequest{
+			ForwardIDs: []int64{forward.ID},
+			Protocols:  []string{"tcp", "udp"},
+		}
+		if node.IsRemote == 1 && strings.TrimSpace(node.RemoteURL) != "" {
+			_ = h.sendRemoteNftablesCommand(node, delPayload)
+		} else {
+			_, _ = h.sendNodeCommand(node.ID, "DeleteNftablesRules", delPayload, true, false)
+		}
+
 		payload := AddNftablesRulesRequest{Rules: nodeRules}
 		if node.IsRemote == 1 && strings.TrimSpace(node.RemoteURL) != "" {
 			if err := h.sendRemoteNftablesCommand(node, payload); err != nil {

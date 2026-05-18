@@ -2669,6 +2669,26 @@ func (h *Handler) forwardUpdate(w http.ResponseWriter, r *http.Request) {
 		response.WriteJSON(w, response.Err(-2, err.Error()))
 		return
 	}
+
+	// 检测转发模式切换，清理旧模式规则
+	modeSwitched := mode != "" && mode != forward.Mode
+	if modeSwitched {
+		ports, _ := h.listForwardPorts(id)
+		// 从 nftables 切换到 gost：清理 nftables 规则
+		if strings.EqualFold(forward.Mode, "nftables") && !strings.EqualFold(mode, "nftables") {
+			_ = h.deleteNftablesRules(&forwardRecord{ID: id}, ports)
+		}
+		// 从 gost 切换到 nftables：清理 gost 服务
+		if !strings.EqualFold(forward.Mode, "nftables") && strings.EqualFold(mode, "nftables") {
+			for _, fp := range ports {
+				node, nodeErr := h.getNodeRecord(fp.NodeID)
+				if nodeErr != nil {
+					continue
+				}
+				_ = h.deleteForwardServicesOnNode(&forwardRecord{ID: id}, node.ID)
+			}
+		}
+	}
 	if hasInIP {
 		err = h.replaceForwardPorts(id, tunnelID, port, inIp)
 	} else if tunnelID != forward.TunnelID {

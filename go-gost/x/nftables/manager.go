@@ -61,6 +61,11 @@ func NewManager() (*Manager, error) {
 	if err := m.initTable(); err != nil {
 		return nil, fmt.Errorf("init table: %w", err)
 	}
+	// 清理内核中残留的旧 DNAT 规则，防止 agent 重启后重复添加
+	// 面板会通过 WebSocket 重新同步所有活跃规则
+	if err := m.clearStaleRules(); err != nil {
+		fmt.Printf("⚠️ clear stale rules failed: %v\n", err)
+	}
 	enableIPForwarding()
 	return m, nil
 }
@@ -117,17 +122,35 @@ func (m *Manager) initChains() error {
 		}
 		m.conn.AddChain(chain)
 	}
-	// Add masquerade rule to postrouting chain so that DNAT'd packets
-	// get source-NAT'd, ensuring return traffic goes back through this node.
+
+	// 检查并添加 MASQUERADE 规则（避免重复）
 	postroutingChain := &nftables.Chain{
 		Name:  PostroutingChain,
 		Table: m.table,
 	}
-	m.conn.AddRule(&nftables.Rule{
-		Table: m.table,
-		Chain: postroutingChain,
-		Exprs: []expr.Any{&expr.Masq{}},
-	})
+	rules, err := m.conn.GetRules(m.table, postroutingChain)
+	if err != nil {
+		return fmt.Errorf("get postrouting rules: %w", err)
+	}
+	hasMasq := false
+	for _, r := range rules {
+		for _, e := range r.Exprs {
+			if _, ok := e.(*expr.Masq); ok {
+				hasMasq = true
+				break
+			}
+		}
+		if hasMasq {
+			break
+		}
+	}
+	if !hasMasq {
+		m.conn.AddRule(&nftables.Rule{
+			Table: m.table,
+			Chain: postroutingChain,
+			Exprs: []expr.Any{&expr.Masq{}},
+		})
+	}
 	return m.conn.Flush()
 }
 
@@ -346,4 +369,34 @@ func CheckNftablesSupport() (bool, error) {
 	}
 	conn.CloseLasting()
 	return true, nil
+}
+
+// clearStaleRules 清理内核中残留的旧 DNAT 规则（保留 MASQUERADE）
+// 防止 agent 重启后重复添加规则。面板会通过 WebSocket 重新同步所有活跃规则。
+func (m *Manager) clearStaleRules() error {
+	preroutingChain := &nftables.Chain{
+		Name:  PreroutingChain,
+		Table: m.table,
+	}
+	rules, err := m.conn.GetRules(m.table, preroutingChain)
+	if err != nil {
+		return fmt.Errorf("get prerouting rules: %w", err)
+	}
+
+	for _, rule := range rules {
+		// 保留 MASQUERADE 规则
+		isMasq := false
+		for _, e := range rule.Exprs {
+			if _, ok := e.(*expr.Masq); ok {
+				isMasq = true
+				break
+			}
+		}
+		if isMasq {
+			continue
+		}
+		// 删除 DNAT 规则
+		m.conn.DelRule(rule)
+	}
+	return m.conn.Flush()
 }
