@@ -438,24 +438,19 @@ func (m *Manager) deleteRuleByPortFromKernel(protocol string, port int) error {
 		}
 
 		// 匹配协议和端口
-		// 协议：Meta L4PROTO → Reg1 → Cmp Reg1 (1 byte)
-		// 端口：Payload Transport[2] → Reg1 → Cmp Reg1 (2 bytes)
+		// 协议：Cmp with 1 byte data
+		// 端口：Cmp with 2 bytes data (network byte order)
 		protoMatch := false
 		portMatch := false
-		for i, e := range rule.Exprs {
+		for _, e := range rule.Exprs {
 			if cmp, ok := e.(*expr.Cmp); ok && cmp.Register == 1 {
 				// 1 byte = 协议匹配
 				if len(cmp.Data) == 1 && cmp.Data[0] == byte(protoNum) {
 					protoMatch = true
 				}
-				// 2 bytes = 端口匹配（检查是否是网络字节序的端口）
+				// 2 bytes = 端口匹配（网络字节序）
 				if len(cmp.Data) == 2 && cmp.Data[0] == portBytes[0] && cmp.Data[1] == portBytes[1] {
-					// 确保这个 Cmp 前面有 Payload 表达式（说明是端口匹配）
-					if i > 0 {
-						if _, isPayload := rule.Exprs[i-1].(*expr.Payload); isPayload {
-							portMatch = true
-						}
-					}
+					portMatch = true
 				}
 			}
 		}
