@@ -59,7 +59,7 @@ func (w *WebSocketReporter) handleAddNftablesRules(data json.RawMessage) error {
 	}
 
 	var req AddNftablesRulesRequest
-	if err := json.Unmarshal(data, `&req`); err != nil {
+	if err := json.Unmarshal(data, &req); err != nil {
 		return fmt.Errorf("parse request: %w", err)
 	}
 
@@ -69,7 +69,7 @@ func (w *WebSocketReporter) handleAddNftablesRules(data json.RawMessage) error {
 
 	for _, rule := range req.Rules {
 		target := rule.Target
-		if rule.ChainType > 0 `&&` rule.NextHopIP != "" {
+		if rule.ChainType > 0 && rule.NextHopIP != "" {
 			target = fmt.Sprintf("%s:%d", rule.NextHopIP, rule.NextHopPort)
 		}
 		if err := w.nftablesMgr.AddRule(rule.ForwardID, rule.NodeID, rule.Protocol, rule.Port, target, rule.SpeedLimit); err != nil {
@@ -86,13 +86,13 @@ func (w *WebSocketReporter) handleUpdateNftablesRules(data json.RawMessage) erro
 	}
 
 	var req UpdateNftablesRulesRequest
-	if err := json.Unmarshal(data, `&req`); err != nil {
+	if err := json.Unmarshal(data, &req); err != nil {
 		return fmt.Errorf("parse request: %w", err)
 	}
 
 	for _, rule := range req.Rules {
 		target := rule.Target
-		if rule.ChainType > 0 `&&` rule.NextHopIP != "" {
+		if rule.ChainType > 0 && rule.NextHopIP != "" {
 			target = fmt.Sprintf("%s:%d", rule.NextHopIP, rule.NextHopPort)
 		}
 		if err := w.nftablesMgr.UpdateRule(rule.ForwardID, rule.Protocol, rule.Port, target, rule.SpeedLimit); err != nil {
@@ -109,7 +109,7 @@ func (w *WebSocketReporter) handleDeleteNftablesRules(data json.RawMessage) erro
 	}
 
 	var req DeleteNftablesRulesRequest
-	if err := json.Unmarshal(data, `&req`); err != nil {
+	if err := json.Unmarshal(data, &req); err != nil {
 		return fmt.Errorf("parse request: %w", err)
 	}
 
