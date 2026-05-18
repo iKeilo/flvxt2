@@ -5365,8 +5365,8 @@ export default function ForwardPage() {
                               }));
                             }}
                           >
-                            <SelectItem key="gost">Gost 用户态转发</SelectItem>
-                            <SelectItem key="nftables">NFtables 内核态转发</SelectItem>
+                            <SelectItem key="gost">Gost 兼容模式</SelectItem>
+                            <SelectItem key="nftables">NFtables 性能模式</SelectItem>
                           </Select>
                           {/* 有效期 */}
                           <ExpiryTimeField
