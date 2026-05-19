@@ -5229,7 +5229,7 @@ export default function ForwardPage() {
                     {/* 转发模式选择 */}
                     <Select
                       label="转发模式"
-                      description="nftables模式协议阻断暂不可用"
+                      description="NFtables模式协议阻断暂不可用，不会用勿选"
                       selectedKeys={[form.mode]}
                       variant="bordered"
                       onSelectionChange={(keys) => {
@@ -5240,8 +5240,8 @@ export default function ForwardPage() {
                         }));
                       }}
                     >
-                      <SelectItem key="gost">Gost 兼容模式</SelectItem>
-                      <SelectItem key="nftables">NFtables 性能模式</SelectItem>
+                      <SelectItem key="gost">Gost 模式</SelectItem>
+                      <SelectItem key="nftables">NFtables 模式</SelectItem>
                     </Select>
                   </div>
                   <div className="space-y-4 pb-4">

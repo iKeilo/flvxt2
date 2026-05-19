@@ -2851,13 +2851,6 @@ func (h *Handler) forwardPause(w http.ResponseWriter, r *http.Request) {
 			response.WriteJSON(w, response.Err(-2, fmt.Sprintf("暂停nftables转发失败，规则清理异常: %v", err)))
 			return
 		}
-		// 清理可能残留的 gost 服务（从 gost 切换到 nft 后，gost 进程可能仍在监听端口）
-		bases, _ := h.forwardServiceBaseCandidates(forward)
-		if len(bases) > 0 {
-			for _, fp := range ports {
-				_ = h.deleteForwardServiceBasesOnNode(fp.NodeID, bases)
-			}
-		}
 	} else {
 		if err := h.controlForwardServices(forward, "PauseService", false); err != nil {
 			response.WriteJSON(w, response.ErrDefault(err.Error()))

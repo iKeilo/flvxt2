@@ -2026,41 +2026,46 @@ func (h *Handler) syncNftablesRules(forward *forwardRecord, tunnel *tunnelRecord
 	fmt.Printf("[nft.debug] syncNftablesRules called: forwardID=%d mode=%s\n", forward.ID, forward.Mode)
 
 	// Clean up any residual gost services before applying nftables rules.
-	// This handles both mode-switching scenarios and direct nftables creation
-	// where gost services might already be listening on the port.
+	// Only needed when switching from gost to nftables, not for pure nftables forwards.
+	// Pass the full forward object so deleteForwardServicesOnNode can check the mode.
 	for _, fp := range ports {
 		node, err := h.getNodeRecord(fp.NodeID)
 		if err != nil {
 			fmt.Printf("[nft.debug] getNodeRecord failed for nodeID=%d: %v\n", fp.NodeID, err)
 			continue
 		}
-		// Pass a temporary forwardRecord with empty mode to bypass the nftables skip check
-		_ = h.deleteForwardServicesOnNode(&forwardRecord{ID: forward.ID}, node.ID)
+		_ = h.deleteForwardServicesOnNode(forward, node.ID)
 	}
 
 	chainNodes, _ := h.listChainNodesForTunnel(forward.TunnelID)
 	rules := buildNftablesRulePayloads(forward, tunnel, ports, chainNodes, speedLimit)
 	fmt.Printf("[nft.debug] built %d rule payloads for forwardID=%d\n", len(rules), forward.ID)
 
+	// Group ports by node for batch operations
+	nodePorts := make(map[int64][]int)
 	for _, fp := range ports {
-		node, err := h.getNodeRecord(fp.NodeID)
+		nodePorts[fp.NodeID] = append(nodePorts[fp.NodeID], fp.Port)
+	}
+
+	for nodeID, portList := range nodePorts {
+		node, err := h.getNodeRecord(nodeID)
 		if err != nil {
-			fmt.Printf("[nft.debug] getNodeRecord failed for nodeID=%d: %v\n", fp.NodeID, err)
+			fmt.Printf("[nft.debug] getNodeRecord failed for nodeID=%d: %v\n", nodeID, err)
 			continue
 		}
 		nodeRules := filterRulesByNodeID(rules, node.ID)
-		fmt.Printf("[nft.debug] port %d node %s: %d rules after filter\n", fp.Port, node.Name, len(nodeRules))
+		fmt.Printf("[nft.debug] node %s: %d rules, ports %v\n", node.Name, len(nodeRules), portList)
 		if len(nodeRules) == 0 {
 			continue
 		}
 
-		// 先删除该 forward 的旧规则，防止重复累积
+		// Batch delete old rules for this forward on all ports
 		delPayload := DeleteNftablesRulesRequest{
 			ForwardIDs: []int64{forward.ID},
 			Protocols:  []string{"tcp", "udp"},
-			Ports:      []int{fp.Port},
+			Ports:      portList,
 		}
-		fmt.Printf("[nft.debug] sending DeleteNftablesRules to node %s\n", node.Name)
+		fmt.Printf("[nft.debug] sending batch DeleteNftablesRules to node %s for ports %v\n", node.Name, portList)
 		if node.IsRemote == 1 && strings.TrimSpace(node.RemoteURL) != "" {
 			if err := h.sendRemoteNftablesCommand(node, delPayload); err != nil {
 				fmt.Printf("️ syncNftablesRules remote delete error: %v\n", err)
@@ -2071,6 +2076,7 @@ func (h *Handler) syncNftablesRules(forward *forwardRecord, tunnel *tunnelRecord
 			}
 		}
 
+		// Batch add new rules for this forward
 		payload := AddNftablesRulesRequest{Rules: nodeRules}
 		fmt.Printf("[nft.debug] sending AddNftablesRules to node %s with %d rules\n", node.Name, len(nodeRules))
 		if node.IsRemote == 1 && strings.TrimSpace(node.RemoteURL) != "" {
@@ -2219,7 +2225,9 @@ func (h *Handler) deleteNftablesRules(forward *forwardRecord, ports []forwardPor
 				errs = append(errs, fmt.Sprintf("remote node %s: %v", node.Name, err))
 			}
 		} else {
-			if _, err := h.sendNodeCommand(node.ID, "DeleteNftablesRules", payload, true, false); err != nil {
+			// Use shorter timeout for delete operations (2s instead of 6s)
+			_, err := h.sendNodeCommandWithTimeout(node.ID, "DeleteNftablesRules", payload, 2*time.Second, true, false)
+			if err != nil {
 				errs = append(errs, fmt.Sprintf("node %s: %v", node.Name, err))
 			}
 		}
