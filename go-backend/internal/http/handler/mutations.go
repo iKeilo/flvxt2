@@ -15,6 +15,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"go-backend/internal/http/client"
@@ -2023,10 +2024,26 @@ func (h *Handler) redeployTunnelAndForwards(tunnelID int64) error {
 	if err != nil {
 		return err
 	}
+
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+	var syncErr error
+
 	for i := range forwards {
-		if err := h.syncForwardServices(&forwards[i], "UpdateService", true); err != nil {
-			return err
-		}
+		wg.Add(1)
+		go func(f *model.ForwardRecord) {
+			defer wg.Done()
+			if err := h.syncForwardServices(f, "UpdateService", true); err != nil {
+				mu.Lock()
+				syncErr = err
+				mu.Unlock()
+			}
+		}(&forwards[i])
+	}
+	wg.Wait()
+
+	if syncErr != nil {
+		return syncErr
 	}
 
 	return nil
@@ -2091,27 +2108,42 @@ func (h *Handler) tunnelBatchRedeploy(w http.ResponseWriter, r *http.Request) {
 	if ids == nil {
 		return
 	}
+	var mu sync.Mutex
+	var wg sync.WaitGroup
 	success := 0
 	fail := 0
 	failures := make([]batchFailureDetail, 0)
+
 	for _, tunnelID := range ids {
-		tunnel, tunnelErr := h.getTunnelRecord(tunnelID)
-		tunnelName := ""
-		if tunnelErr == nil && tunnel != nil {
-			tunnelName, _ = h.repo.GetTunnelName(tunnelID)
-		}
-		if tunnelErr != nil {
-			fail++
-			failures = appendBatchFailure(failures, tunnelID, tunnelName, tunnelErr)
-			continue
-		}
-		if err := h.redeployTunnelAndForwards(tunnelID); err != nil {
-			fail++
-			failures = appendBatchFailure(failures, tunnelID, tunnelName, err)
-			continue
-		}
-		success++
+		wg.Add(1)
+		go func(id int64) {
+			defer wg.Done()
+			tunnel, tunnelErr := h.getTunnelRecord(id)
+			tunnelName := ""
+			if tunnelErr == nil && tunnel != nil {
+				tunnelName, _ = h.repo.GetTunnelName(id)
+			}
+			if tunnelErr != nil {
+				mu.Lock()
+				fail++
+				failures = appendBatchFailure(failures, id, tunnelName, tunnelErr)
+				mu.Unlock()
+				return
+			}
+			if err := h.redeployTunnelAndForwards(id); err != nil {
+				mu.Lock()
+				fail++
+				failures = appendBatchFailure(failures, id, tunnelName, err)
+				mu.Unlock()
+				return
+			}
+			mu.Lock()
+			success++
+			mu.Unlock()
+		}(tunnelID)
 	}
+	wg.Wait()
+
 	response.WriteJSON(w, response.OK(batchOperationResult{SuccessCount: success, FailCount: fail, Failures: failures}))
 }
 
