@@ -4194,7 +4194,7 @@ func (r *Repository) ListNodesWithTrafficResetDue(now time.Time) ([]NodeTrafficR
 		) latest ON latest.node_id = n.id
 		WHERE n.status = 1
 		  AND n.expiry_time > ?
-		  AND n.renewal_cycle IN ('month', 'quarter', 'year')
+		  AND n.renewal_cycle IN ('month', 'quarter', 'halfyear', 'year')
 	`
 
 	err := r.db.Raw(query, now.UnixMilli()).Scan(&nodes).Error

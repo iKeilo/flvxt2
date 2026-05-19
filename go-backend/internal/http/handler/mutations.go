@@ -5221,7 +5221,7 @@ func nullableUnixMilli(v int64) interface{} {
 
 func normalizeNodeRenewalCycle(v string) string {
 	switch strings.ToLower(strings.TrimSpace(v)) {
-	case "month", "quarter", "year":
+	case "month", "quarter", "halfyear", "year":
 		return strings.ToLower(strings.TrimSpace(v))
 	default:
 		return ""

@@ -2053,6 +2053,8 @@ func (r *Repository) AdvanceNodeRenewalCycles(now int64) ([]NodeRenewalResult, e
 			cycleMonths = 1
 		case "quarter":
 			cycleMonths = 3
+		case "halfyear":
+			cycleMonths = 6
 		case "year":
 			cycleMonths = 12
 		default:
