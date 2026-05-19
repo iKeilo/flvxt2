@@ -2457,7 +2457,7 @@ export default function TunnelPage() {
               <div className="flex items-center justify-between border-b border-divider bg-default-100/40 px-4 py-3">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-semibold text-foreground">
-                    admin
+                    隧道数量
                   </span>
                 </div>
                 <span className="text-xs text-default-500">

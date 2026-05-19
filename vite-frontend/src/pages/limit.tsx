@@ -389,7 +389,7 @@ export default function LimitPage() {
           <div className="overflow-hidden rounded-xl border border-divider bg-content1 shadow-md">
             <div className="flex items-center justify-between border-b border-divider bg-default-100/40 px-4 py-3">
               <span className="text-sm font-semibold text-foreground">
-                admin
+                限速规则数量
               </span>
               <span className="text-xs text-default-500">
                 {filteredRules.length} 个限速

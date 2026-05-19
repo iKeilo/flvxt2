@@ -23,10 +23,24 @@ export default function MonitorPage() {
   const [nodes, setNodes] = useState<MonitorNodeApiItem[]>([]);
   const [nodesLoading, setNodesLoading] = useState(false);
   const [nodesError, setNodesError] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<"list" | "grid">("list");
+  const [viewMode, setViewMode] = useState<"list" | "grid">(() => {
+    try {
+      const saved = localStorage.getItem("monitor-view-mode");
+      if (saved === "grid" || saved === "list") return saved;
+    } catch { /* ignore */ }
+    return "list";
+  });
   const [activeTab, setActiveTab] = useState<MonitorTab>("nodes");
   const [tunnelsLoading, setTunnelsLoading] = useState(false);
   const [tunnelRefreshTrigger, setTunnelRefreshTrigger] = useState(0);
+
+  const toggleViewMode = useCallback(() => {
+    setViewMode((prev) => {
+      const next = prev === "list" ? "grid" : "list";
+      try { localStorage.setItem("monitor-view-mode", next); } catch { /* ignore */ }
+      return next;
+    });
+  }, []);
 
   const loadNodes = useCallback(async (options?: { silent?: boolean }) => {
     const silent = options?.silent ?? false;
@@ -90,7 +104,7 @@ export default function MonitorPage() {
             color="warning"
             size="sm"
             variant="flat"
-            onPress={() => setViewMode(viewMode === "list" ? "grid" : "list")}
+            onPress={toggleViewMode}
           >
             {viewMode === "grid" ? "列表" : "卡片"}
           </Button>
