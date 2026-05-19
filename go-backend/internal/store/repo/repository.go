@@ -4175,7 +4175,9 @@ func (r *Repository) ListNodesWithTrafficResetDue(now time.Time) ([]NodeTrafficR
 		return nil, errors.New("repository not initialized")
 	}
 
-	currentDay := now.Day()
+	startOfDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location()).UnixMilli()
+	endOfDay := time.Date(now.Year(), now.Month(), now.Day(), 23, 59, 59, 999, now.Location()).UnixMilli()
+
 	nodes := make([]NodeTrafficResetDue, 0)
 
 	query := `
@@ -4193,28 +4195,17 @@ func (r *Repository) ListNodesWithTrafficResetDue(now time.Time) ([]NodeTrafficR
 		    ) nm2 ON nm1.node_id = nm2.node_id AND nm1.timestamp = nm2.max_ts
 		) latest ON latest.node_id = n.id
 		WHERE n.status = 1
-		  AND n.expiry_time > ?
+		  AND n.expiry_time >= ?
+		  AND n.expiry_time <= ?
 		  AND n.renewal_cycle IN ('month', 'quarter', 'halfyear', 'year')
 	`
 
-	err := r.db.Raw(query, now.UnixMilli()).Scan(&nodes).Error
+	err := r.db.Raw(query, startOfDay, endOfDay).Scan(&nodes).Error
 	if err != nil {
 		return nil, err
 	}
 
-	filtered := make([]NodeTrafficResetDue, 0, len(nodes))
-	for _, node := range nodes {
-		expiryMs := r.getNodeExpiryTime(node.ID)
-		if expiryMs <= 0 {
-			continue
-		}
-		expiryTime := time.UnixMilli(expiryMs)
-		if expiryTime.Day() == currentDay {
-			filtered = append(filtered, node)
-		}
-	}
-
-	return filtered, nil
+	return nodes, nil
 }
 
 func (r *Repository) getNodeExpiryTime(nodeID int64) int64 {
