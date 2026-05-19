@@ -376,8 +376,33 @@ func (h *Handler) runNodeRenewalCycleJob(now time.Time) {
 		return
 	}
 
-	_, err := h.repo.AdvanceNodeRenewalCycles(now.UnixMilli())
+	results, err := h.repo.AdvanceNodeRenewalCycles(now.UnixMilli())
 	if err != nil {
 		return
+	}
+
+	for _, result := range results {
+		_, _ = h.sendNodeCommandWithTimeout(
+			result.NodeID,
+			"ResetTraffic",
+			map[string]interface{}{
+				"reason": "自动周期归零",
+				"nodeId": result.NodeID,
+			},
+			10*time.Second,
+			false,
+			false,
+		)
+
+		_ = h.repo.CreateNodeTrafficResetLog(&repo.NodeTrafficResetLogCreateParams{
+			NodeID:        result.NodeID,
+			NodeName:      result.NodeName,
+			ResetTime:     now.UnixMilli(),
+			OperatorID:    0,
+			OperatorName:  "系统自动",
+			Reason:        "自动周期归零",
+			InFlowBefore:  result.PeriodTx,
+			OutFlowBefore: result.PeriodRx,
+		})
 	}
 }

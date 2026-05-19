@@ -2025,8 +2025,10 @@ func (r *Repository) ReplaceUserGroupsByUserID(userID int64, newGroupIDs []int64
 }
 
 type NodeRenewalResult struct {
-	NodeID   int64
-	NodeName string
+	NodeID        int64
+	NodeName      string
+	PeriodRx      int64
+	PeriodTx      int64
 }
 
 func (r *Repository) AdvanceNodeRenewalCycles(now int64) ([]NodeRenewalResult, error) {
@@ -2070,12 +2072,21 @@ func (r *Repository) AdvanceNodeRenewalCycles(now int64) ([]NodeRenewalResult, e
 			continue
 		}
 
+		var periodRx, periodTx int64
+		var latestMetric model.NodeMetric
+		if err := r.db.Where("node_id = ?", node.ID).Order("timestamp DESC").First(&latestMetric).Error; err == nil {
+			periodRx = latestMetric.PeriodRx
+			periodTx = latestMetric.PeriodTx
+		}
+
 		if err := r.db.Model(&model.Node{}).Where("id = ?", node.ID).Update("expiry_time", anchorTime).Error; err != nil {
 			continue
 		}
 		results = append(results, NodeRenewalResult{
 			NodeID:   node.ID,
 			NodeName: node.Name,
+			PeriodRx: periodRx,
+			PeriodTx: periodTx,
 		})
 	}
 
