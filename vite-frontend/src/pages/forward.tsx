@@ -5226,45 +5226,22 @@ export default function ForwardPage() {
                         );
                       })}
                     </Select>
-                    {/* 监听ip */}
+                    {/* 转发模式选择 */}
                     <Select
-                      description={
-                        isCurrentTunnelMultiEntrance
-                          ? "多入口隧道不支持自定义监听IP，使用各节点默认IP"
-                          : "从入口节点IP中选择，留空使用默认"
-                      }
-                      isDisabled={
-                        !form.tunnelId ||
-                        currentTunnelIpOptions.length === 0 ||
-                        isCurrentTunnelMultiEntrance
-                      }
-                      label="监听IP"
-                      placeholder={
-                        isCurrentTunnelMultiEntrance
-                          ? "多入口隧道使用节点默认IP"
-                          : form.tunnelId
-                            ? currentTunnelIpOptions.length > 0
-                              ? "选择入口监听IP"
-                              : "当前隧道入口节点暂无可选IP"
-                            : "请先选择隧道"
-                      }
-                      selectedKeys={[form.inIp || "__default__"]}
+                      label="转发模式"
+                      description="nftables模式协议阻断暂不可用"
+                      selectedKeys={[form.mode]}
                       variant="bordered"
                       onSelectionChange={(keys) => {
                         const selectedKey = Array.from(keys)[0] as string;
-
-                        setInIpTouched(true);
                         setForm((prev) => ({
                           ...prev,
-                          inIp:
-                            selectedKey === "__default__" ? "" : selectedKey,
+                          mode: selectedKey as "gost" | "nftables"
                         }));
                       }}
                     >
-                      <SelectItem key="__default__">默认入口IP</SelectItem>
-                      {currentTunnelIpOptions.map((ip) => (
-                        <SelectItem key={ip}>{ip}</SelectItem>
-                      ))}
+                      <SelectItem key="gost">Gost 兼容模式</SelectItem>
+                      <SelectItem key="nftables">NFtables 性能模式</SelectItem>
                     </Select>
                   </div>
                   <div className="space-y-4 pb-4">
@@ -5372,22 +5349,45 @@ export default function ForwardPage() {
                               }))
                             }
                           />
-                          {/* 转发模式选择 */}
+                          {/* 监听ip */}
                           <Select
-                            label="转发模式"
-                            description="nftables模式协议阻断暂不可用"
-                            selectedKeys={[form.mode]}
+                            description={
+                              isCurrentTunnelMultiEntrance
+                                ? "多入口隧道不支持自定义监听IP，使用各节点默认IP"
+                                : "从入口节点IP中选择，留空使用默认"
+                            }
+                            isDisabled={
+                              !form.tunnelId ||
+                              currentTunnelIpOptions.length === 0 ||
+                              isCurrentTunnelMultiEntrance
+                            }
+                            label="监听IP"
+                            placeholder={
+                              isCurrentTunnelMultiEntrance
+                                ? "多入口隧道使用节点默认IP"
+                                : form.tunnelId
+                                  ? currentTunnelIpOptions.length > 0
+                                    ? "选择入口监听IP"
+                                    : "当前隧道入口节点暂无可选IP"
+                                  : "请先选择隧道"
+                            }
+                            selectedKeys={[form.inIp || "__default__"]}
                             variant="bordered"
                             onSelectionChange={(keys) => {
                               const selectedKey = Array.from(keys)[0] as string;
+
+                              setInIpTouched(true);
                               setForm((prev) => ({
                                 ...prev,
-                                mode: selectedKey as "gost" | "nftables"
+                                inIp:
+                                  selectedKey === "__default__" ? "" : selectedKey,
                               }));
                             }}
                           >
-                            <SelectItem key="gost">Gost 兼容模式</SelectItem>
-                            <SelectItem key="nftables">NFtables 性能模式</SelectItem>
+                            <SelectItem key="__default__">默认入口IP</SelectItem>
+                            {currentTunnelIpOptions.map((ip) => (
+                              <SelectItem key={ip}>{ip}</SelectItem>
+                            ))}
                           </Select>
                           {/* 有效期 */}
                           <ExpiryTimeField
