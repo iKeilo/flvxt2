@@ -2782,11 +2782,13 @@ export default function ForwardPage() {
   const formatFlow = (value: number): string => {
     if (value === 0) return "0 B";
     if (value < 1024) return value + " B";
-    if (value < 1024 * 1024) return (value / 1024).toFixed(2) + " KB";
+    if (value < 1024 * 1024) return (value / 1024).toFixed(2) + " K";
     if (value < 1024 * 1024 * 1024)
-      return (value / (1024 * 1024)).toFixed(2) + " MB";
+      return (value / (1024 * 1024)).toFixed(2) + " M";
+    if (value < 1024 * 1024 * 1024 * 1024)
+      return (value / (1024 * 1024 * 1024)).toFixed(2) + " G";
 
-    return (value / (1024 * 1024 * 1024)).toFixed(2) + " GB";
+    return (value / (1024 * 1024 * 1024 * 1024)).toFixed(2) + " T";
   };
   // 格式化带宽速度
   const formatSpeed = (bytesPerSecond: number): string => {
@@ -4108,13 +4110,20 @@ export default function ForwardPage() {
                 onValueChange={() => toggleSelect(forward.id)}
               />
             </div>
+
             <div className="flex items-center gap-1.5 -mr-1">
+              {/* 隧道状态标识 */}
+              <div className={`inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-medium ${statusDisplay.color === "primary" ? "bg-primary-500/10 text-primary-600 dark:text-primary-400" : statusDisplay.color === "success" ? "bg-success-500/10 text-success-600 dark:text-success-400" : statusDisplay.color === "warning" ? "bg-warning-500/10 text-warning-600 dark:text-warning-400" : statusDisplay.color === "danger" ? "bg-danger-500/10 text-danger-600 dark:text-danger-400" : "bg-default-500/10 text-default-500"}`}>
+                {statusDisplay.text}
+              </div>
+              {/* 暂停启用开关 */}
               <Switch
                 isDisabled={(forward.status !== 1 && forward.status !== 0) || togglingIds?.has(forward.id)}
                 isSelected={forward.serviceRunning}
                 size="sm"
                 onValueChange={() => handleServiceToggle(forward)}
               />
+              {/* 拖拽排序图标 */}
               {viewMode === "direct" && (
                 <div
                   className="cursor-grab active:cursor-grabbing p-1 text-default-400 hover:text-default-600 transition-colors touch-manipulation flex-shrink-0"
@@ -4137,26 +4146,38 @@ export default function ForwardPage() {
           {/* 第二行：规则名与隧道信息 */}
           <div className="flex-1 min-w-0 w-full pl-0.5">
             <div className="flex items-center justify-between gap-2 mb-1">
-              <h3
-                className="font-bold text-foreground truncate text-sm cursor-pointer hover:text-primary transition-colors flex-1 min-w-0"
-                onClick={() => copyToClipboard(forward.name, "规则名称")}
-              >
-                {forward.name}
-              </h3>
+              <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                <h3
+                  className="font-bold text-foreground truncate text-sm cursor-pointer hover:text-primary transition-colors"
+                  onClick={() => copyToClipboard(forward.name, "规则名称")}
+                >
+                  {forward.name}
+                </h3>
+                {forward.mode === "nftables" && (
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 flex-shrink-0">
+                    nft
+                  </span>
+                )}
+              </div>
               <div className="inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-medium flex-shrink-0 bg-danger-500/10 text-danger-600 dark:text-danger-400">
                 {formatExpiryTime(forward.expiryTime)}
               </div>
             </div>
           </div>
           <div className="flex-1 min-w-0 w-full pl-0.5">
-            <div className="text-xs text-foreground font-bold truncate flex items-center mt-0.5">
-              <span className="truncate">
-                {normalizeForwardTunnelName(forward.tunnelName)}
+            <div className="flex items-center justify-between gap-2 mt-0.5">
+              <span className="text-xs text-foreground font-bold truncate flex items-center">
+                <span className="truncate">
+                  {normalizeForwardTunnelName(forward.tunnelName)}
+                </span>
+                <span className="text-primary-600 font-bold text-[10px] ml-1">
+                  ^{formatTunnelTrafficRatio(forward.tunnelTrafficRatio)}
+                </span>
               </span>
-              {/* 隧道倍率标识 - 统一 10px 字体 */}
-              <span className="text-primary-600 font-bold text-[10px] ml-1">
-                ^{formatTunnelTrafficRatio(forward.tunnelTrafficRatio)}
-              </span>
+              {/* 隧道模式标识 */}
+              <div className={`inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-medium flex-shrink-0 ${strategyDisplay.color === "primary" ? "bg-primary-500/10 text-primary-600 dark:text-primary-400" : strategyDisplay.color === "success" ? "bg-success-500/10 text-success-600 dark:text-success-400" : strategyDisplay.color === "warning" ? "bg-warning-500/10 text-warning-600 dark:text-warning-400" : strategyDisplay.color === "danger" ? "bg-danger-500/10 text-danger-600 dark:text-danger-400" : "bg-default-500/10 text-default-500"}`}>
+                {strategyDisplay.text}
+              </div>
             </div>
           </div>
         </CardHeader>
@@ -4276,15 +4297,15 @@ export default function ForwardPage() {
           {/* 底部 Chip 区 */}
           <div className="flex items-center justify-between pt-2 border-t border-divider gap-1 whitespace-nowrap">
             <div className="flex items-center gap-1">
-              <div className={`inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-medium ${strategyDisplay.color === "primary" ? "bg-primary-500/10 text-primary-600 dark:text-primary-400" : strategyDisplay.color === "success" ? "bg-success-500/10 text-success-600 dark:text-success-400" : strategyDisplay.color === "warning" ? "bg-warning-500/10 text-warning-600 dark:text-warning-400" : strategyDisplay.color === "danger" ? "bg-danger-500/10 text-danger-600 dark:text-danger-400" : "bg-default-500/10 text-default-500"}`}>
-                {strategyDisplay.text}
-              </div>
-              <div className={`inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-medium ${statusDisplay.color === "primary" ? "bg-primary-500/10 text-primary-600 dark:text-primary-400" : statusDisplay.color === "success" ? "bg-success-500/10 text-success-600 dark:text-success-400" : statusDisplay.color === "warning" ? "bg-warning-500/10 text-warning-600 dark:text-warning-400" : statusDisplay.color === "danger" ? "bg-danger-500/10 text-danger-600 dark:text-danger-400" : "bg-default-500/10 text-default-500"}`}>
-                {statusDisplay.text}
-              </div>
+              <span className="inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-medium bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                ↑{formatFlow(forward.inFlow || 0)}
+              </span>
+              <span className="inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-medium bg-purple-500/10 text-purple-600 dark:text-purple-400">
+                ↓{formatFlow(forward.outFlow || 0)}
+              </span>
             </div>
             <div className="inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-medium bg-danger-500/10 text-danger-600 dark:text-default-400">
-              {formatFlow((forward.inFlow || 0) + (forward.outFlow || 0))}
+              ⇅{formatFlow((forward.inFlow || 0) + (forward.outFlow || 0))}
             </div>
           </div>
           <div className="flex gap-1.5 mt-3">
@@ -4326,7 +4347,7 @@ export default function ForwardPage() {
             </Button>
           </div>
         </CardBody>
-      </Card>
+      </Card >
     );
   };
 
