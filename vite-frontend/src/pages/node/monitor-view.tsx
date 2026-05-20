@@ -237,11 +237,17 @@ function ServerCard({
               </div>
             </div>
             <div className="relative flex-shrink-0">
-              <span
-                className={`inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-medium ${isOnline ? "bg-primary-500/10 text-primary-500 dark:text-primary-400" : "bg-default-500/10 text-default-500"}`}
+              <Button
+                isIconOnly
+                size="sm"
+                variant="light"
+                onPress={() => {
+                  setDetailNodeId(node.id);
+                  setSelectedNodeId(node.id);
+                }}
               >
-                {distro}
-              </span>
+                <Eye className="w-4 h-4 text-primary" />
+              </Button>
             </div>
           </div>
         </div>
@@ -572,26 +578,26 @@ export function MonitorView({ nodeMap, viewMode = "grid" }: MonitorViewProps) {
     try {
       const saved = localStorage.getItem("monitor-metric-type");
       if (saved) return saved as MetricType;
-    } catch {}
+    } catch { }
     return "cpu";
   });
   useEffect(() => {
     try {
       localStorage.setItem("monitor-metric-type", activeMetricType);
-    } catch {}
+    } catch { }
   }, [activeMetricType]);
 
   const [metricsRangeMs, setMetricsRangeMs] = useState<number>(() => {
     try {
       const saved = localStorage.getItem("monitor-metrics-range");
       if (saved) return Number(saved);
-    } catch {}
+    } catch { }
     return 60 * 60 * 1000;
   });
   useEffect(() => {
     try {
       localStorage.setItem("monitor-metrics-range", String(metricsRangeMs));
-    } catch {}
+    } catch { }
   }, [metricsRangeMs]);
 
   const [serviceMonitors, setServiceMonitors] = useState<
@@ -627,13 +633,13 @@ export function MonitorView({ nodeMap, viewMode = "grid" }: MonitorViewProps) {
     try {
       const saved = localStorage.getItem("monitor-service-range");
       if (saved) return Number(saved);
-    } catch {}
+    } catch { }
     return 60 * 60 * 1000;
   });
   useEffect(() => {
     try {
       localStorage.setItem("monitor-service-range", String(serviceMonitorRangeMs));
-    } catch {}
+    } catch { }
   }, [serviceMonitorRangeMs]);
 
   const [accessDenied, setAccessDenied] = useState<string | null>(null);
@@ -643,13 +649,13 @@ export function MonitorView({ nodeMap, viewMode = "grid" }: MonitorViewProps) {
     try {
       const saved = localStorage.getItem("monitor-results-limit");
       if (saved) return Number(saved);
-    } catch {}
+    } catch { }
     return 20;
   });
   useEffect(() => {
     try {
       localStorage.setItem("monitor-results-limit", String(resultsLimit));
-    } catch {}
+    } catch { }
   }, [resultsLimit]);
   const [resultsLoading, setResultsLoading] = useState(false);
 
@@ -1325,8 +1331,8 @@ export function MonitorView({ nodeMap, viewMode = "grid" }: MonitorViewProps) {
   const detailServiceMonitors =
     detailNodeId != null
       ? serviceMonitors.filter(
-          (m) => m.nodeId === detailNodeId || m.nodeId === 0,
-        )
+        (m) => m.nodeId === detailNodeId || m.nodeId === 0,
+      )
       : serviceMonitors;
 
   return (
@@ -1431,7 +1437,7 @@ export function MonitorView({ nodeMap, viewMode = "grid" }: MonitorViewProps) {
                 className="overflow-x-auto min-w-full"
                 classNames={{
                   th: "bg-default-100/50 text-default-600 font-semibold text-foreground text-sm border-b border-divider py-3 uppercase tracking-wider whitespace-nowrap",
-                  td: "py-3 border-b border-divider/50 group-data-[last=true]:border-b-0",
+                  td: "border-b border-divider/50 group-data-[last=true]:border-b-0 align-middle",
                   tr: "hover:bg-default-50/50 transition-colors",
                 }}
               >
@@ -1483,13 +1489,13 @@ export function MonitorView({ nodeMap, viewMode = "grid" }: MonitorViewProps) {
                             <Button
                               isIconOnly
                               size="sm"
-                              variant="flat"
+                              variant="light"
                               onPress={() => {
                                 setDetailNodeId(node.id);
                                 setSelectedNodeId(node.id);
                               }}
                             >
-                              <Eye className="w-4 h-4 text-default-500" />
+                              <Eye className="w-4 h-4 text-primary" />
                             </Button>
                           </div>
                         </TableCell>
@@ -1502,8 +1508,8 @@ export function MonitorView({ nodeMap, viewMode = "grid" }: MonitorViewProps) {
                               style={{
                                 color: isOnline
                                   ? getDistroColor(
-                                      parseDistroFromVersion(node.version),
-                                    )
+                                    parseDistroFromVersion(node.version),
+                                  )
                                   : undefined,
                               }}
                             />
@@ -1679,8 +1685,8 @@ export function MonitorView({ nodeMap, viewMode = "grid" }: MonitorViewProps) {
                     color:
                       detailNode?.connectionStatus === "online"
                         ? getDistroColor(
-                            parseDistroFromVersion(detailNode?.version),
-                          )
+                          parseDistroFromVersion(detailNode?.version),
+                        )
                         : undefined,
                   }}
                 />
@@ -1907,8 +1913,7 @@ export function MonitorView({ nodeMap, viewMode = "grid" }: MonitorViewProps) {
                               }}
                             >
                               <div
-                                className={`w-2 h-2 rounded-full shrink-0 mr-1 ${
-                                  monitor.enabled !== 1
+                                className={`w-2 h-2 rounded-full shrink-0 mr-1 ${monitor.enabled !== 1
                                     ? "bg-default-300"
                                     : !lr
                                       ? "bg-default-400"
@@ -1919,7 +1924,7 @@ export function MonitorView({ nodeMap, viewMode = "grid" }: MonitorViewProps) {
                                         : isActive
                                           ? "bg-white"
                                           : "bg-danger"
-                                }`}
+                                  }`}
                               />
                               {monitor.name}
                             </Button>
@@ -1941,7 +1946,7 @@ export function MonitorView({ nodeMap, viewMode = "grid" }: MonitorViewProps) {
                               每秒测试，30秒上报
                             </span>
                             {activeLatestResult &&
-                            Number.isFinite(activeLatestResult.latencyMs) ? (
+                              Number.isFinite(activeLatestResult.latencyMs) ? (
                               <span className="font-mono text-xs font-semibold text-success">
                                 {activeLatestResult.latencyMs.toFixed(0)}ms
                               </span>
@@ -2288,7 +2293,7 @@ export function MonitorView({ nodeMap, viewMode = "grid" }: MonitorViewProps) {
                 description={`最小 ${resolvedServiceMonitorLimits.minIntervalSec}s（扫描周期 ${resolvedServiceMonitorLimits.checkerScanIntervalSec}s）`}
                 errorMessage={
                   monitorForm.intervalSec <
-                  resolvedServiceMonitorLimits.minIntervalSec
+                    resolvedServiceMonitorLimits.minIntervalSec
                     ? `不能小于 ${resolvedServiceMonitorLimits.minIntervalSec}s`
                     : undefined
                 }
@@ -2313,16 +2318,16 @@ export function MonitorView({ nodeMap, viewMode = "grid" }: MonitorViewProps) {
                 errorMessage={
                   monitorForm.timeoutSec <
                     resolvedServiceMonitorLimits.minTimeoutSec ||
-                  monitorForm.timeoutSec >
+                    monitorForm.timeoutSec >
                     resolvedServiceMonitorLimits.maxTimeoutSec
                     ? `需在 ${resolvedServiceMonitorLimits.minTimeoutSec}-${resolvedServiceMonitorLimits.maxTimeoutSec}s 范围内`
                     : undefined
                 }
                 isInvalid={
                   monitorForm.timeoutSec <
-                    resolvedServiceMonitorLimits.minTimeoutSec ||
+                  resolvedServiceMonitorLimits.minTimeoutSec ||
                   monitorForm.timeoutSec >
-                    resolvedServiceMonitorLimits.maxTimeoutSec
+                  resolvedServiceMonitorLimits.maxTimeoutSec
                 }
                 label="超时时间(秒)"
                 type="number"

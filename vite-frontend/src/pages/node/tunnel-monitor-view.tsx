@@ -489,13 +489,13 @@ export function TunnelMonitorView({
     try {
       const saved = localStorage.getItem("tunnel-monitor-quality-range");
       if (saved) return Number(saved);
-    } catch {}
+    } catch { }
     return 60 * 60 * 1000;
   });
   useEffect(() => {
     try {
       localStorage.setItem("tunnel-monitor-quality-range", String(qualityRangeMs));
-    } catch {}
+    } catch { }
   }, [qualityRangeMs]);
 
   // Tunnel traffic metrics for chart
@@ -508,13 +508,13 @@ export function TunnelMonitorView({
     try {
       const saved = localStorage.getItem("tunnel-monitor-traffic-range");
       if (saved) return Number(saved);
-    } catch {}
+    } catch { }
     return 60 * 60 * 1000;
   });
   useEffect(() => {
     try {
       localStorage.setItem("tunnel-monitor-traffic-range", String(tunnelRangeMs));
-    } catch {}
+    } catch { }
   }, [tunnelRangeMs]);
 
   // --- Load tunnel list ---
@@ -1077,11 +1077,14 @@ export function TunnelMonitorView({
                             </div>
                           </div>
                           <div className="relative flex-shrink-0">
-                            <span
-                              className={`inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-medium ${isEnabled ? "bg-primary-500/10 text-primary-500 dark:text-primary-400" : "bg-default-500/10 text-default-500"}`}
+                            <Button
+                              isIconOnly
+                              size="sm"
+                              variant="light"
+                              onPress={() => setDetailTunnelId(tunnel.id)}
                             >
-                              {isEnabled ? "活跃" : "静止"}
-                            </span>
+                              <Eye className="w-4 h-4 text-primary" />
+                            </Button>
                           </div>
                         </div>
                       </div>
@@ -1127,6 +1130,11 @@ export function TunnelMonitorView({
                       </div>
 
                       <div className="flex justify-between items-center pt-2 border-t border-divider mt-1">
+                        <span
+                          className={`inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-medium ${isEnabled ? "bg-primary-500/10 text-primary-500 dark:text-primary-400" : "bg-default-500/10 text-default-500"}`}
+                        >
+                          {isEnabled ? "活跃" : "静止"}
+                        </span>
                         {quality?.errorMessage ? (
                           <span className="text-[11px] text-danger truncate">
                             {quality.errorMessage}
@@ -1154,7 +1162,7 @@ export function TunnelMonitorView({
             className="overflow-x-auto min-w-full"
             classNames={{
               th: "bg-default-100/50 text-default-600 text-foreground font-semibold text-sm border-b border-divider py-3 uppercase tracking-wider whitespace-nowrap",
-              td: "py-3 border-b border-divider/50 group-data-[last=true]:border-b-0",
+              td: "border-b border-divider/50 group-data-[last=true]:border-b-0 align-middle",
               tr: "hover:bg-default-50/50 transition-colors",
             }}
           >
@@ -1178,20 +1186,20 @@ export function TunnelMonitorView({
             <TableBody emptyContent="暂无隧道">
               {tunnels.map((tunnel) => {
                 const quality = qualityMap[tunnel.id];
-                const isEnabled = tunnel.status === 1;
+                const hasQualityData = quality !== undefined;
 
                 return (
                   <TableRow
                     key={tunnel.id}
-                    className="cursor-pointer"
+                    className="cursor-pointer h-16"
                     onClick={() => setDetailTunnelId(tunnel.id)}
                   >
                     <TableCell>
                       <div className="flex justify-center items-center w-full gap-1.5">
-                        {isEnabled ? (
+                        {hasQualityData ? (
                           <Wifi className="w-3.5 h-3.5 text-success" />
                         ) : (
-                          <WifiOff className="w-3.5 h-3.5 text-danger" />
+                          <WifiOff className="w-3.5 h-3.5 text-default-300" />
                         )}
                       </div>
                     </TableCell>
@@ -1200,10 +1208,10 @@ export function TunnelMonitorView({
                         <Button
                           isIconOnly
                           size="sm"
-                          variant="flat"
+                          variant="light"
                           onPress={() => setDetailTunnelId(tunnel.id)}
                         >
-                          <Eye className="w-4 h-4 text-default-500" />
+                          <Eye className="w-4 h-4 text-primary" />
                         </Button>
                       </div>
                     </TableCell>
