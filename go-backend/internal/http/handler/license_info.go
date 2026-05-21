@@ -60,6 +60,14 @@ func (h *Handler) licenseInfo(w http.ResponseWriter, r *http.Request) {
 
 	tier, _ := middleware.GetLicenseTier()
 
+	hmacKey := os.Getenv("HMAC_SECRET_KEY")
+	if hmacKey == "" {
+		cfg, _ := h.repo.GetConfigByName("hmac_key")
+		if cfg != nil {
+			hmacKey = cfg.Value
+		}
+	}
+
 	response.WriteJSON(w, response.OK(map[string]interface{}{
 		"valid":           valid,
 		"expire_time":     expireTime,
@@ -69,5 +77,6 @@ func (h *Handler) licenseInfo(w http.ResponseWriter, r *http.Request) {
 		"license_key":     actualLicenseKey,
 		"domain":          domain,
 		"tier":            string(tier),
+		"hmac_key":        hmacKey,
 	}))
 }

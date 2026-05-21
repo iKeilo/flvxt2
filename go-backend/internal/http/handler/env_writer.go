@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-func UpdateEnvFile(licenseKey, domain, serverURL string) error {
+func UpdateEnvFile(licenseKey, domain, serverURL, hmacKey string) error {
 	envPath := "/opt/flvx-svc/.env"
 	if _, err := os.Stat(envPath); os.IsNotExist(err) {
 		return nil
@@ -24,7 +24,12 @@ func UpdateEnvFile(licenseKey, domain, serverURL string) error {
 		lines = append(lines, scanner.Text())
 	}
 
-	updated := false
+	// 更新或追加的标记
+	foundLicenseKey := false
+	foundDomain := false
+	foundServerURL := false
+	foundHmacKey := false
+
 	for i, line := range lines {
 		kv := strings.SplitN(line, "=", 2)
 		if len(kv) == 2 {
@@ -32,29 +37,34 @@ func UpdateEnvFile(licenseKey, domain, serverURL string) error {
 			switch k {
 			case "LICENSE_KEY":
 				lines[i] = "LICENSE_KEY=" + licenseKey
-				updated = true
+				foundLicenseKey = true
 			case "SERVER_DOMAIN":
 				lines[i] = "SERVER_DOMAIN=" + domain
-				updated = true
+				foundDomain = true
 			case "LICENSE_SERVER_URL":
 				lines[i] = "LICENSE_SERVER_URL=" + serverURL
-				updated = true
+				foundServerURL = true
+			case "HMAC_SECRET_KEY":
+				if hmacKey != "" {
+					lines[i] = "HMAC_SECRET_KEY=" + hmacKey
+					foundHmacKey = true
+				}
 			}
 		}
 	}
 
-	if !updated {
-		if licenseKey != "" {
-			lines = append(lines, "LICENSE_KEY="+licenseKey)
-		}
-		if domain != "" {
-			lines = append(lines, "SERVER_DOMAIN="+domain)
-		}
-		if serverURL != "" {
-			lines = append(lines, "LICENSE_SERVER_URL="+serverURL)
-		}
-	} else {
-		f.Close()
+	// 追加不存在的
+	if !foundLicenseKey && licenseKey != "" {
+		lines = append(lines, "LICENSE_KEY="+licenseKey)
+	}
+	if !foundDomain && domain != "" {
+		lines = append(lines, "SERVER_DOMAIN="+domain)
+	}
+	if !foundServerURL && serverURL != "" {
+		lines = append(lines, "LICENSE_SERVER_URL="+serverURL)
+	}
+	if !foundHmacKey && hmacKey != "" {
+		lines = append(lines, "HMAC_SECRET_KEY="+hmacKey)
 	}
 
 	content := strings.Join(lines, "\n") + "\n"

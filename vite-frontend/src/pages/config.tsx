@@ -199,6 +199,7 @@ export default function ConfigPage() {
   const [exportMode, setExportMode] = useState<"core" | "full">("core");
   const [licenseKey, setLicenseKey] = useState("");
   const [licenseDomain, setLicenseDomain] = useState("");
+  const [hmacKey, setHmacKey] = useState("");
   const [licenseSaving, setLicenseSaving] = useState(false);
   const [licenseStatus, setLicenseStatus] = useState<LicenseInfo | null>(null);
 
@@ -256,10 +257,11 @@ export default function ConfigPage() {
       const res = await getLicenseInfo();
       if (res.code === 0 && res.data) {
         setLicenseStatus(res.data);
-        if (res.data.has_license_key) {
-          setLicenseKey(res.data.license_key || "");
-          setLicenseDomain(res.data.domain || "");
-        }
+      if (res.data.has_license_key) {
+        setLicenseKey(res.data.license_key || "");
+        setLicenseDomain(res.data.domain || "");
+        setHmacKey(res.data.hmac_key || "");
+      }
       } else {
         setLicenseKey("");
         setLicenseDomain("");
@@ -278,7 +280,7 @@ export default function ConfigPage() {
     }
     setLicenseSaving(true);
     try {
-      const res = await updateLicenseConfig(licenseKey.trim(), licenseDomain.trim());
+      const res = await updateLicenseConfig(licenseKey.trim(), licenseDomain.trim(), hmacKey.trim());
       if (res.code === 0) {
         toast.success("授权配置已提交，正在后台验证...");
         setTimeout(() => window.location.reload(), 1500);
@@ -1071,10 +1073,10 @@ export default function ConfigPage() {
         <CardHeader className="pb-6">
           <div className="flex justify-between items-center w-full gap-4">
             <div>
-              <h2 className="text-xl font-semibold">授权码配置</h2>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                输入授权码和面板域名以激活授权服务
-              </p>
+		<h2 className="text-xl font-semibold">授权配置</h2>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  输入授权码、面板域名和 HMAC 密钥以激活授权服务
+                </p>
             </div>
           </div>
         </CardHeader>
@@ -1106,6 +1108,22 @@ export default function ConfigPage() {
                 variant="bordered"
                 onChange={(e) => setLicenseDomain(e.target.value)}
               />
+            </div>
+            <div className="space-y-3">
+              <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                HMAC 密钥
+              </label>
+              <Input
+                classNames={{ input: "text-sm" }}
+                placeholder="从授权服务器复制（flvx_ 开头）"
+                size="md"
+                value={hmacKey}
+                variant="bordered"
+                onChange={(e) => setHmacKey(e.target.value)}
+              />
+              <p className="text-xs text-gray-400">
+                在授权管理后台「修改密钥」中复制，留空则使用默认
+              </p>
             </div>
           </div>
           <div className="flex justify-between items-center pt-4 border-t border-divider/50">

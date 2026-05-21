@@ -19,6 +19,7 @@ func (h *Handler) licenseConfig(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		LicenseKey string `json:"license_key"`
 		Domain     string `json:"domain"`
+		HmacKey    string `json:"hmac_key"`
 	}
 	if err := decodeJSON(r.Body, &req); err != nil {
 		response.WriteJSON(w, response.ErrDefault("请求参数错误"))
@@ -56,15 +57,21 @@ func (h *Handler) licenseConfig(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.repo.UpsertConfig("license_server_url", url, now); err != nil {
-		log.Printf("⚠️  sync config license_server_url failed: %v", err)
+		log.Printf("⚠️ sync config license_server_url failed: %v", err)
+	}
+
+	if req.HmacKey != "" {
+		if err := h.repo.UpsertConfig("hmac_key", req.HmacKey, now); err != nil {
+			log.Printf("⚠️ sync config hmac_key failed: %v", err)
+		}
 	}
 
 	middleware.UpdateCheckParams(url, req.LicenseKey, req.Domain)
 	go middleware.TriggerAsyncCheck()
 
 	go func() {
-		if err := UpdateEnvFile(req.LicenseKey, req.Domain, url); err != nil {
-			log.Printf("⚠️  failed to write .env persistence: %v", err)
+		if err := UpdateEnvFile(req.LicenseKey, req.Domain, url, req.HmacKey); err != nil {
+			log.Printf("⚠️ failed to write .env persistence: %v", err)
 		}
 	}()
 

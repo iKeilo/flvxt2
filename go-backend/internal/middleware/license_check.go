@@ -38,14 +38,11 @@ type VerifyResponse struct {
 }
 
 // ObscuredHMACKey returns the HMAC secret key used to verify license server signatures.
-// The key is XOR-obfuscated to make casual extraction harder.
+// Priority: HMAC_SECRET_KEY env var → empty string.
+// An empty secret disables signature verification, which is fine when the license server
+// also has no key configured (e.g. self-hosted without custom key).
 func ObscuredHMACKey() string {
-	obfuscated := []byte{0x48, 0x4d, 0x41, 0x43, 0x5f, 0x4b, 0x45, 0x59}
-	key := os.Getenv("HMAC_SECRET_KEY")
-	if key != "" {
-		return key
-	}
-	return string(obfuscated)
+	return os.Getenv("HMAC_SECRET_KEY")
 }
 
 // VerifyResponseSignature checks the HMAC signature of a license server response.
