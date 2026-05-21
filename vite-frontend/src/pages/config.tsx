@@ -1075,7 +1075,7 @@ export default function ConfigPage() {
             <div>
 		<h2 className="text-xl font-semibold">授权配置</h2>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  输入授权码、面板域名和 HMAC 密钥以激活授权服务
+                  输入面板域名、授权码和flvx密钥 激活授权服务
                 </p>
             </div>
           </div>
@@ -1085,11 +1085,24 @@ export default function ConfigPage() {
           <div className="space-y-5">
             <div className="space-y-3">
               <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                授权码 UUID
+                面板域名
               </label>
               <Input
                 classNames={{ input: "text-sm" }}
-                placeholder="请输入授权码 UUID"
+                placeholder="自己的面板域名"
+                size="md"
+                value={licenseDomain}
+                variant="bordered"
+                onChange={(e) => setLicenseDomain(e.target.value)}
+              />
+            </div>            
+            <div className="space-y-3">
+              <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                授权码
+              </label>
+              <Input
+                classNames={{ input: "text-sm" }}
+                placeholder="请输入授权码"
                 size="md"
                 value={licenseKey}
                 variant="bordered"
@@ -1098,31 +1111,18 @@ export default function ConfigPage() {
             </div>
             <div className="space-y-3">
               <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                面板域名
+                flvx密钥
               </label>
               <Input
                 classNames={{ input: "text-sm" }}
-                placeholder="例如：panel.example.com"
-                size="md"
-                value={licenseDomain}
-                variant="bordered"
-                onChange={(e) => setLicenseDomain(e.target.value)}
-              />
-            </div>
-            <div className="space-y-3">
-              <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                HMAC 密钥
-              </label>
-              <Input
-                classNames={{ input: "text-sm" }}
-                placeholder="从授权服务器复制（flvx_ 开头）"
+                placeholder="联系管理员获取（flvx_ 开头）"
                 size="md"
                 value={hmacKey}
                 variant="bordered"
                 onChange={(e) => setHmacKey(e.target.value)}
               />
               <p className="text-xs text-gray-400">
-                在授权管理后台「修改密钥」中复制，留空则使用默认
+                管理员没主动要求，就不用填
               </p>
             </div>
           </div>
@@ -1134,7 +1134,7 @@ export default function ConfigPage() {
                     ? `商业版，授权剩余 ${licenseStatus.expire_time ? Math.floor((licenseStatus.expire_time - Date.now()) / 86400000) : "？"} 天`
                     : licenseStatus.tier === 'blocked'
                       ? `授权已阻断：${licenseStatus.reason || "未知原因"}`
-                      : "免费版（5 节点 / 5 隧道 / 1 用户 / 25 转发）"}
+                      : "免费版（5 节点 / 5 隧道 / 1 用户）"}
                 </span>
               )}
             </div>
