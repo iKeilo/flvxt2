@@ -1179,7 +1179,7 @@ export default function ConfigPage() {
               size="sm"
               onPress={handleLicenseSave}
             >
-              {licenseSaving ? "保存中" : "保存并验证"}
+              {licenseSaving ? "保存中" : "保存验证"}
             </Button>
           </div>
         </CardBody>
@@ -1213,12 +1213,12 @@ export default function ConfigPage() {
                 onChange={(e) => setTransferDomain(e.target.value)}
               />
               <p className="text-xs text-gray-400">
-                转让后旧域名授权立即失效，每 7 天可转让一次
+                转让后旧域名授权立即失效，每 3 天可转让一次
               </p>
             </div>
-            <div className="flex justify-end pt-4 border-t border-divider/50">
+            <div className="text-gray-400 flex justify-end pt-4 border-t border-divider/50">
               <Button
-                color="warning"
+                color="primary"
                 isLoading={licenseSaving}
                 size="sm"
                 onPress={handleTransferLicense}
