@@ -81,6 +81,8 @@ export default function AdminLayout({
 
   // 免费版横幅关闭状态
   const [isBannerClosed, setIsBannerClosed] = useState(false);
+  // 红色授权横幅关闭状态
+  const [isRedBannerClosed, setIsRedBannerClosed] = useState(false);
   const [snoozeMenuOpen, setSnoozeMenuOpen] = useState(false);
   const snoozeRef = useRef<HTMLDivElement>(null);
 
@@ -284,6 +286,16 @@ export default function AdminLayout({
           setIsBannerClosed(true);
         }
       }
+      // 初始化红色横幅关闭状态
+      const redBannerClosed = localStorage.getItem('flvx_license_banner_closed_at');
+      if (redBannerClosed) {
+        try {
+          const ts = parseInt(redBannerClosed, 10);
+          if (!isNaN(ts) && (ts === -1 || ts > Date.now())) {
+            setIsRedBannerClosed(true);
+          }
+        } catch {}
+      }
     } catch {}
   }, []);
 
@@ -299,6 +311,7 @@ export default function AdminLayout({
             setIsBannerClosed(false);
           }
         }
+        setIsRedBannerClosed(false);
       } catch {}
     }
   }, [licenseInfo?.tier]);
@@ -315,7 +328,7 @@ export default function AdminLayout({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [handleClickOutside]);
 
-  // 处理稍后提醒
+// 处理稍后提醒
   const handleSnooze = useCallback((days: number) => {
     const until = days === -1 ? -1 : Date.now() + days * 24 * 60 * 60 * 1000;
     const data = {
@@ -331,6 +344,12 @@ export default function AdminLayout({
       toast.success(`${days} 天后再提醒您`);
     }
   }, [licenseInfo?.tier]);
+
+  // 关闭红色授权横幅
+  const handleRedBannerClose = useCallback(() => {
+    localStorage.setItem('flvx_license_banner_closed_at', '-1');
+    setIsRedBannerClosed(true);
+  }, []);
 
   useEffect(() => {
     if (!isMobile) {
@@ -647,7 +666,7 @@ export default function AdminLayout({
         className={`flex flex-col flex-1 ${isMobile ? "min-h-0" : "h-full overflow-hidden"}`}
       >
         {/* 授权状态横幅 */}
-        {licenseInfo && licenseInfo.tier === 'blocked' && (
+        {licenseInfo && licenseInfo.tier === 'blocked' && !isRedBannerClosed && (
           <div className="bg-red-600 text-white text-center text-sm py-2 font-medium flex items-center justify-center gap-2 z-20 shadow-md">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} />
@@ -657,6 +676,15 @@ export default function AdminLayout({
               设置 {'>'} 授权配置
             </span>
             <span>检查授权配置</span>
+            <button
+              onClick={handleRedBannerClose}
+              className="ml-2 hover:bg-red-700 rounded p-0.5 transition-colors flex-shrink-0"
+              title="关闭提醒"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
         )}
         {licenseInfo && (licenseInfo.tier === 'free' || (!licenseInfo.has_license_key && !licenseInfo.tier)) && !isBannerClosed && (
@@ -680,7 +708,7 @@ export default function AdminLayout({
                 </svg>
               </button>
               {snoozeMenuOpen && (
-                <div className="absolute right-0 top-full mt-1 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50 min-w-[120px] text-gray-700">
+                <div className="absolute right-0 top-full mt-1 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-[100] min-w-[120px] text-gray-700">
                   <button
                     onClick={() => handleSnooze(1)}
                     className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 transition-colors"
@@ -723,16 +751,25 @@ export default function AdminLayout({
             <span>配置正式授权</span>
           </div>
         )}
-        {licenseInfo && licenseInfo.has_license_key && !licenseInfo.valid && licenseInfo.tier !== 'blocked' && (
+        {licenseInfo && licenseInfo.has_license_key && !isRedBannerClosed && licenseInfo.tier !== 'blocked' && !licenseInfo.valid && (
           <div className="bg-red-600 text-white text-center text-sm py-2 font-medium flex items-center justify-center gap-2 z-20 shadow-md">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} />
             </svg>
-            <span>{licenseInfo.reason || "授权无效"}，请前往</span>
+            <span>{licenseInfo.reason || "授权码不存在"}，请前往</span>
             <span className="font-bold underline cursor-pointer" onClick={() => navigate("/config")}>
               设置 {'>'} 授权配置
             </span>
             <span>检查授权配置</span>
+            <button
+              onClick={handleRedBannerClose}
+              className="ml-2 hover:bg-red-700 rounded p-0.5 transition-colors flex-shrink-0"
+              title="关闭提醒"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
         )}
 
