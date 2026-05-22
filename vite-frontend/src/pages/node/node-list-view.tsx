@@ -124,14 +124,18 @@ function SortableTableRow({
   const [expiryPopoverOpen, setExpiryPopoverOpen] = useState(false);
   const expiryButtonRef = useRef<HTMLButtonElement>(null);
 
-
   const handleTogglePopover = (e: React.MouseEvent) => {
     e.stopPropagation();
     const nextState = !expiryPopoverOpen;
+
     setExpiryPopoverOpen(nextState);
     if (nextState) {
       // 广播事件：告诉其他弹窗“我要打开了，你们都退下”
-      window.dispatchEvent(new CustomEvent("closeOtherExpiryPopovers", { detail: { nodeId: node.id } }));
+      window.dispatchEvent(
+        new CustomEvent("closeOtherExpiryPopovers", {
+          detail: { nodeId: node.id },
+        }),
+      );
     }
   };
 
@@ -139,12 +143,16 @@ function SortableTableRow({
   useEffect(() => {
     const handleCloseOthers = (e: Event) => {
       const customEvent = e as CustomEvent;
+
       if (customEvent.detail && customEvent.detail.nodeId !== node.id) {
         setExpiryPopoverOpen(false);
       }
     };
+
     window.addEventListener("closeOtherExpiryPopovers", handleCloseOthers);
-    return () => window.removeEventListener("closeOtherExpiryPopovers", handleCloseOthers);
+
+    return () =>
+      window.removeEventListener("closeOtherExpiryPopovers", handleCloseOthers);
   }, [node.id]);
 
   // 点击空白处、滚动、缩放时自动关闭当前弹窗
@@ -155,6 +163,7 @@ function SortableTableRow({
     window.addEventListener("click", closePopover);
     window.addEventListener("scroll", closePopover, true);
     window.addEventListener("resize", closePopover);
+
     return () => {
       window.removeEventListener("click", closePopover);
       window.removeEventListener("scroll", closePopover, true);
@@ -175,7 +184,7 @@ function SortableTableRow({
     transition,
     opacity: isDragging ? 0.6 : 1,
     // 核心魔法：当弹窗打开时，强行把这一整行提拔到最高层！
-    zIndex: expiryPopoverOpen ? 9999 : (isDragging ? 99 : 1),
+    zIndex: expiryPopoverOpen ? 9999 : isDragging ? 99 : 1,
     position: expiryPopoverOpen || isDragging ? "relative" : undefined,
   };
   const rowBg = selectedIds.has(node.id)
@@ -190,11 +199,11 @@ function SortableTableRow({
   );
   const hasExpiryInfo = Boolean(
     node.expiryTime &&
-    node.expiryTime > 0 &&
-    node.renewalCycle &&
-    (node.expiryReminderDismissed !== 1 ||
-      (node.expiryReminderDismissedUntil &&
-        node.expiryReminderDismissedUntil * 1000 < Date.now())),
+      node.expiryTime > 0 &&
+      node.renewalCycle &&
+      (node.expiryReminderDismissed !== 1 ||
+        (node.expiryReminderDismissedUntil &&
+          node.expiryReminderDismissedUntil * 1000 < Date.now())),
   );
   const getExpiryChipProps = () => {
     if (expiryMeta.state === "expired") {
@@ -331,20 +340,27 @@ function SortableTableRow({
                   (node.serverIp?.trim() && !node.serverIp.includes(":")
                     ? node.serverIp.trim()
                     : undefined);
+
                 if (!val) return "暂无";
                 // 域名显示前两段
                 if (val.includes(".")) {
                   const parts = val.split(".");
+
                   if (parts.length >= 2) {
                     return `${parts[0]}.${parts[1]}.*`;
                   }
-                  return parts[0].length > 12 ? parts[0].slice(0, 12) + "..." : parts[0];
+
+                  return parts[0].length > 12
+                    ? parts[0].slice(0, 12) + "..."
+                    : parts[0];
                 }
                 // IP 地址只显示前两段
                 const ipParts = val.split(".");
+
                 if (ipParts.length === 4) {
                   return `${ipParts[0]}.${ipParts[1]}.*.*`;
                 }
+
                 return val.length > 15 ? val.slice(0, 15) + "..." : val;
               })()}
             </span>
@@ -379,20 +395,27 @@ function SortableTableRow({
                   (node.serverIp?.trim() && node.serverIp.includes(":")
                     ? node.serverIp.trim()
                     : undefined);
+
                 if (!v6Val) return "暂无";
                 // IPv6 地址只显示前缀
                 if (v6Val.includes(":")) {
                   const parts = v6Val.split(":");
+
                   return parts.slice(0, 3).join(":") + "::";
                 }
                 // 域名显示前两段
                 if (v6Val.includes(".")) {
                   const parts = v6Val.split(".");
+
                   if (parts.length >= 2) {
                     return `${parts[0]}.${parts[1]}.*`;
                   }
-                  return parts[0].length > 12 ? parts[0].slice(0, 12) + "..." : parts[0];
+
+                  return parts[0].length > 12
+                    ? parts[0].slice(0, 12) + "..."
+                    : parts[0];
                 }
+
                 return v6Val.length > 15 ? v6Val.slice(0, 15) + "..." : v6Val;
               })()}
             </span>
@@ -412,21 +435,30 @@ function SortableTableRow({
             >
               {(() => {
                 const intranetVal = node.intranetIp?.trim();
+
                 if (!intranetVal) return "暂无";
                 // 域名显示前两段
                 if (intranetVal.includes(".")) {
                   const parts = intranetVal.split(".");
+
                   if (parts.length >= 2) {
                     return `${parts[0]}.${parts[1]}.*`;
                   }
-                  return parts[0].length > 12 ? parts[0].slice(0, 12) + "..." : parts[0];
+
+                  return parts[0].length > 12
+                    ? parts[0].slice(0, 12) + "..."
+                    : parts[0];
                 }
                 // 内网 IP 只显示前两段
                 const ipParts = intranetVal.split(".");
+
                 if (ipParts.length === 4) {
                   return `${ipParts[0]}.${ipParts[1]}.*.*`;
                 }
-                return intranetVal.length > 15 ? intranetVal.slice(0, 15) + "..." : intranetVal;
+
+                return intranetVal.length > 15
+                  ? intranetVal.slice(0, 15) + "..."
+                  : intranetVal;
               })()}
             </span>
           </div>
@@ -436,7 +468,7 @@ function SortableTableRow({
         {!isRemoteNode ? (
           <div className="flex flex-col gap-1 min-w-[100px] justify-center">
             {upgradeProgress?.[node.id]?.percent !== undefined &&
-              upgradeProgress[node.id].percent < 100 ? (
+            upgradeProgress[node.id].percent < 100 ? (
               <>
                 <Progress
                   aria-label="更新进度"
@@ -477,12 +509,11 @@ function SortableTableRow({
       <TableCell className={`whitespace-nowrap ${rowBg}`}>
         <div className="flex items-center justify-end gap-1">
           <span className="text-sm text-danger-600 dark:text-danger-400">
-            {node.connectionStatus === "online" &&
-              realtimeNodeMetrics?.[node.id]
+            {realtimeNodeMetrics?.[node.id]
               ? formatTraffic(
-                (realtimeNodeMetrics?.[node.id]?.periodTraffic?.tx || 0) +
-                (realtimeNodeMetrics?.[node.id]?.periodTraffic?.rx || 0),
-              )
+                  (realtimeNodeMetrics?.[node.id]?.periodTraffic?.tx || 0) +
+                    (realtimeNodeMetrics?.[node.id]?.periodTraffic?.rx || 0),
+                )
               : "-"}
           </span>
           {handleViewNodeTrafficLogs && (
@@ -507,11 +538,10 @@ function SortableTableRow({
       <TableCell className={`whitespace-nowrap ${rowBg}`}>
         <div className="flex justify-end">
           <span className="text-sm text-success-700 dark:text-success-300">
-            {node.connectionStatus === "online" &&
-              realtimeNodeMetrics?.[node.id]
+            {realtimeNodeMetrics?.[node.id]
               ? formatTraffic(
-                realtimeNodeMetrics?.[node.id]?.periodTraffic?.tx || 0,
-              )
+                  realtimeNodeMetrics?.[node.id]?.periodTraffic?.tx || 0,
+                )
               : "-"}
           </span>
         </div>
@@ -519,11 +549,10 @@ function SortableTableRow({
       <TableCell className={`whitespace-nowrap ${rowBg}`}>
         <div className="flex justify-end">
           <span className="text-sm text-primary-700 dark:text-primary-300">
-            {node.connectionStatus === "online" &&
-              realtimeNodeMetrics?.[node.id]
+            {realtimeNodeMetrics?.[node.id]
               ? formatTraffic(
-                realtimeNodeMetrics?.[node.id]?.periodTraffic?.rx || 0,
-              )
+                  realtimeNodeMetrics?.[node.id]?.periodTraffic?.rx || 0,
+                )
               : "-"}
           </span>
         </div>
@@ -866,10 +895,7 @@ export function NodeListView({
         <TableBody>
           {displayNodes.length === 0 ? (
             <TableRow>
-              <TableCell
-                className="py-16 text-center"
-                colSpan={12}
-              >
+              <TableCell className="py-16 text-center" colSpan={12}>
                 <div className="flex flex-col items-center justify-center">
                   <h3 className="text-base font-medium text-foreground mb-1">
                     未找到匹配的节点

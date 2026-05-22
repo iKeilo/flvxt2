@@ -6,7 +6,13 @@ import type {
   ServiceMonitorLimitsApiData,
 } from "@/api/types";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useRef,
+} from "react";
 import {
   LineChart,
   Line,
@@ -268,14 +274,14 @@ function ServerCard({
               <div className="flex justify-between items-center px-1 text-[11px] font-bold text-foreground uppercase tracking-wider">
                 <span className="text-default-500">CPU</span>
                 <span className="font-mono font-medium">
-                  {isOnline && metric ? `${metric.cpuUsage.toFixed(1)}%` : "-"}
+                  {metric ? `${metric.cpuUsage.toFixed(1)}%` : "-"}
                 </span>
               </div>
               <div className="rounded-md bg-default-100/45 dark:bg-default-50/10 px-2 py-2">
                 <Progress
                   color={getColorByUsage(metric?.cpuUsage)}
                   size="sm"
-                  value={isOnline && metric ? metric.cpuUsage : 0}
+                  value={metric ? metric.cpuUsage : 0}
                 />
               </div>
             </div>
@@ -283,14 +289,14 @@ function ServerCard({
               <div className="flex justify-between items-center px-1 text-[11px] font-bold text-foreground uppercase tracking-wider">
                 <span className="text-default-500">内存</span>
                 <span className="font-mono font-medium">
-                  {isOnline && metric ? `${metric.memoryUsage.toFixed(1)}%` : "-"}
+                  {metric ? `${metric.memoryUsage.toFixed(1)}%` : "-"}
                 </span>
               </div>
               <div className="rounded-md bg-default-100/45 dark:bg-default-50/10 px-2 py-2">
                 <Progress
                   color={getColorByUsage(metric?.memoryUsage)}
                   size="sm"
-                  value={isOnline && metric ? metric.memoryUsage : 0}
+                  value={metric ? metric.memoryUsage : 0}
                 />
               </div>
             </div>
@@ -304,16 +310,12 @@ function ServerCard({
             <div className="flex items-center gap-1">
               <div className="flex-1 min-w-0 h-8 rounded-md bg-default-100/45 dark:bg-default-50/10 px-2 flex items-center">
                 <span className="font-mono text-xs font-semibold truncate text-foreground">
-                  {isOnline && metric
-                    ? formatBytesPerSecond(metric.netOutSpeed)
-                    : "-"}
+                  {metric ? formatBytesPerSecond(metric.netOutSpeed) : "-"}
                 </span>
               </div>
               <div className="flex-1 min-w-0 h-8 rounded-md bg-default-100/45 dark:bg-default-50/10 px-2 flex items-center justify-end">
                 <span className="font-mono text-xs font-semibold truncate text-foreground">
-                  {isOnline && metric
-                    ? formatBytesPerSecond(metric.netInSpeed)
-                    : "-"}
+                  {metric ? formatBytesPerSecond(metric.netInSpeed) : "-"}
                 </span>
               </div>
             </div>
@@ -585,27 +587,40 @@ export function MonitorView({ nodeMap, viewMode = "grid" }: MonitorViewProps) {
   const [activeMetricType, setActiveMetricType] = useState<MetricType>(() => {
     try {
       const saved = localStorage.getItem("monitor-metric-type");
+
       if (saved) return saved as MetricType;
-    } catch { }
+    } catch {}
+
     return "cpu";
   });
+
   useEffect(() => {
     try {
       localStorage.setItem("monitor-metric-type", activeMetricType);
-    } catch { }
+    } catch {}
   }, [activeMetricType]);
+
+  useEffect(() => {
+    return () => {
+      offlineTimersRef.current.forEach((timer) => clearTimeout(timer));
+      offlineTimersRef.current.clear();
+    };
+  }, []);
 
   const [metricsRangeMs, setMetricsRangeMs] = useState<number>(() => {
     try {
       const saved = localStorage.getItem("monitor-metrics-range");
+
       if (saved) return Number(saved);
-    } catch { }
+    } catch {}
+
     return 60 * 60 * 1000;
   });
+
   useEffect(() => {
     try {
       localStorage.setItem("monitor-metrics-range", String(metricsRangeMs));
-    } catch { }
+    } catch {}
   }, [metricsRangeMs]);
 
   const [serviceMonitors, setServiceMonitors] = useState<
@@ -637,17 +652,25 @@ export function MonitorView({ nodeMap, viewMode = "grid" }: MonitorViewProps) {
   const [activeServiceMonitorId, setActiveServiceMonitorId] = useState<
     number | null
   >(null);
-  const [serviceMonitorRangeMs, setServiceMonitorRangeMs] = useState<number>(() => {
-    try {
-      const saved = localStorage.getItem("monitor-service-range");
-      if (saved) return Number(saved);
-    } catch { }
-    return 60 * 60 * 1000;
-  });
+  const [serviceMonitorRangeMs, setServiceMonitorRangeMs] = useState<number>(
+    () => {
+      try {
+        const saved = localStorage.getItem("monitor-service-range");
+
+        if (saved) return Number(saved);
+      } catch {}
+
+      return 60 * 60 * 1000;
+    },
+  );
+
   useEffect(() => {
     try {
-      localStorage.setItem("monitor-service-range", String(serviceMonitorRangeMs));
-    } catch { }
+      localStorage.setItem(
+        "monitor-service-range",
+        String(serviceMonitorRangeMs),
+      );
+    } catch {}
   }, [serviceMonitorRangeMs]);
 
   const [accessDenied, setAccessDenied] = useState<string | null>(null);
@@ -656,14 +679,17 @@ export function MonitorView({ nodeMap, viewMode = "grid" }: MonitorViewProps) {
   const [resultsLimit, setResultsLimit] = useState<number>(() => {
     try {
       const saved = localStorage.getItem("monitor-results-limit");
+
       if (saved) return Number(saved);
-    } catch { }
+    } catch {}
+
     return 20;
   });
+
   useEffect(() => {
     try {
       localStorage.setItem("monitor-results-limit", String(resultsLimit));
-    } catch { }
+    } catch {}
   }, [resultsLimit]);
   const [resultsLoading, setResultsLoading] = useState(false);
 
@@ -673,6 +699,9 @@ export function MonitorView({ nodeMap, viewMode = "grid" }: MonitorViewProps) {
   const [realtimeNodeMetrics, setRealtimeNodeMetrics] = useState<
     Record<number, RealtimeNodeMetric>
   >({});
+  const offlineTimersRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(
+    new Map(),
+  );
 
   const nodes = useMemo(() => {
     return Array.from(nodeMap.values()).map((n) => {
@@ -708,10 +737,31 @@ export function MonitorView({ nodeMap, viewMode = "grid" }: MonitorViewProps) {
     if (type === "status") {
       const status = Number(payload);
 
-      setRealtimeNodeStatus((prev) => ({
-        ...prev,
-        [nodeId]: status === 1 ? "online" : "offline",
-      }));
+      if (status === 1) {
+        const timer = offlineTimersRef.current.get(nodeId);
+
+        if (timer) {
+          clearTimeout(timer);
+          offlineTimersRef.current.delete(nodeId);
+        }
+        setRealtimeNodeStatus((prev) => ({
+          ...prev,
+          [nodeId]: "online",
+        }));
+      } else {
+        const timer = offlineTimersRef.current.get(nodeId);
+
+        if (timer) clearTimeout(timer);
+        const t = setTimeout(() => {
+          offlineTimersRef.current.delete(nodeId);
+          setRealtimeNodeStatus((prev) => ({
+            ...prev,
+            [nodeId]: "offline",
+          }));
+        }, 3000);
+
+        offlineTimersRef.current.set(nodeId, t);
+      }
 
       return;
     }
@@ -1339,8 +1389,8 @@ export function MonitorView({ nodeMap, viewMode = "grid" }: MonitorViewProps) {
   const detailServiceMonitors =
     detailNodeId != null
       ? serviceMonitors.filter(
-        (m) => m.nodeId === detailNodeId || m.nodeId === 0,
-      )
+          (m) => m.nodeId === detailNodeId || m.nodeId === 0,
+        )
       : serviceMonitors;
 
   return (
@@ -1516,8 +1566,8 @@ export function MonitorView({ nodeMap, viewMode = "grid" }: MonitorViewProps) {
                               style={{
                                 color: isOnline
                                   ? getDistroColor(
-                                    parseDistroFromVersion(node.version),
-                                  )
+                                      parseDistroFromVersion(node.version),
+                                    )
                                   : undefined,
                               }}
                             />
@@ -1530,7 +1580,7 @@ export function MonitorView({ nodeMap, viewMode = "grid" }: MonitorViewProps) {
                           <div className="flex flex-col gap-2 py-1 text-xs whitespace-nowrap">
                             <div className="flex items-center gap-1.5 font-mono text-success-500">
                               <span className="w-[86px] text-right inline-block">
-                                {isOnline && metric
+                                {metric
                                   ? formatBytesPerSecond(metric.netOutSpeed)
                                   : "-"}
                               </span>
@@ -1543,7 +1593,7 @@ export function MonitorView({ nodeMap, viewMode = "grid" }: MonitorViewProps) {
                             </div>
                             <div className="flex items-center gap-1.5 font-mono text-primary-500">
                               <span className="w-[86px] text-right inline-block">
-                                {isOnline && metric
+                                {metric
                                   ? formatBytesPerSecond(metric.netInSpeed)
                                   : "-"}
                               </span>
@@ -1560,9 +1610,7 @@ export function MonitorView({ nodeMap, viewMode = "grid" }: MonitorViewProps) {
                           <div className="flex flex-col gap-2 py-1 text-xs whitespace-nowrap">
                             <div className="flex items-center gap-1.5 font-mono text-default-600">
                               <span className="w-[86px] text-right inline-block">
-                                {isOnline && metric
-                                  ? formatBytes(metric.netOutBytes)
-                                  : "-"}
+                                {metric ? formatBytes(metric.netOutBytes) : "-"}
                               </span>
                               <div className="flex items-center justify-center p-[3px] rounded-full bg-default-100 text-default-500 dark:bg-default-100/50">
                                 <ArrowUp
@@ -1573,9 +1621,7 @@ export function MonitorView({ nodeMap, viewMode = "grid" }: MonitorViewProps) {
                             </div>
                             <div className="flex items-center gap-1.5 font-mono text-default-600">
                               <span className="w-[86px] text-right inline-block">
-                                {isOnline && metric
-                                  ? formatBytes(metric.netInBytes)
-                                  : "-"}
+                                {metric ? formatBytes(metric.netInBytes) : "-"}
                               </span>
                               <div className="flex items-center justify-center p-[3px] rounded-full bg-default-100 text-default-500 dark:bg-default-100/50">
                                 <ArrowDown
@@ -1588,24 +1634,18 @@ export function MonitorView({ nodeMap, viewMode = "grid" }: MonitorViewProps) {
                         </TableCell>
                         <TableCell>
                           <span className="font-mono text-xs text-default-500 whitespace-nowrap">
-                            {isOnline && metric
-                              ? formatUptime(metric.uptime)
-                              : "-"}
+                            {metric ? formatUptime(metric.uptime) : "-"}
                           </span>
                         </TableCell>
                         <TableCell>
                           <div className="flex flex-col gap-1.5 text-xs font-mono text-default-500 px-1">
-                            <div>
-                              TCP {isOnline && metric ? metric.tcpConns : "-"}
-                            </div>
-                            <div>
-                              UDP {isOnline && metric ? metric.udpConns : "-"}
-                            </div>
+                            <div>TCP {metric ? metric.tcpConns : "-"}</div>
+                            <div>UDP {metric ? metric.udpConns : "-"}</div>
                           </div>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            {isOnline && metric ? (
+                            {metric ? (
                               <Progress
                                 className="w-[40px] md:w-[60px]"
                                 color={getColorByUsage(metric.cpuUsage)}
@@ -1616,15 +1656,13 @@ export function MonitorView({ nodeMap, viewMode = "grid" }: MonitorViewProps) {
                               <div className="w-[40px] md:w-[60px] h-2 rounded-full bg-default-100" />
                             )}
                             <span className="text-xs font-mono w-9 text-right text-default-500">
-                              {isOnline && metric
-                                ? `${metric.cpuUsage.toFixed(1)}%`
-                                : "-"}
+                              {metric ? `${metric.cpuUsage.toFixed(1)}%` : "-"}
                             </span>
                           </div>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            {isOnline && metric ? (
+                            {metric ? (
                               <Progress
                                 className="w-[40px] md:w-[60px]"
                                 color={getColorByUsage(metric.memoryUsage)}
@@ -1635,7 +1673,7 @@ export function MonitorView({ nodeMap, viewMode = "grid" }: MonitorViewProps) {
                               <div className="w-[40px] md:w-[60px] h-2 rounded-full bg-default-100" />
                             )}
                             <span className="text-xs font-mono w-9 text-right text-default-500">
-                              {isOnline && metric
+                              {metric
                                 ? `${metric.memoryUsage.toFixed(1)}%`
                                 : "-"}
                             </span>
@@ -1643,7 +1681,7 @@ export function MonitorView({ nodeMap, viewMode = "grid" }: MonitorViewProps) {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            {isOnline && metric ? (
+                            {metric ? (
                               <Progress
                                 className="w-[40px] md:w-[60px]"
                                 color={getColorByUsage(metric.diskUsage)}
@@ -1654,9 +1692,7 @@ export function MonitorView({ nodeMap, viewMode = "grid" }: MonitorViewProps) {
                               <div className="w-[40px] md:w-[60px] h-2 rounded-full bg-default-100" />
                             )}
                             <span className="text-xs font-mono w-9 text-right text-default-500">
-                              {isOnline && metric
-                                ? `${metric.diskUsage.toFixed(1)}%`
-                                : "-"}
+                              {metric ? `${metric.diskUsage.toFixed(1)}%` : "-"}
                             </span>
                           </div>
                         </TableCell>
@@ -1684,7 +1720,7 @@ export function MonitorView({ nodeMap, viewMode = "grid" }: MonitorViewProps) {
                 <ArrowLeft className="w-4 h-4" />
                 返回
               </Button>
-              <div className="h-4 w-[1px] bg-divider hidden sm:block"></div>
+              <div className="h-4 w-[1px] bg-divider hidden sm:block" />
               <div className="flex items-center gap-2">
                 <DistroIcon
                   className="w-5 h-5"
@@ -1693,8 +1729,8 @@ export function MonitorView({ nodeMap, viewMode = "grid" }: MonitorViewProps) {
                     color:
                       detailNode?.connectionStatus === "online"
                         ? getDistroColor(
-                          parseDistroFromVersion(detailNode?.version),
-                        )
+                            parseDistroFromVersion(detailNode?.version),
+                          )
                         : undefined,
                   }}
                 />
@@ -1921,7 +1957,8 @@ export function MonitorView({ nodeMap, viewMode = "grid" }: MonitorViewProps) {
                               }}
                             >
                               <div
-                                className={`w-2 h-2 rounded-full shrink-0 mr-1 ${monitor.enabled !== 1
+                                className={`w-2 h-2 rounded-full shrink-0 mr-1 ${
+                                  monitor.enabled !== 1
                                     ? "bg-default-300"
                                     : !lr
                                       ? "bg-default-400"
@@ -1932,7 +1969,7 @@ export function MonitorView({ nodeMap, viewMode = "grid" }: MonitorViewProps) {
                                         : isActive
                                           ? "bg-white"
                                           : "bg-danger"
-                                  }`}
+                                }`}
                               />
                               {monitor.name}
                             </Button>
@@ -1954,7 +1991,7 @@ export function MonitorView({ nodeMap, viewMode = "grid" }: MonitorViewProps) {
                               每秒测试，30秒上报
                             </span>
                             {activeLatestResult &&
-                              Number.isFinite(activeLatestResult.latencyMs) ? (
+                            Number.isFinite(activeLatestResult.latencyMs) ? (
                               <span className="font-mono text-xs font-semibold text-success">
                                 {activeLatestResult.latencyMs.toFixed(0)}ms
                               </span>
@@ -2301,7 +2338,7 @@ export function MonitorView({ nodeMap, viewMode = "grid" }: MonitorViewProps) {
                 description={`最小 ${resolvedServiceMonitorLimits.minIntervalSec}s（扫描周期 ${resolvedServiceMonitorLimits.checkerScanIntervalSec}s）`}
                 errorMessage={
                   monitorForm.intervalSec <
-                    resolvedServiceMonitorLimits.minIntervalSec
+                  resolvedServiceMonitorLimits.minIntervalSec
                     ? `不能小于 ${resolvedServiceMonitorLimits.minIntervalSec}s`
                     : undefined
                 }
@@ -2326,16 +2363,16 @@ export function MonitorView({ nodeMap, viewMode = "grid" }: MonitorViewProps) {
                 errorMessage={
                   monitorForm.timeoutSec <
                     resolvedServiceMonitorLimits.minTimeoutSec ||
-                    monitorForm.timeoutSec >
+                  monitorForm.timeoutSec >
                     resolvedServiceMonitorLimits.maxTimeoutSec
                     ? `需在 ${resolvedServiceMonitorLimits.minTimeoutSec}-${resolvedServiceMonitorLimits.maxTimeoutSec}s 范围内`
                     : undefined
                 }
                 isInvalid={
                   monitorForm.timeoutSec <
-                  resolvedServiceMonitorLimits.minTimeoutSec ||
+                    resolvedServiceMonitorLimits.minTimeoutSec ||
                   monitorForm.timeoutSec >
-                  resolvedServiceMonitorLimits.maxTimeoutSec
+                    resolvedServiceMonitorLimits.maxTimeoutSec
                 }
                 label="超时时间(秒)"
                 type="number"

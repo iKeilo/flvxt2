@@ -9,6 +9,66 @@ import (
 	"go-backend/internal/store/repo"
 )
 
+type nodeRecordOfflineLogRequest struct {
+	NodeID        int64  `json:"nodeId"`
+	InFlowBefore  int64  `json:"inFlowBefore"`
+	OutFlowBefore int64  `json:"outFlowBefore"`
+	Reason        string `json:"reason"`
+}
+
+func (h *Handler) nodeRecordOfflineLog(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		response.WriteJSON(w, response.ErrDefault("请求失败"))
+		return
+	}
+
+	var req nodeRecordOfflineLogRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		response.WriteJSON(w, response.Err(-1, "无效的请求数据"))
+		return
+	}
+
+	if req.NodeID == 0 {
+		response.WriteJSON(w, response.Err(-1, "无效节点ID"))
+		return
+	}
+
+	actorUserID, _, err := userRoleFromRequest(r)
+	if err != nil {
+		response.WriteJSON(w, response.Err(401, "无效的 token 或 token 已过期"))
+		return
+	}
+
+	actorUserName := h.repo.GetUsernameByID(actorUserID)
+
+	node, err := h.repo.GetNodeByID(req.NodeID)
+	if err != nil {
+		response.WriteJSON(w, response.Err(-1, "节点不存在"))
+		return
+	}
+
+	reason := req.Reason
+	if reason == "" {
+		reason = "节点离线"
+	}
+
+	if err := h.repo.CreateNodeTrafficResetLog(&repo.NodeTrafficResetLogCreateParams{
+		NodeID:        req.NodeID,
+		NodeName:      node.Name,
+		ResetTime:     time.Now().UnixMilli(),
+		OperatorID:    actorUserID,
+		OperatorName:  actorUserName,
+		Reason:        reason,
+		InFlowBefore:  req.InFlowBefore,
+		OutFlowBefore: req.OutFlowBefore,
+	}); err != nil {
+		response.WriteJSON(w, response.Err(-1, "记录离线日志失败："+err.Error()))
+		return
+	}
+
+	response.WriteJSON(w, response.OK(nil))
+}
+
 type nodeBatchResetTrafficRequest struct {
 	NodeIDs       []int64 `json:"nodeIds"`
 	Reason        string  `json:"reason"`

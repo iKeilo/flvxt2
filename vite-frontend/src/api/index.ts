@@ -356,6 +356,18 @@ export const batchResetNodeTraffic = (
     inFlowBefore,
     outFlowBefore,
   });
+export const recordNodeOfflineLog = (
+  nodeId: number,
+  inFlowBefore: number,
+  outFlowBefore: number,
+  reason?: string,
+) =>
+  Network.post("/node/record-offline-log", {
+    nodeId,
+    reason,
+    inFlowBefore,
+    outFlowBefore,
+  });
 export const batchResetForward = (forwardIds: number[]) =>
   Network.post<BatchOperationResult>("/forward/batch-reset-traffic", {
     forwardIds,
