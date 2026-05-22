@@ -3,7 +3,6 @@ package handler
 import (
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
 	"go-backend/internal/http/response"
@@ -19,13 +18,14 @@ func (h *Handler) licenseInfo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	valid, expireTime, reason := middleware.GetLicenseState()
-
 	// Always trigger background check on page refresh to get latest status
 	// We use synchronous check here to ensure the state is updated *before* the handler returns.
 	// This prevents a race condition where the user sees "Valid" but the LicenseGuard still thinks it's "Invalid"
 	// immediately after a refresh.
 	middleware.ForceSyncCheck()
+
+	// Get refreshed license state
+	valid, expireTime, reason, isTrial := middleware.GetLicenseState()
 
 	// Check if license is configured
 	// 1. Prioritize Environment Variables (used by StartLicenseVerification)
@@ -70,7 +70,7 @@ func (h *Handler) licenseInfo(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	isTrial := strings.HasPrefix(actualLicenseKey, "TRIAL-")
+	// Calculate trial remaining days
 	trialRemainingDays := 0
 	if isTrial && valid && expireTime > 0 {
 		remaining := expireTime - time.Now().UnixMilli()

@@ -34,7 +34,18 @@ type VerifyResponse struct {
 	ExpireTime int64  `json:"expire_time,omitempty"`
 	Username   string `json:"username,omitempty"`
 	Reason     string `json:"reason,omitempty"`
+	IsTrial    bool   `json:"is_trial"`
 	Signature  string `json:"signature,omitempty"`
+}
+
+// licenseState stores the current license state
+type licenseState struct {
+	valid      bool
+	expireTime int64
+	reason     string
+	isTrial    bool
+	LastCheck  time.Time
+	mu         sync.RWMutex
 }
 
 // ObscuredHMACKey returns the HMAC secret key used to verify license server signatures.
@@ -55,15 +66,6 @@ func VerifyResponseSignature(resp *VerifyResponse, secret string) bool {
 	mac.Write([]byte(sigPayload))
 	expected := hex.EncodeToString(mac.Sum(nil))
 	return hmac.Equal([]byte(expected), []byte(resp.Signature))
-}
-
-// licenseState stores the current license state
-type licenseState struct {
-	valid      bool
-	expireTime int64
-	reason     string
-	LastCheck  time.Time
-	mu         sync.RWMutex
 }
 
 var globalLicenseState = &licenseState{}
@@ -240,6 +242,7 @@ func ForceSyncCheck() {
 		globalLicenseState.valid = resp.Valid
 		globalLicenseState.expireTime = resp.ExpireTime
 		globalLicenseState.reason = resp.Reason
+		globalLicenseState.isTrial = resp.IsTrial
 		// log.Printf("✅ 授权同步验证成功: valid=%v", resp.Valid)
 	}
 	globalLicenseState.LastCheck = time.Now()
@@ -287,6 +290,7 @@ func doVerify() error {
 	globalLicenseState.valid = resp.Valid
 	globalLicenseState.expireTime = resp.ExpireTime
 	globalLicenseState.reason = resp.Reason
+	globalLicenseState.isTrial = resp.IsTrial
 	globalLicenseState.LastCheck = time.Now()
 	globalLicenseState.mu.Unlock()
 
@@ -355,10 +359,10 @@ func CheckResourceLimit(resourceType string, currentCount int) error {
 }
 
 // GetLicenseState returns the current license state
-func GetLicenseState() (valid bool, expireTime int64, reason string) {
+func GetLicenseState() (valid bool, expireTime int64, reason string, isTrial bool) {
 	globalLicenseState.mu.RLock()
 	defer globalLicenseState.mu.RUnlock()
-	return globalLicenseState.valid, globalLicenseState.expireTime, globalLicenseState.reason
+	return globalLicenseState.valid, globalLicenseState.expireTime, globalLicenseState.reason, globalLicenseState.isTrial
 }
 
 // SetLicenseState sets the license state (for testing)

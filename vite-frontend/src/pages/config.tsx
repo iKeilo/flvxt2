@@ -1148,17 +1148,6 @@ export default function ConfigPage() {
               </p>
             </div>
           </div>
-          {licenseStatus?.is_trial && licenseStatus?.valid && (
-            <div className="bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 border border-yellow-200 dark:border-yellow-700/50 rounded-lg p-3 flex items-start gap-2">
-              <span className="text-yellow-600 dark:text-yellow-400 text-sm mt-0.5 shrink-0">🎯</span>
-              <div className="text-sm text-yellow-700 dark:text-yellow-300">
-                <p className="font-medium">7天体验版剩余 {licenseStatus.trial_remaining_days} 天</p>
-                <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-0.5">
-                  请前往设置 &gt; 授权配置输入授权信息解除限制
-                </p>
-              </div>
-            </div>
-          )}
           <div className="flex justify-between items-center pt-4 border-t border-divider/50">
             <div className="flex items-center gap-2">
               {licenseStatus && (

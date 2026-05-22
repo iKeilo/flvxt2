@@ -62,7 +62,7 @@ func main() {
 		if err := middleware.StartLicenseVerification(cfg.LicenseServerURL, cfg.LicenseKey, domain); err != nil {
 			log.Printf("⚠️  授权验证失败：%v", err)
 		} else {
-			valid, expireTime, reason := middleware.GetLicenseState()
+			valid, expireTime, reason, _ := middleware.GetLicenseState()
 			if valid {
 				log.Printf("✅ 授权验证成功，有效期至：%s", time.UnixMilli(expireTime).Format("2006-01-02"))
 			} else {
