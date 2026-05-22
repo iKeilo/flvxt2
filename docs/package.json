@@ -1,0 +1,17 @@
+{
+  "name": "flvx-docs",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vitepress build --srcDir ../doc --outDir ."
+  },
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "vitepress": "^1.6.4"
+  }
+}
