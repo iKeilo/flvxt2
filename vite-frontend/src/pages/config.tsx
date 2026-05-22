@@ -203,6 +203,7 @@ export default function ConfigPage() {
   const [hmacKey, setHmacKey] = useState("");
   const [licenseSaving, setLicenseSaving] = useState(false);
   const [licenseStatus, setLicenseStatus] = useState<LicenseInfo | null>(null);
+  const [transferDomain, setTransferDomain] = useState("");
 
   // 权限检查
   useEffect(() => {
@@ -291,13 +292,17 @@ export default function ConfigPage() {
     }
   };
   const handleTransferLicense = async () => {
-    if (!licenseDomain.trim()) {
-      toast.error("请先配置域名");
+    if (!transferDomain.trim()) {
+      toast.error("请输入新域名");
+      return;
+    }
+    if (!licenseStatus?.has_license_key) {
+      toast.error("请先配置授权");
       return;
     }
     setLicenseSaving(true);
     try {
-      const res = await transferLicense(licenseDomain.trim());
+      const res = await transferLicense(transferDomain.trim());
       if (res.code === 0) {
         toast.success("转让成功，正在重新验证...");
         setTimeout(() => window.location.reload(), 1500);
@@ -1154,26 +1159,6 @@ export default function ConfigPage() {
               </div>
             </div>
           )}
-          {licenseStatus?.valid && licenseStatus?.has_license_key && !licenseStatus?.is_trial && (
-            <>
-              <Divider className="my-2" />
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">授权转让</h3>
-                <p className="text-xs text-gray-500">
-                  转让授权到新域名，旧域名将立即失效。每7天可转让一次。
-                </p>
-                <Button
-                  color="warning"
-                  size="sm"
-                  variant="flat"
-                  isLoading={licenseSaving}
-                  onPress={handleTransferLicense}
-                >
-                  转让到新域名
-                </Button>
-              </div>
-            </>
-          )}
           <div className="flex justify-between items-center pt-4 border-t border-divider/50">
             <div className="flex items-center gap-2">
               {licenseStatus && (
@@ -1199,6 +1184,51 @@ export default function ConfigPage() {
           </div>
         </CardBody>
       </Card>
+
+      {/* 授权转让 */}
+      {licenseStatus?.valid && licenseStatus?.has_license_key && !licenseStatus?.is_trial && (
+        <Card className="shadow-md">
+          <CardHeader className="pb-6">
+            <div className="flex justify-between items-center w-full gap-4">
+              <div>
+                <h2 className="text-xl font-semibold">授权转让</h2>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  转让授权到新域名，旧域名将立即失效
+                </p>
+              </div>
+            </div>
+          </CardHeader>
+          <Divider />
+          <CardBody className="space-y-6 pt-8 md:pt-8">
+            <div className="space-y-3">
+              <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                新域名
+              </label>
+              <Input
+                classNames={{ input: "text-sm" }}
+                placeholder="请输入转让后的新面板域名"
+                size="md"
+                value={transferDomain}
+                variant="bordered"
+                onChange={(e) => setTransferDomain(e.target.value)}
+              />
+              <p className="text-xs text-gray-400">
+                转让后旧域名授权立即失效，每 7 天可转让一次
+              </p>
+            </div>
+            <div className="flex justify-end pt-4 border-t border-divider/50">
+              <Button
+                color="warning"
+                isLoading={licenseSaving}
+                size="sm"
+                onPress={handleTransferLicense}
+              >
+                确认转让
+              </Button>
+            </div>
+          </CardBody>
+        </Card>
+      )}
     </div>
   </div>
   );
