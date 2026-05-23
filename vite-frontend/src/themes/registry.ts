@@ -127,6 +127,10 @@ export function activateTheme(id: string): void {
 
   activeId = id;
 
+  // Temporarily disable transitions to prevent color flashing
+  const root = document.documentElement;
+  root.classList.add("no-flvx-transition");
+
   // Inject tokens
   const mode = getEffectiveMode();
   const tokens = mode === "dark" ? pkg.tokens?.dark : pkg.tokens?.light;
@@ -142,10 +146,12 @@ export function activateTheme(id: string): void {
   }
 
   // Update dark class
-  const root = document.documentElement;
-
   root.classList.toggle("dark", mode === "dark");
   root.style.colorScheme = mode;
+
+  // Force reflow then re-enable transitions
+  root.offsetHeight;
+  root.classList.remove("no-flvx-transition");
 
   // Lifecycle
   pkg.onActivate?.();
@@ -176,6 +182,10 @@ export function deactivateTheme(): void {
 
 /** Re-apply the active theme (e.g. after mode changes). */
 export function reapplyActiveTheme(): void {
+  // Temporarily disable transitions to prevent color flashing
+  const root = document.documentElement;
+  root.classList.add("no-flvx-transition");
+
   if (activeId) {
     const id = activeId;
     // quick re-inject without full lifecycle
@@ -189,18 +199,19 @@ export function reapplyActiveTheme(): void {
 
     if (tokens) injectTokens(tokens);
 
-    const root = document.documentElement;
-
     root.classList.toggle("dark", mode === "dark");
     root.style.colorScheme = mode;
   } else {
     // No theme active — just set dark class based on mode
     const mode = getEffectiveMode();
-    const root = document.documentElement;
 
     root.classList.toggle("dark", mode === "dark");
     root.style.colorScheme = mode;
   }
+
+  // Force reflow then re-enable transitions
+  root.offsetHeight;
+  root.classList.remove("no-flvx-transition");
   notify();
 }
 

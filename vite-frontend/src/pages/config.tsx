@@ -12,7 +12,13 @@ import { Spinner } from "@/shadcn-bridge/heroui/spinner";
 import { Divider } from "@/shadcn-bridge/heroui/divider";
 import { Switch } from "@/shadcn-bridge/heroui/switch";
 import { Select, SelectItem } from "@/shadcn-bridge/heroui/select";
-import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from "@/shadcn-bridge/heroui/modal";
+import {
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+} from "@/shadcn-bridge/heroui/modal";
 import {
   updateConfigs,
   exportBackup,
@@ -160,7 +166,7 @@ const getInitialConfigs = (): Record<string, string> => {
         initialConfigs[key] = cachedValue;
       }
     });
-  } catch { }
+  } catch {}
 
   return initialConfigs;
 };
@@ -259,6 +265,7 @@ export default function ConfigPage() {
   const loadLicenseInfo = async () => {
     try {
       const res = await getLicenseInfo();
+
       if (res.code === 0 && res.data) {
         setLicenseStatus(res.data);
         if (res.data.has_license_key) {
@@ -270,12 +277,12 @@ export default function ConfigPage() {
         setLicenseKey("");
         setLicenseDomain("");
       }
-    } catch {
-    }
+    } catch {}
   };
   const handleLicenseSave = async () => {
     if (!licenseDomain.trim()) {
       toast.error("面板域名不能为空");
+
       return;
     }
     setLicenseSaving(true);
@@ -287,19 +294,24 @@ export default function ConfigPage() {
         window.location.hostname,
         window.location.protocol,
       );
+
       if (res.code === 0) {
         toast.success("授权配置已提交，正在后台验证...");
-        
+
         // 关键修复：保存成功后，延迟重新加载授权信息，获取最新的 license_key
         setTimeout(async () => {
-            await loadLicenseInfo();
-            // 如果后端更新了授权码，同步更新输入框显示
-            if (licenseStatus?.license_key && licenseStatus.license_key !== licenseKey.trim()) {
-                setLicenseKey(licenseStatus.license_key);
-            }
-            // 最后刷新页面
-            setTimeout(() => window.location.reload(), 800);
+          await loadLicenseInfo();
+          // 如果后端更新了授权码，同步更新输入框显示
+          if (
+            licenseStatus?.license_key &&
+            licenseStatus.license_key !== licenseKey.trim()
+          ) {
+            setLicenseKey(licenseStatus.license_key);
+          }
+          // 最后刷新页面
+          setTimeout(() => window.location.reload(), 800);
         }, 1000);
+
         return;
       } else {
         toast.error("保存失败：" + res.msg);
@@ -313,6 +325,7 @@ export default function ConfigPage() {
   const handleTransferLicense = () => {
     if (!transferDomain.trim()) {
       toast.error("请输入新域名");
+
       return;
     }
     setTransferConfirmOpen(true);
@@ -320,25 +333,31 @@ export default function ConfigPage() {
   const confirmTransferLicense = async () => {
     if (!licenseStatus?.has_license_key) {
       toast.error("请先配置授权");
+
       return;
     }
     setTransferConfirmOpen(false);
     setLicenseSaving(true);
     try {
       const res = await transferLicense(transferDomain.trim());
+
       if (res.code === 0) {
         toast.success("授权配置已提交，正在后台验证...");
-        
+
         // 关键修复：保存成功后，延迟重新加载授权信息，获取最新的 license_key
         setTimeout(async () => {
-            await loadLicenseInfo();
-            // 如果后端更新了授权码，同步更新输入框显示
-            if (licenseStatus?.license_key && licenseStatus.license_key !== licenseKey.trim()) {
-                setLicenseKey(licenseStatus.license_key);
-            }
-            // 最后刷新页面
-            setTimeout(() => window.location.reload(), 800);
+          await loadLicenseInfo();
+          // 如果后端更新了授权码，同步更新输入框显示
+          if (
+            licenseStatus?.license_key &&
+            licenseStatus.license_key !== licenseKey.trim()
+          ) {
+            setLicenseKey(licenseStatus.license_key);
+          }
+          // 最后刷新页面
+          setTimeout(() => window.location.reload(), 800);
         }, 1000);
+
         return;
       } else {
         toast.error("保存失败：" + res.msg);
@@ -438,6 +457,7 @@ export default function ConfigPage() {
           setTimeout(() => {
             window.location.reload();
           }, 800);
+
           return;
         }
         // 触发配置更新事件，通知其他组件
@@ -586,10 +606,11 @@ export default function ConfigPage() {
 
     return (
       <div
-        className={`rounded-lg border p-3 ${isChanged
-          ? "border-warning-300"
-          : "border-default-200 dark:border-default-100/30"
-          }`}
+        className={`rounded-lg border p-3 ${
+          isChanged
+            ? "border-warning-300"
+            : "border-default-200 dark:border-default-100/30"
+        }`}
       >
         <input
           ref={getBrandInputRef(key)}
@@ -802,7 +823,7 @@ export default function ConfigPage() {
     <div className="grid lg:grid-cols-2 gap-6 max-w-7xl mx-auto p-6">
       {/* 左栏：基本设置 */}
       <div>
-        <Card className="shadow-md">
+        <Card className="shadow-md dark:bg-content1">
           <CardHeader className="pb-6">
             <div className="flex items-center w-full">
               <div>
@@ -927,7 +948,7 @@ export default function ConfigPage() {
             </AnimatePresence>
           </CardBody>
         </Card>
-        <Card className="mt-6 shadow-md">
+        <Card className="mt-6 shadow-md dark:bg-content1">
           <CardHeader className="pb-6">
             <h2 className="text-xl font-semibold">更新通道</h2>
           </CardHeader>
@@ -963,7 +984,7 @@ export default function ConfigPage() {
 
       {/* 右栏：公告管理、导出数据、授权码配置 */}
       <div className="space-y-6">
-        <Card className="shadow-md">
+        <Card className="shadow-md dark:bg-content1">
           <CardHeader className="pb-6">
             <div className="flex justify-between items-center w-full gap-4">
               <div>
@@ -1013,7 +1034,10 @@ export default function ConfigPage() {
                   value={announcement.content}
                   variant="bordered"
                   onChange={(e) =>
-                    setAnnouncement({ ...announcement, content: e.target.value })
+                    setAnnouncement({
+                      ...announcement,
+                      content: e.target.value,
+                    })
                   }
                 />
                 <div className="flex justify-end mt-2 pt-4 border-t border-divider/50">
@@ -1034,7 +1058,7 @@ export default function ConfigPage() {
         <ThemeSettings />
       </div> */}
         {/* 导出全部数据 */}
-        <Card className="mt-6 shadow-md">
+        <Card className="mt-6 shadow-md dark:bg-content1">
           <CardHeader className="pb-6">
             <div className="flex justify-between items-center w-full">
               <div>
@@ -1108,7 +1132,9 @@ export default function ConfigPage() {
                   从json备份文件恢复数据
                 </p>
                 {importFileName && (
-                  <p className="text-xs text-primary">已选择：{importFileName}</p>
+                  <p className="text-xs text-primary">
+                    已选择：{importFileName}
+                  </p>
                 )}
               </div>
 
@@ -1125,7 +1151,7 @@ export default function ConfigPage() {
         </Card>
 
         {/* 授权配置 */}
-        <Card className="shadow-md">
+        <Card className="shadow-md dark:bg-content1">
           <CardHeader className="pb-6">
             <div className="flex justify-between items-center w-full gap-4">
               <div>
@@ -1185,12 +1211,14 @@ export default function ConfigPage() {
             <div className="flex justify-between items-center pt-4 border-t border-divider/50">
               <div className="flex items-center gap-2">
                 {licenseStatus && (
-                  <span className={`text-xs font-medium ${licenseStatus.tier === 'premium' ? "text-green-600" : licenseStatus.tier === 'blocked' ? "text-red-600" : "text-yellow-600"}`}>
+                  <span
+                    className={`text-xs font-medium ${licenseStatus.tier === "premium" ? "text-green-600" : licenseStatus.tier === "blocked" ? "text-red-600" : "text-yellow-600"}`}
+                  >
                     {licenseStatus.is_trial && licenseStatus.valid
                       ? `体验版，剩余 ${licenseStatus.trial_remaining_days} 天`
-                      : licenseStatus.tier === 'premium'
+                      : licenseStatus.tier === "premium"
                         ? `商业版，授权剩余 ${licenseStatus.expire_time ? Math.floor((licenseStatus.expire_time - Date.now()) / 86400000) : "？"} 天`
-                        : licenseStatus.tier === 'blocked'
+                        : licenseStatus.tier === "blocked"
                           ? `授权已阻断：${licenseStatus.reason || "未知原因"}`
                           : "免费版（5 节点 / 5 隧道 / 1 用户）"}
                   </span>
@@ -1209,65 +1237,81 @@ export default function ConfigPage() {
         </Card>
 
         {/* 授权转让 */}
-        {licenseStatus?.valid && licenseStatus?.has_license_key && !licenseStatus?.is_trial && (
-          <Card className="shadow-md">
-            <CardHeader className="pb-6">
-              <div className="flex justify-between items-center w-full gap-4">
-                <div>
-                  <h2 className="text-xl font-semibold">授权转让</h2>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    转让授权到新域名，旧域名将立即失效
+        {licenseStatus?.valid &&
+          licenseStatus?.has_license_key &&
+          !licenseStatus?.is_trial && (
+            <Card className="shadow-md dark:bg-content1">
+              <CardHeader className="pb-6">
+                <div className="flex justify-between items-center w-full gap-4">
+                  <div>
+                    <h2 className="text-xl font-semibold">授权转让</h2>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      转让授权到新域名，旧域名将立即失效
+                    </p>
+                  </div>
+                </div>
+              </CardHeader>
+              <Divider />
+              <CardBody className="space-y-6 pt-8 md:pt-8">
+                <div className="space-y-3">
+                  <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                    新域名
+                  </label>
+                  <Input
+                    classNames={{ input: "text-sm" }}
+                    placeholder="请输入转让后的新面板域名"
+                    size="md"
+                    value={transferDomain}
+                    variant="bordered"
+                    onChange={(e) => setTransferDomain(e.target.value)}
+                  />
+                  <p className="text-xs text-gray-400">
+                    转让后旧域名授权立即失效，每 3 天可转让一次
                   </p>
                 </div>
-              </div>
-            </CardHeader>
-            <Divider />
-            <CardBody className="space-y-6 pt-8 md:pt-8">
-              <div className="space-y-3">
-                <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                  新域名
-                </label>
-                <Input
-                  classNames={{ input: "text-sm" }}
-                  placeholder="请输入转让后的新面板域名"
-                  size="md"
-                  value={transferDomain}
-                  variant="bordered"
-                  onChange={(e) => setTransferDomain(e.target.value)}
-                />
-                <p className="text-xs text-gray-400">
-                  转让后旧域名授权立即失效，每 3 天可转让一次
-                </p>
-              </div>
-              <div className="text-gray-400 flex justify-end pt-4 border-t border-divider/50">
-                <Button
-                  color="primary"
-                  isLoading={licenseSaving}
-                  size="sm"
-                  onPress={handleTransferLicense}
-                >
-                  开始转让
-                </Button>
-              </div>
-            </CardBody>
-          </Card>
-        )}
-        <Modal isOpen={transferConfirmOpen} onClose={() => setTransferConfirmOpen(false)}>
+                <div className="text-gray-400 flex justify-end pt-4 border-t border-divider/50">
+                  <Button
+                    color="primary"
+                    isLoading={licenseSaving}
+                    size="sm"
+                    onPress={handleTransferLicense}
+                  >
+                    开始转让
+                  </Button>
+                </div>
+              </CardBody>
+            </Card>
+          )}
+        <Modal
+          isOpen={transferConfirmOpen}
+          onClose={() => setTransferConfirmOpen(false)}
+        >
           <ModalContent>
             <ModalHeader>确认转让授权</ModalHeader>
             <ModalBody>
               <p className="text-sm">
-                确认要转让授权到 <span className="font-semibold text-primary">{transferDomain}</span> 吗？
+                确认要转让授权到{" "}
+                <span className="font-semibold text-primary">
+                  {transferDomain}
+                </span>{" "}
+                吗？
               </p>
               <p className="text-xs text-danger mt-2">
                 转让后旧域名授权将立即失效，请认真核对域名
               </p>
             </ModalBody>
             <ModalFooter>
-              <Button color="default" onPress={() => setTransferConfirmOpen(false)}>
+              <Button
+                color="default"
+                onPress={() => setTransferConfirmOpen(false)}
+              >
                 取消
               </Button>
-              <Button color="primary" isLoading={licenseSaving} onPress={confirmTransferLicense}>
+              <Button
+                color="primary"
+                isLoading={licenseSaving}
+                onPress={confirmTransferLicense}
+              >
                 确认
               </Button>
             </ModalFooter>

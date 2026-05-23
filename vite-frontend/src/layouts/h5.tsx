@@ -20,11 +20,13 @@ import {
 import { Input } from "@/shadcn-bridge/heroui/input";
 import { BrandLogo } from "@/components/brand-logo";
 import { VersionFooter } from "@/components/version-footer";
+import { SunFilledIcon, MoonFilledIcon } from "@/components/icons";
 import { getLicenseInfo, getMonitorAccess, updatePassword } from "@/api";
 import { safeLogout } from "@/utils/logout";
 import { siteConfig } from "@/config/site";
 import { getAdminFlag, getSessionName } from "@/utils/session";
 import { useScrollTopOnPathChange } from "@/hooks/useScrollTopOnPathChange";
+import { useThemeContext } from "@/themes/context";
 
 interface MenuItem {
   path: string;
@@ -68,6 +70,7 @@ export default function H5Layout({ children }: { children: React.ReactNode }) {
   });
 
   useScrollTopOnPathChange();
+  const { effectiveMode, setMode } = useThemeContext();
 
   // 完全对齐桌面端的 10 个菜单项
   const menuItems: MenuItem[] = [
@@ -217,16 +220,19 @@ export default function H5Layout({ children }: { children: React.ReactNode }) {
     const licenseInterval = setInterval(fetchLicense, 5 * 60 * 1000);
 
     const adminFlag = getAdminFlag();
+
     if (adminFlag) {
       setMonitorAllowed(true);
     } else {
-      getMonitorAccess().then((res) => {
-        if (res.code === 0 && res.data) {
-          setMonitorAllowed(Boolean(res.data.allowed));
-        } else {
-          setMonitorAllowed(true);
-        }
-      }).catch(() => setMonitorAllowed(true));
+      getMonitorAccess()
+        .then((res) => {
+          if (res.code === 0 && res.data) {
+            setMonitorAllowed(Boolean(res.data.allowed));
+          } else {
+            setMonitorAllowed(true);
+          }
+        })
+        .catch(() => setMonitorAllowed(true));
     }
 
     return () => {
@@ -317,7 +323,8 @@ export default function H5Layout({ children }: { children: React.ReactNode }) {
 
   const filteredMenuItems = menuItems.filter(
     (item) =>
-      (!item.adminOnly || isAdmin) && !(item.path === "/monitor" && monitorAllowed !== true),
+      (!item.adminOnly || isAdmin) &&
+      !(item.path === "/monitor" && monitorAllowed !== true),
   );
 
   return (
@@ -351,10 +358,18 @@ export default function H5Layout({ children }: { children: React.ReactNode }) {
                   ? "text-foreground hover:text-primary-600 dark:hover:text-primary-300"
                   : "text-foreground hover:text-primary-600 dark:hover:text-primary-300"
               }`}
-              href={licenseInfo?.has_license_key ? "/dashboard" : siteConfig.github_repo}
-              rel={licenseInfo?.has_license_key ? undefined : "noopener noreferrer"}
+              href={
+                licenseInfo?.has_license_key
+                  ? "/dashboard"
+                  : siteConfig.github_repo
+              }
+              rel={
+                licenseInfo?.has_license_key ? undefined : "noopener noreferrer"
+              }
               target={licenseInfo?.has_license_key ? undefined : "_blank"}
-              title={licenseInfo?.has_license_key ? "返回首页" : "访问 GitHub 仓库"}
+              title={
+                licenseInfo?.has_license_key ? "返回首页" : "访问 GitHub 仓库"
+              }
             >
               {siteConfig.name}
             </a>
@@ -363,60 +378,93 @@ export default function H5Layout({ children }: { children: React.ReactNode }) {
 
         {/* 授权信息居左显示 */}
         <div className="flex-1 flex justify-start items-center h-full mx-2 overflow-hidden">
-          {licenseInfo && (licenseInfo.tier === 'free' || (!licenseInfo.has_license_key && !licenseInfo.tier)) ? (
+          {licenseInfo &&
+          (licenseInfo.tier === "free" ||
+            (!licenseInfo.has_license_key && !licenseInfo.tier)) ? (
             <div className="flex items-center gap-1 text-xs text-yellow-600 dark:text-yellow-400 truncate">
-              <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} />
+              <svg
+                className="w-4 h-4 flex-shrink-0"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                />
               </svg>
-              <span className="truncate">免费版：已限制最多5个节点、5个隧道、1个用户，授权请联系作者</span>
-              <a href="https://t.me/erflvx" target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 flex-shrink-0 underline whitespace-nowrap">
+              <span className="truncate">
+                免费版：已限制最多5个节点、5个隧道、1个用户，授权请联系作者
+              </span>
+              <a
+                className="text-blue-600 dark:text-blue-400 flex-shrink-0 underline whitespace-nowrap"
+                href="https://t.me/erflvx"
+                rel="noopener noreferrer"
+                target="_blank"
+              >
                 TG群组
               </a>
             </div>
-          ) : licenseInfo && licenseInfo.tier === 'blocked' ? (
+          ) : licenseInfo && licenseInfo.tier === "blocked" ? (
             <div className="flex items-center gap-1 text-xs text-red-600 dark:text-red-400 truncate">
-              <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} />
+              <svg
+                className="w-4 h-4 flex-shrink-0"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                />
               </svg>
-              <span className="truncate font-bold">{licenseInfo.reason || "授权无效"}</span>
+              <span className="truncate font-bold">
+                {licenseInfo.reason || "授权无效"}
+              </span>
             </div>
-          ) : licenseInfo && licenseInfo.configured && (
-            <div className="flex items-center justify-start h-full overflow-hidden whitespace-nowrap">
-              {licenseInfo.valid ? (
-                (() => {
-                  const daysLeft = licenseInfo.expire_time
-                    ? Math.max(
-                      0,
-                      Math.floor(
-                        (licenseInfo.expire_time - Date.now()) /
-                        (1000 * 60 * 60 * 24),
-                      ),
-                    )
-                    : 0;
-                  const isExpiringSoon = daysLeft < 5;
-                  const textColorClass = isExpiringSoon
-                    ? "text-red-500 font-bold dark:text-red-400"
-                    : "text-green-600 dark:text-green-400";
+          ) : (
+            licenseInfo &&
+            licenseInfo.configured && (
+              <div className="flex items-center justify-start h-full overflow-hidden whitespace-nowrap">
+                {licenseInfo.valid ? (
+                  (() => {
+                    const daysLeft = licenseInfo.expire_time
+                      ? Math.max(
+                          0,
+                          Math.floor(
+                            (licenseInfo.expire_time - Date.now()) /
+                              (1000 * 60 * 60 * 24),
+                          ),
+                        )
+                      : 0;
+                    const isExpiringSoon = daysLeft < 5;
+                    const textColorClass = isExpiringSoon
+                      ? "text-red-500 font-bold dark:text-red-400"
+                      : "text-green-600 dark:text-green-400";
 
-                  return (
-                    <span className={`${textColorClass} text-xs truncate`}>
-                      授权剩余 {daysLeft} 天
-                      {isExpiringSoon ? " (即将过期)" : ""}
-                    </span>
-                  );
-                })()
-
-              ) : (
-                <span className="text-red-600 dark:text-red-400 text-xs font-bold truncate">
-                  {licenseInfo.reason || "授权无效"}
-                </span>
-              )}
-            </div>
+                    return (
+                      <span className={`${textColorClass} text-xs truncate`}>
+                        授权剩余 {daysLeft} 天
+                        {isExpiringSoon ? " (即将过期)" : ""}
+                      </span>
+                    );
+                  })()
+                ) : (
+                  <span className="text-red-600 dark:text-red-400 text-xs font-bold truncate">
+                    {licenseInfo.reason || "授权无效"}
+                  </span>
+                )}
+              </div>
+            )
           )}
         </div>
-        
+
         {/* 顶部右侧 - 用户名下拉菜单 */}
-        <div className="flex items-center">
+        <div className="flex items-center gap-1">
           <Dropdown placement="bottom-end">
             <DropdownTrigger>
               <Button
@@ -472,17 +520,31 @@ export default function H5Layout({ children }: { children: React.ReactNode }) {
                     <path
                       clipRule="evenodd"
                       d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z"
-                      fillRule="evenodd"
-                    />
-                  </svg>
-                }
-                onPress={handleLogout}
-              >
-                退出登录
-              </DropdownItem>
-            </DropdownMenu>
-          </Dropdown>
-        </div>
+                    fillRule="evenodd"
+                  />
+                </svg>
+              }
+              onPress={handleLogout}
+            >
+              退出登录
+            </DropdownItem>
+          </DropdownMenu>
+        </Dropdown>
+        {/* 主题切换按钮 */}
+        <Button
+          isIconOnly
+          className="text-foreground"
+          size="sm"
+          variant="light"
+          onPress={() => setMode(effectiveMode === "dark" ? "light" : "dark")}
+        >
+          {effectiveMode === "dark" ? (
+            <SunFilledIcon size={18} />
+          ) : (
+            <MoonFilledIcon size={18} />
+          )}
+        </Button>
+      </div>
       </header>
 
       {/* 侧边栏遮罩 */}
@@ -509,7 +571,9 @@ export default function H5Layout({ children }: { children: React.ReactNode }) {
             <svg className="w-5 h-5 mr-1.5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
             </svg>*/}
-            <span className="text-md font-bold text-gray-700 dark:text-gray-300">导航</span>
+            <span className="text-md font-bold text-gray-700 dark:text-gray-300">
+              导航
+            </span>
           </div>
         </div>
 
@@ -542,8 +606,8 @@ export default function H5Layout({ children }: { children: React.ReactNode }) {
         {/* 底部版权信息 */}
         <div className="px-5 py-4 mt-auto flex-shrink-0 flex items-center overflow-hidden whitespace-nowrap box-border">
           <VersionFooter
-            showUpdateInfo={isAdmin}
             poweredClassName="text-xs text-gray-400 dark:text-gray-500"
+            showUpdateInfo={isAdmin}
             updateBadgeClassName="inline-flex items-center h-[16px] px-1.5 rounded-xs bg-rose-500/90 text-[9px] font-semibold text-white"
             version={siteConfig.version}
             versionClassName="text-xs text-gray-400 dark:text-gray-500"

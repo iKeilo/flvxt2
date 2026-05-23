@@ -134,6 +134,11 @@ body {
   overflow-x: hidden;
 }
 
+.no-flvx-transition,
+.no-flvx-transition * {
+  transition: none !important;
+}
+
 .safe-top {
   padding-top: var(--safe-area-top);
 }

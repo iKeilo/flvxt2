@@ -7,6 +7,7 @@ export default {
     './src/components/**/*.{js,ts,jsx,tsx,mdx}',
     './src/shadcn-bridge/**/*.{js,ts,jsx,tsx,mdx}',
   ],
+  darkMode: "class",
   theme: {
     extend: {
       colors: {

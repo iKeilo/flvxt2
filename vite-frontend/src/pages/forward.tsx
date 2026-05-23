@@ -805,9 +805,9 @@ const SortableTableRow = ({
           </span>
         </TableCell>
       )}
-      <TableCell className={`whitespace-nowrap text-black ${rowBg}`}>
+      <TableCell className={`whitespace-nowrap text-foreground ${rowBg}`}>
         <span
-          className="cursor-pointer hover:text-primary transition-colors text-black"
+          className="cursor-pointer hover:text-primary transition-colors text-foreground"
           onClick={() => copyToClipboard(forward.name, "规则名称")}
         >
           {forward.name}
@@ -837,7 +837,7 @@ const SortableTableRow = ({
             <path d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
           </svg>
           <span
-            className="text-sm font-medium text-black cursor-pointer hover:bg-default-200/50 rounded px-1 transition-colors truncate max-w-[100px] inline-block"
+            className="text-sm font-medium text-foreground cursor-pointer hover:bg-default-200/50 rounded px-1 transition-colors truncate max-w-[100px] inline-block"
             title={inAddrNoPorts}
             onClick={() =>
               copyToClipboard(inAddrNoPorts.split(",").join("\n"), "入口地址")
@@ -849,7 +849,7 @@ const SortableTableRow = ({
       </TableCell>
       <TableCell className={rowBg}>
         <span
-          className="text-sm font-medium text-black cursor-pointer hover:bg-default-200/50 rounded px-1 transition-colors"
+          className="text-sm font-medium text-foreground cursor-pointer hover:bg-default-200/50 rounded px-1 transition-colors"
           onClick={() => copyToClipboard(forward.inPort.toString(), "入口端口")}
         >
           {forward.inPort}
@@ -871,7 +871,7 @@ const SortableTableRow = ({
             <path d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
           </svg>
           <span
-            className="text-sm font-medium text-black cursor-pointer hover:bg-default-200/50 rounded px-1 transition-colors truncate max-w-[100px] inline-block"
+            className="text-sm font-medium text-foreground cursor-pointer hover:bg-default-200/50 rounded px-1 transition-colors truncate max-w-[100px] inline-block"
             title={remoteAddrOnly}
             onClick={() => copyToClipboard(remoteAddrOnly, "落地地址")}
           >
@@ -884,7 +884,7 @@ const SortableTableRow = ({
       </TableCell>
       <TableCell className={rowBg}>
         <span
-          className="text-sm font-medium text-black cursor-pointer hover:bg-default-200/50 rounded px-1 transition-colors"
+          className="text-sm font-medium text-foreground cursor-pointer hover:bg-default-200/50 rounded px-1 transition-colors"
           onClick={() => copyToClipboard(remotePortOnly, "落地端口")}
         >
           {remotePortOnly}
@@ -914,7 +914,7 @@ const SortableTableRow = ({
               />
             </svg>
           </Button>
-          <span className="text-sm font-medium text-black">
+          <span className="text-sm font-medium text-foreground">
             {formatFlow(getForwardDisplayFlow(forward))}
           </span>
         </div>
@@ -1112,9 +1112,9 @@ const SortableCompactTableRow = ({
           </span>
         </TableCell>
       )}
-      <TableCell className={`whitespace-nowrap text-black ${rowBg}`}>
+      <TableCell className={`whitespace-nowrap text-foreground ${rowBg}`}>
         <span
-          className="cursor-pointer hover:text-primary transition-colors text-black"
+          className="cursor-pointer hover:text-primary transition-colors text-foreground"
           onClick={() => copyToClipboard(forward.name, "规则名称")}
         >
           {forward.name}
@@ -1127,7 +1127,7 @@ const SortableCompactTableRow = ({
       </TableCell>
       <TableCell className={`whitespace-nowrap ${rowBg}`}>
         <div className="flex items-center">
-          <span className="font-medium text-black text-sm">
+          <span className="font-medium text-foreground text-sm">
             {forward.tunnelName}
           </span>
           {/* 隧道倍率标识 - 统一 10px 字体 */}
@@ -1155,7 +1155,7 @@ const SortableCompactTableRow = ({
             <path d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
           </svg>
           <span
-            className="text-sm font-medium text-black cursor-pointer hover:bg-default-200/50 rounded px-1 transition-colors truncate max-w-[100px] inline-block"
+            className="text-sm font-medium text-foreground cursor-pointer hover:bg-default-200/50 rounded px-1 transition-colors truncate max-w-[100px] inline-block"
             title={inAddrNoPorts}
             onClick={() =>
               copyToClipboard(inAddrNoPorts.split(",").join("\n"), "入口地址")
@@ -1167,7 +1167,7 @@ const SortableCompactTableRow = ({
       </TableCell>
       <TableCell className={rowBg}>
         <span
-          className="text-sm font-medium text-black cursor-pointer hover:bg-default-200/50 rounded px-1 transition-colors"
+          className="text-sm font-medium text-foreground cursor-pointer hover:bg-default-200/50 rounded px-1 transition-colors"
           onClick={() => copyToClipboard(forward.inPort.toString(), "入口端口")}
         >
           {forward.inPort}
@@ -1189,7 +1189,7 @@ const SortableCompactTableRow = ({
             <path d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
           </svg>
           <span
-            className="text-sm font-medium text-black cursor-pointer hover:bg-default-200/50 rounded px-1 transition-colors truncate max-w-[100px] inline-block"
+            className="text-sm font-medium text-foreground cursor-pointer hover:bg-default-200/50 rounded px-1 transition-colors truncate max-w-[100px] inline-block"
             title={remoteAddrOnly}
             onClick={() => copyToClipboard(remoteAddrOnly, "落地地址")}
           >
@@ -1202,7 +1202,7 @@ const SortableCompactTableRow = ({
       </TableCell>
       <TableCell className={rowBg}>
         <span
-          className="text-sm font-medium text-black cursor-pointer hover:bg-default-200/50 rounded px-1 transition-colors"
+          className="text-sm font-medium text-foreground cursor-pointer hover:bg-default-200/50 rounded px-1 transition-colors"
           onClick={() => copyToClipboard(remotePortOnly, "落地端口")}
         >
           {remotePortOnly}
@@ -1232,7 +1232,7 @@ const SortableCompactTableRow = ({
               />
             </svg>
           </Button>
-          <span className="text-sm font-medium text-black">
+          <span className="text-sm font-medium text-foreground">
             {formatFlow(getForwardDisplayFlow(forward))}
           </span>
         </div>
