@@ -583,7 +583,7 @@ const SortableTunnelGroupContainer = ({
   wrapperClassName,
   headerClassName,
   titleClassName,
-  countClassName,
+  //countClassName,//注释隧道分组头部规则数量显示，保持界面简洁
   bodyClassName,
   children,
 }: {
@@ -655,7 +655,9 @@ const SortableTunnelGroupContainer = ({
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <span className={countClassName}>{tunnel.items.length} 个规则</span>
+          {/* 注释隧道分组头部规则数量显示，保持界面简洁
+          <span className={countClassName}>{tunnel.items.length} 个规则</span> 
+          */}
           <div
             className="cursor-grab active:cursor-grabbing p-1 text-default-400 flex-shrink-0 hover:text-default-600 transition-colors"
             title="拖拽分组排序"
@@ -4989,7 +4991,7 @@ export default function ForwardPage() {
                                           <TableColumn className="whitespace-nowrap flex-shrink-0 w-[180px] text-left">
                                             规则名称
                                             <span className="text-xs text-primary-500 font-normal">
-                                              ^{sortedForwards.length}个
+                                              ^{tunnel.items.length}个
                                             </span>
                                           </TableColumn>
                                           {/* {isAdmin && <TableColumn className="whitespace-nowrap flex-shrink-0 w-[100px] text-left">速度限制</TableColumn>} */}
