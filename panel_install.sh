@@ -904,6 +904,22 @@ restore_panel_data() {
   done < <(ls -1d "${backup_base}"/flvx_backup_* | sort -r)
   echo "==============================================="
 
+  if [[ "$idx" -eq 1 ]]; then
+    echo ""
+    echo "❌ 未找到备份文件"
+    echo ""
+    echo "💡 换机恢复操作指南："
+    echo "   1. 在新服务器正常运行此脚本，先完成面板安装"
+    echo "   2. 将旧服务器备份的文件夹上传至新服务器："
+    echo "        /root/flvxbackup/ 自行创建目录"
+    echo "   3. 重新运行此脚本，选择 '5. 恢复数据' 即可"
+    echo ""
+    echo "   上传方式："
+    echo "     使用 FinalShell / WinSCP 等工具上传文件夹到上述路径"
+    echo "==============================================="
+    return 1
+  fi
+
   read -p "请选择要恢复的备份编号 (1-$((idx-1)))，或输入 q 取消: " backup_choice
   if [[ "$backup_choice" == "q" || "$backup_choice" == "Q" ]]; then
     echo "❌ 取消恢复操作"
