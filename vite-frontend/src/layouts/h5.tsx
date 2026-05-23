@@ -540,9 +540,9 @@ export default function H5Layout({ children }: { children: React.ReactNode }) {
           onPress={() => setMode(effectiveMode === "dark" ? "light" : "dark")}
         >
           {effectiveMode === "dark" ? (
-            <SunFilledIcon size={18} />
+            <SunFilledIcon size={16} />
           ) : (
-            <MoonFilledIcon size={18} />
+            <MoonFilledIcon size={16} />
           )}
         </Button>
       </div>

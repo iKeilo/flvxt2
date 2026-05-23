@@ -1082,9 +1082,9 @@ export default function AdminLayout({
               }
             >
               {effectiveMode === "dark" ? (
-                <SunFilledIcon size={20} />
+                <SunFilledIcon size={16} />
               ) : (
-                <MoonFilledIcon size={20} />
+                <MoonFilledIcon size={16} />
               )}
             </Button>
           </div>
