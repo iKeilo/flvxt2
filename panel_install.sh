@@ -831,7 +831,7 @@ backup_panel_data() {
   echo "📊 备份大小：$backup_size"
   echo ""
   echo "📄 备份文件列表："
-  ls -lh "$backup_dir"
+  ls -lah "$backup_dir"
   echo ""
   echo "⚠️  重要提示："
   echo "   请立即下载备份文件到本地电脑安全保存！"
@@ -936,8 +936,8 @@ restore_panel_data() {
   # 确认恢复
   echo ""
   echo "⚠️  警告：恢复操作将覆盖当前数据库数据！"
-  read -p "确认继续恢复吗？(y/N): " confirm
-  if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
+  read -p "确认继续恢复吗？回车默认恢复或输入 N 跳过: " confirm
+  if [[ "$confirm" == "n" || "$confirm" == "N" ]]; then
     echo "❌ 取消恢复操作"
     return 0
   fi
