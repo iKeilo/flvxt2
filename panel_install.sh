@@ -289,7 +289,8 @@ show_menu() {
   echo "2. 更新面板"
   echo "3. 卸载面板"
   echo "4. 备份数据"
-  echo "5. 退出"
+  echo "5. 恢复数据"
+  echo "6. 退出"
   echo "==============================================="
 }
 
@@ -843,6 +844,171 @@ backup_panel_data() {
   echo "   💡 推荐下载方式："
   echo "     使用 FinalShell / WinSCP等工具连接服务器后下载到本地"
   echo "==============================================="
+
+  # 清理旧备份，只保留最近5次
+  echo ""
+  echo "🧹 清理旧备份（保留最近5次）..."
+  local backup_count
+  backup_count=$(ls -1d "${backup_base}"/flvx_backup_* 2>/dev/null | wc -l)
+  if [[ "$backup_count" -gt 5 ]]; then
+    local to_delete=$((backup_count - 5))
+    ls -1d "${backup_base}"/flvx_backup_* | head -n "$to_delete" | while read -r old_backup; do
+      rm -rf "$old_backup"
+      echo "  已删除旧备份：$(basename "$old_backup")"
+    done
+    echo "✅ 已清理 $to_delete 个旧备份"
+  else
+    echo "✅ 当前备份数量：$backup_count / 5（无需清理）"
+  fi
+}
+
+
+# 恢复面板数据
+restore_panel_data() {
+  local install_dir backup_base current_db_type backup_choice backup_dir
+  local postgres_user postgres_db postgres_password
+
+  echo "📥 开始恢复面板数据..."
+
+  install_dir="/opt/flvx-svc"
+  backup_base="/root/flvxbackup"
+
+  if [[ ! -d "$install_dir" ]]; then
+    echo "❌ 未检测到面板安装（/opt/flvx-svc 不存在），请先安装面板"
+    return 1
+  fi
+
+  # 检查是否有可用备份
+  if ! ls -1d "${backup_base}"/flvx_backup_* &>/dev/null; then
+    echo "❌ 未找到任何备份文件，请先执行备份操作"
+    return 1
+  fi
+
+  cd "$install_dir"
+  check_docker
+
+  # 列出所有备份供选择
+  echo ""
+  echo "📂 可用备份列表："
+  echo "==============================================="
+  local backups=()
+  local idx=1
+  while IFS= read -r dir; do
+    backups+=("$dir")
+    local bname
+    bname=$(basename "$dir")
+    local bsize
+    bsize=$(du -sh "$dir" 2>/dev/null | cut -f1)
+    echo "  $idx. $bname ($bsize)"
+    idx=$((idx + 1))
+  done < <(ls -1d "${backup_base}"/flvx_backup_* | sort -r)
+  echo "==============================================="
+
+  read -p "请选择要恢复的备份编号 (1-$((idx-1)))，或输入 q 取消: " backup_choice
+  if [[ "$backup_choice" == "q" || "$backup_choice" == "Q" ]]; then
+    echo "❌ 取消恢复操作"
+    return 0
+  fi
+
+  if ! [[ "$backup_choice" =~ ^[0-9]+$ ]] || [[ "$backup_choice" -lt 1 ]] || [[ "$backup_choice" -gt $((idx-1)) ]]; then
+    echo "❌ 无效的选择"
+    return 1
+  fi
+
+  backup_dir="${backups[$((backup_choice-1))]}"
+  echo "📁 选择备份：$(basename "$backup_dir")"
+
+  # 确认恢复
+  echo ""
+  echo "⚠️  警告：恢复操作将覆盖当前数据库数据！"
+  read -p "确认继续恢复吗？(y/N): " confirm
+  if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
+    echo "❌ 取消恢复操作"
+    return 0
+  fi
+
+  # 停止后端服务
+  echo "🛑 停止后端服务..."
+  docker stop -t 30 flvx-svc-backend 2>/dev/null || true
+  sleep 3
+
+  # 检测数据库类型并恢复
+  current_db_type=$(get_current_db_type)
+  echo "🗄️ 当前数据库类型：$current_db_type"
+
+  if [[ "$current_db_type" == "sqlite" ]]; then
+    if [[ -f "$backup_dir/gost.db" ]]; then
+      echo "📦 恢复 SQLite 数据库..."
+      if docker cp "$backup_dir/gost.db" flvx-svc-backend:/app/data/gost.db 2>/dev/null; then
+        echo "  gost.db → 已恢复"
+      else
+        echo "❌ SQLite 数据库恢复失败"
+        return 1
+      fi
+    else
+      echo "❌ 备份中未找到 gost.db 文件"
+      return 1
+    fi
+
+  elif [[ "$current_db_type" == "postgres" ]]; then
+    if [[ -f "$backup_dir/backup.sql" ]]; then
+      postgres_user=$(get_env_var "POSTGRES_USER")
+      postgres_db=$(get_env_var "POSTGRES_DB")
+      postgres_password=$(get_env_var "POSTGRES_PASSWORD")
+      postgres_user=${postgres_user:-flvx_svc}
+      postgres_db=${postgres_db:-flvx_svc}
+
+      echo "📦 恢复 PostgreSQL 数据库..."
+      if docker exec -i flvx-svc-postgres psql -U "$postgres_user" -d "$postgres_db" < "$backup_dir/backup.sql" 2>/dev/null; then
+        echo "  backup.sql → 已恢复"
+      else
+        echo "❌ PostgreSQL 数据库恢复失败"
+        return 1
+      fi
+    else
+      echo "❌ 备份中未找到 backup.sql 文件"
+      return 1
+    fi
+  fi
+
+  # 恢复配置文件（可选）
+  if [[ -f "$backup_dir/.env" ]]; then
+    echo ""
+    echo "📋 检测到备份中包含 .env 配置文件"
+    read -p "是否同时恢复 .env 配置文件？(y/N): " restore_env
+    if [[ "$restore_env" == "y" || "$restore_env" == "Y" ]]; then
+      cp "$backup_dir/.env" "$install_dir/.env"
+      echo "  .env → 已恢复"
+    fi
+  fi
+
+  if [[ -f "$backup_dir/docker-compose.yml" ]]; then
+    echo ""
+    read -p "是否同时恢复 docker-compose.yml 配置文件？(y/N): " restore_compose
+    if [[ "$restore_compose" == "y" || "$restore_compose" == "Y" ]]; then
+      cp "$backup_dir/docker-compose.yml" "$install_dir/docker-compose.yml"
+      echo "  docker-compose.yml → 已恢复"
+    fi
+  fi
+
+  # 重启服务
+  echo ""
+  echo "🚀 重启后端服务..."
+  $DOCKER_CMD up -d backend
+
+  echo "⏳ 等待服务启动..."
+  if wait_for_backend_healthy; then
+    echo ""
+    echo "==============================================="
+    echo "              恢复完成"
+    echo "==============================================="
+    echo "✅ 数据已从备份恢复并重启服务"
+    echo "📁 恢复来源：$(basename "$backup_dir")"
+    echo "==============================================="
+  else
+    echo "❌ 服务启动失败，请检查日志"
+    return 1
+  fi
 }
 
 
@@ -940,7 +1106,7 @@ main() {
   # 显示交互式菜单
   while true; do
     show_menu
-    read -p "请输入选项 (1-5): " choice
+    read -p "请输入选项 (1-6): " choice
 
     case $choice in
       1)
@@ -960,11 +1126,15 @@ main() {
         echo ""
         ;;
       5)
+        restore_panel_data
+        echo ""
+        ;;
+      6)
         echo "👋 退出脚本"
         exit 0
         ;;
       *)
-        echo "❌ 无效选项，请输入 1-5"
+        echo "❌ 无效选项，请输入 1-6"
         echo ""
         ;;
     esac
