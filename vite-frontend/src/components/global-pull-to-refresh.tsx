@@ -7,10 +7,13 @@ export function GlobalPullToRefresh() {
   const startY = useRef(0);
   const isPulling = useRef(false);
   const currentDistance = useRef(0);
+  const pullActivated = useRef(false);
+  const touchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const MAX_PULL = 80;
     const THRESHOLD = 60;
+    const ACTIVATION_DELAY = 200;
 
     const getScrollTop = (target: EventTarget | null) => {
       let node = target as HTMLElement | null;
@@ -37,33 +40,47 @@ export function GlobalPullToRefresh() {
       if (getScrollTop(e.target) <= 0) {
         startY.current = e.touches[0].clientY;
         isPulling.current = true;
+        pullActivated.current = false;
         currentDistance.current = 0;
+        if (touchTimer.current) clearTimeout(touchTimer.current);
+        touchTimer.current = setTimeout(() => {
+          if (isPulling.current) {
+            pullActivated.current = true;
+          }
+        }, ACTIVATION_DELAY);
       }
     };
 
     const onTouchMove = (e: TouchEvent) => {
       if (!isPulling.current) return;
+      if (!pullActivated.current) return;
+
       const y = e.touches[0].clientY;
       const distance = y - startY.current;
 
       if (distance > 0) {
-        if (getScrollTop(e.target) <= 0) {
-          if (e.cancelable) e.preventDefault();
-          currentDistance.current = Math.min(distance * 0.4, MAX_PULL);
-          setPullDistance(currentDistance.current);
-        } else {
-          isPulling.current = false;
-          setPullDistance(0);
-        }
+        if (e.cancelable) e.preventDefault();
+        currentDistance.current = Math.min(distance * 0.4, MAX_PULL);
+        setPullDistance(currentDistance.current);
       } else {
         isPulling.current = false;
+        pullActivated.current = false;
         setPullDistance(0);
+        if (touchTimer.current) {
+          clearTimeout(touchTimer.current);
+          touchTimer.current = null;
+        }
       }
     };
 
     const onTouchEnd = () => {
+      if (touchTimer.current) {
+        clearTimeout(touchTimer.current);
+        touchTimer.current = null;
+      }
       if (!isPulling.current) return;
       isPulling.current = false;
+      pullActivated.current = false;
 
       if (currentDistance.current >= THRESHOLD) {
         setRefreshing(true);
@@ -91,6 +108,7 @@ export function GlobalPullToRefresh() {
       document.removeEventListener("touchmove", onTouchMove);
       document.removeEventListener("touchend", onTouchEnd);
       window.removeEventListener("flvx:pulltorefresh:done", onRefreshDone);
+      if (touchTimer.current) clearTimeout(touchTimer.current);
     };
   }, []);
 
@@ -112,15 +130,13 @@ export function GlobalPullToRefresh() {
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
-            strokeWidth="2" // 🌟 粗细依然在这里随便调：1.5 偏细，2 是标准，2.5 偏粗
+            strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
             style={{
-              // 下拉时跟随手指旋转
               transform: !refreshing ? `rotate(${pullDistance * 4}deg)` : undefined, 
             }}
           >
-            {/* 真正的极简缺口圆环 */}
             <path d="M 16.5 4.21 A 9 9 0 1 1 7.5 4.21" />
           </svg>
         </div>
