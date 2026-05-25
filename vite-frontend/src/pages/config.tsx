@@ -1064,7 +1064,7 @@ export default function ConfigPage() {
               <div>
                 <h2 className="text-xl font-semibold">数据备份</h2>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  导出系统所有数据为 JSON 格式文件
+                  导出系统所有数据为jaon格式文件，优先使用脚本备份数据
                 </p>
               </div>
             </div>
