@@ -289,7 +289,7 @@ func (r *Repository) GetUserDefaultsForTunnel(userID int64) (flow int64, num int
 	return user.Flow, user.Num, user.ExpTime, user.FlowResetTime, nil
 }
 
-func (r *Repository) CreateNode(name, secret, serverIP string, serverIPV4, serverIPV6, port, interfaceName, version, remark, expiryTime, renewalCycle, groupID interface{}, httpFlag, tlsFlag, socksFlag int, now int64, status int, tcpAddr, udpAddr string, inx, isRemote int, remoteURL, remoteToken, remoteConfig, extraIPs interface{}) error {
+func (r *Repository) CreateNode(name, secret, serverIP string, serverIPV4, serverIPV6, port, interfaceName, version, remark, expiryTime, renewalCycle, groupID interface{}, httpFlag, tlsFlag, socksFlag, blockOtherFlag int, now int64, status int, tcpAddr, udpAddr string, inx, isRemote int, remoteURL, remoteToken, remoteConfig, extraIPs interface{}) error {
 	if r == nil || r.db == nil {
 		return errors.New("repository not initialized")
 	}
@@ -310,6 +310,7 @@ func (r *Repository) CreateNode(name, secret, serverIP string, serverIPV4, serve
 		HTTP:          httpFlag,
 		TLS:           tlsFlag,
 		Socks:         socksFlag,
+		BlockOther:    blockOtherFlag,
 		CreatedTime:   now,
 		UpdatedTime:   sql.NullInt64{Int64: now, Valid: true},
 		Status:        status,
@@ -324,16 +325,16 @@ func (r *Repository) CreateNode(name, secret, serverIP string, serverIPV4, serve
 	return r.db.Create(&node).Error
 }
 
-func (r *Repository) GetNodeStatusFields(nodeID int64) (status, httpFlag, tlsFlag, socksFlag int, err error) {
+func (r *Repository) GetNodeStatusFields(nodeID int64) (status, httpFlag, tlsFlag, socksFlag, blockOtherFlag int, err error) {
 	if r == nil || r.db == nil {
-		return 0, 0, 0, 0, errors.New("repository not initialized")
+		return 0, 0, 0, 0, 0, errors.New("repository not initialized")
 	}
 	var node model.Node
-	err = r.db.Select("status", "http", "tls", "socks").Where("id = ?", nodeID).First(&node).Error
+	err = r.db.Select("status", "http", "tls", "socks", "block_other").Where("id = ?", nodeID).First(&node).Error
 	if err != nil {
-		return 0, 0, 0, 0, normalizeNotFoundErr(err)
+		return 0, 0, 0, 0, 0, normalizeNotFoundErr(err)
 	}
-	return node.Status, node.HTTP, node.TLS, node.Socks, nil
+	return node.Status, node.HTTP, node.TLS, node.Socks, node.BlockOther, nil
 }
 
 // UpdateNodePublicIP 更新节点公网 IP
@@ -363,7 +364,7 @@ func (r *Repository) UpdateNodePublicIPs(nodeID int64, ipv4, ipv6 string) error 
 		}).Error
 }
 
-func (r *Repository) UpdateNode(id int64, name, serverIP string, serverIPV4, serverIPV6, intranetIP, port, interfaceName, extraIPs, remark, expiryTime, renewalCycle, groupID interface{}, httpFlag, tlsFlag, socksFlag int, tcpAddr, udpAddr string, now int64) error {
+func (r *Repository) UpdateNode(id int64, name, serverIP string, serverIPV4, serverIPV6, intranetIP, port, interfaceName, extraIPs, remark, expiryTime, renewalCycle, groupID interface{}, httpFlag, tlsFlag, socksFlag, blockOtherFlag int, tcpAddr, udpAddr string, now int64) error {
 	if r == nil || r.db == nil {
 		return errors.New("repository not initialized")
 	}
@@ -382,6 +383,7 @@ func (r *Repository) UpdateNode(id int64, name, serverIP string, serverIPV4, ser
 		"http":                      httpFlag,
 		"tls":                       tlsFlag,
 		"socks":                     socksFlag,
+		"block_other":               blockOtherFlag,
 		"tcp_listen_addr":           tcpAddr,
 		"udp_listen_addr":           udpAddr,
 		"updated_time":              sql.NullInt64{Int64: now, Valid: true},

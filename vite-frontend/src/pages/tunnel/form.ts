@@ -13,6 +13,7 @@ interface TunnelFormInput {
   http: number;
   tls: number;
   socks: number;
+  blockOther: number;
 }
 
 interface TunnelNodeInput {
@@ -37,6 +38,7 @@ export const createTunnelFormDefaults = () => {
     http: 0,
     tls: 0,
     socks: 0,
+    blockOther: 0,
   };
 };
 

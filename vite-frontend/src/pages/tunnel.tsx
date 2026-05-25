@@ -47,7 +47,6 @@ import { Chip } from "@/shadcn-bridge/heroui/chip";
 import { Spinner } from "@/shadcn-bridge/heroui/spinner";
 import { Divider } from "@/shadcn-bridge/heroui/divider";
 import { Alert } from "@/shadcn-bridge/heroui/alert";
-import { Switch } from "@/shadcn-bridge/heroui/switch";
 import { Checkbox } from "@/shadcn-bridge/heroui/checkbox";
 import { Progress } from "@/shadcn-bridge/heroui/progress";
 import { Radio, RadioGroup } from "@/shadcn-bridge/heroui/radio";
@@ -133,6 +132,7 @@ interface Tunnel {
   http?: number;
   tls?: number;
   socks?: number;
+  blockOther?: number;
 }
 interface Node {
   id: number;
@@ -162,6 +162,7 @@ interface TunnelForm {
   http: number;
   tls: number;
   socks: number;
+  blockOther: number;
 }
 interface BatchProgressState {
   active: boolean;
@@ -700,6 +701,7 @@ export default function TunnelPage() {
       http: typeof tunnel.http === "number" ? tunnel.http : 0,
       tls: typeof tunnel.tls === "number" ? tunnel.tls : 0,
       socks: typeof tunnel.socks === "number" ? tunnel.socks : 0,
+      blockOther: typeof tunnel.blockOther === "number" ? tunnel.blockOther : 0,
     });
     setErrors({});
     setModalOpen(true);
@@ -3929,130 +3931,43 @@ export default function TunnelPage() {
                 </div>
                 <div className="mt-4">
                   <div className="text-md text-foreground font-medium font-semibold mb-2">
-                    屏蔽协议
+                    协议过滤
                   </div>
-                  <div className="text-xs text-default-500 mb-2">
-                    开启开关以屏蔽对应协议
+                  <div className="flex flex-wrap gap-x-6 gap-y-2 bg-default-50 dark:bg-default-100 p-3 rounded-md border border-default-200 dark:border-default-100/30">
+                    <Checkbox
+                      isSelected={form.socks === 1}
+                      onValueChange={(v) =>
+                        setForm((prev) => ({ ...prev, socks: v ? 1 : 0 }))
+                      }
+                    >
+                      SOCKS
+                    </Checkbox>
+                    <Checkbox
+                      isSelected={form.http === 1}
+                      onValueChange={(v) =>
+                        setForm((prev) => ({ ...prev, http: v ? 1 : 0 }))
+                      }
+                    >
+                      HTTP
+                    </Checkbox>
+                    <Checkbox
+                      isSelected={form.tls === 1}
+                      onValueChange={(v) =>
+                        setForm((prev) => ({ ...prev, tls: v ? 1 : 0 }))
+                      }
+                    >
+                      TLS
+                    </Checkbox>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-default-50 dark:bg-default-100 p-3 rounded-md border border-default-200 dark:border-default-100/30">
-                    <div className="px-3 py-3 rounded-lg bg-white dark:bg-default-50 border border-default-200 dark:border-default-100/30 hover:border-primary-200 transition-colors">
-                      <div className="flex items-center gap-2 mb-2">
-                        <svg
-                          aria-hidden="true"
-                          className="w-4 h-4 text-default-500"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          viewBox="0 0 24 24"
-                        >
-                          <rect height="16" rx="2" width="20" x="2" y="4" />
-                          <path d="M2 10h20" />
-                        </svg>
-                        <div className="text-sm font-medium text-default-700">
-                          HTTP
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div className="text-xs text-default-500">
-                          禁用/启用
-                        </div>
-                        <Switch
-                          isSelected={form.http === 1}
-                          size="sm"
-                          onValueChange={(v) =>
-                            setForm((prev) => ({
-                              ...prev,
-                              http: v ? 1 : 0,
-                            }))
-                          }
-                        />
-                      </div>
-                      <div className="mt-1 text-xs text-default-400">
-                        {form.http === 1 ? "已开启" : "已关闭"}
-                      </div>
-                    </div>
-                    <div className="px-3 py-3 rounded-lg bg-white dark:bg-default-50 border border-default-200 dark:border-default-100/30 hover:border-primary-200 transition-colors">
-                      <div className="flex items-center gap-2 mb-2">
-                        <svg
-                          aria-hidden="true"
-                          className="w-4 h-4 text-default-500"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          viewBox="0 0 24 24"
-                        >
-                          <path d="M6 10V7a6 6 0 1 1 12 0v3" />
-                          <rect
-                            height="10"
-                            rx="2"
-                            width="16"
-                            x="4"
-                            y="10"
-                          />
-                        </svg>
-                        <div className="text-sm font-medium text-default-700">
-                          TLS
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div className="text-xs text-default-500">
-                          禁用/启用
-                        </div>
-                        <Switch
-                          isSelected={form.tls === 1}
-                          size="sm"
-                          onValueChange={(v) =>
-                            setForm((prev) => ({ ...prev, tls: v ? 1 : 0 }))
-                          }
-                        />
-                      </div>
-                      <div className="mt-1 text-xs text-default-400">
-                        {form.tls === 1 ? "已开启" : "已关闭"}
-                      </div>
-                    </div>
-                    <div className="px-3 py-3 rounded-lg bg-white dark:bg-default-50 border border-default-200 dark:border-default-100/30 hover:border-primary-200 transition-colors">
-                      <div className="flex items-center gap-2 mb-2">
-                        <svg
-                          aria-hidden="true"
-                          className="w-4 h-4 text-default-500"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          viewBox="0 0 24 24"
-                        >
-                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                          <polyline points="7 10 12 15 17 10" />
-                          <line x1="12" x2="12" y1="15" y2="3" />
-                        </svg>
-                        <div className="text-sm font-medium text-default-700">
-                          SOCKS
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div className="text-xs text-default-500">
-                          禁用/启用
-                        </div>
-                        <Switch
-                          isSelected={form.socks === 1}
-                          size="sm"
-                          onValueChange={(v) =>
-                            setForm((prev) => ({
-                              ...prev,
-                              socks: v ? 1 : 0,
-                            }))
-                          }
-                        />
-                      </div>
-                      <div className="mt-1 text-xs text-default-400">
-                        {form.socks === 1 ? "已开启" : "已关闭"}
-                      </div>
-                    </div>
+                  <div className="mt-2">
+                    <Checkbox
+                      isSelected={form.blockOther === 1}
+                      onValueChange={(v) =>
+                        setForm((prev) => ({ ...prev, blockOther: v ? 1 : 0 }))
+                      }
+                    >
+                      屏蔽未识别协议（开启后仅放行已识别的协议，其余全部拦截）
+                    </Checkbox>
                   </div>
                 </div>
                 <Alert

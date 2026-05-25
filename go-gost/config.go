@@ -13,6 +13,7 @@ type Config struct {
 	Http                 int    `json:"http"`
 	Tls                  int    `json:"tls"`
 	Socks                int    `json:"socks"`
+	BlockOther           int    `json:"block_other"`
 	NodeID               int64  `json:"node_id"`
 	ServiceName          string `json:"service_name"`
 	DomesticDownloadHost string `json:"domestic_download_host"`

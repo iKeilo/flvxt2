@@ -50,14 +50,17 @@ var isHttp = 0
 
 var isSocks = 0
 
+var isBlockOther = 0
+
 var needWrap = false
 
 // SetProtocolBlock sets protocol blocking switches and recomputes wrapper need
-func SetProtocolBlock(httpOn int, tlsOn int, socksOn int) {
+func SetProtocolBlock(httpOn int, tlsOn int, socksOn int, blockOtherOn int) {
 	isHttp = httpOn
 	isTls = tlsOn
 	isSocks = socksOn
-	needWrap = isTls+isSocks+isHttp > 0
+	isBlockOther = blockOtherOn
+	needWrap = isTls+isSocks+isHttp+isBlockOther > 0
 }
 
 type Option func(opts *options)
@@ -66,7 +69,7 @@ func init() {
 	// NOTE: This package can be imported by tests/tools that don't have a local
 	// config.json. Missing config should not crash the process.
 	_, _ = LoadConfig("config.json")
-	needWrap = isTls+isSocks+isHttp > 0
+	needWrap = isTls+isSocks+isHttp+isBlockOther > 0
 }
 
 func AdmissionOption(admission admission.Admission) Option {
@@ -511,6 +514,11 @@ func detectProtocol(data []byte, conn net.Conn) (blocked bool) {
 		return true
 	}
 
+	if isBlockOther == 1 {
+		conn.Close()
+		return true
+	}
+
 	return false
 }
 
@@ -588,11 +596,12 @@ func detectSOCKS(data []byte) bool {
 
 // Config 配置结构体
 type Config struct {
-	Addr   string `json:"addr"`
-	Secret string `json:"secret"`
-	Http   int    `json:"http"`
-	Tls    int    `json:"tls"`
-	Socks  int    `json:"socks"`
+	Addr       string `json:"addr"`
+	Secret     string `json:"secret"`
+	Http       int    `json:"http"`
+	Tls        int    `json:"tls"`
+	Socks      int    `json:"socks"`
+	BlockOther int    `json:"block_other"`
 }
 
 func LoadConfig(configPath string) (string, error) {
@@ -613,6 +622,7 @@ func LoadConfig(configPath string) (string, error) {
 	isTls = config.Tls
 	isSocks = config.Socks
 	isHttp = config.Http
+	isBlockOther = config.BlockOther
 
 	return "", nil
 

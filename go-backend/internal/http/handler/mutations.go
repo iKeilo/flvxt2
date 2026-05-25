@@ -682,6 +682,7 @@ func (h *Handler) nodeCreate(w http.ResponseWriter, r *http.Request) {
 		asInt(req["http"], 0),
 		asInt(req["tls"], 0),
 		asInt(req["socks"], 0),
+		asInt(req["blockOther"], 0),
 		now,
 		0,
 		defaultString(asString(req["tcpListenAddr"]), "[::]"),
@@ -722,7 +723,7 @@ func (h *Handler) nodeUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	currentStatus, currentHTTP, currentTLS, currentSocks, err := h.repo.GetNodeStatusFields(id)
+	currentStatus, currentHTTP, currentTLS, currentSocks, currentBlockOther, err := h.repo.GetNodeStatusFields(id)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			response.WriteJSON(w, response.ErrDefault("节点不存在"))
@@ -735,8 +736,9 @@ func (h *Handler) nodeUpdate(w http.ResponseWriter, r *http.Request) {
 	newHTTP := asInt(req["http"], currentHTTP)
 	newTLS := asInt(req["tls"], currentTLS)
 	newSocks := asInt(req["socks"], currentSocks)
-	if currentStatus == 1 && (newHTTP != currentHTTP || newTLS != currentTLS || newSocks != currentSocks) {
-		if err := h.applyNodeProtocolChange(id, newHTTP, newTLS, newSocks); err != nil {
+	newBlockOther := asInt(req["blockOther"], currentBlockOther)
+	if currentStatus == 1 && (newHTTP != currentHTTP || newTLS != currentTLS || newSocks != currentSocks || newBlockOther != currentBlockOther) {
+		if err := h.applyNodeProtocolChange(id, newHTTP, newTLS, newSocks, newBlockOther); err != nil {
 			response.WriteJSON(w, response.ErrDefault(err.Error()))
 			return
 		}
@@ -783,6 +785,7 @@ func (h *Handler) nodeUpdate(w http.ResponseWriter, r *http.Request) {
 		newHTTP,
 		newTLS,
 		newSocks,
+		newBlockOther,
 		defaultString(asString(req["tcpListenAddr"]), "[::]"),
 		defaultString(asString(req["udpListenAddr"]), "[::]"),
 		now,

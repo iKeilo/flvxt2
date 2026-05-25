@@ -791,13 +791,13 @@ func (r *Repository) GetNodeByID(id int64) (*model.Node, error) {
 	return &n, nil
 }
 
-func (r *Repository) UpdateNodeOnline(nodeID int64, status int, version string, httpVal, tlsVal, socksVal int) error {
+func (r *Repository) UpdateNodeOnline(nodeID int64, status int, version string, httpVal, tlsVal, socksVal, blockOtherVal int) error {
 	if r == nil || r.db == nil {
 		return errors.New("repository not initialized")
 	}
 	return r.db.Model(&model.Node{}).Where("id = ?", nodeID).Updates(map[string]interface{}{
 		"status": status, "version": version, "http": httpVal, "tls": tlsVal,
-		"socks": socksVal, "updated_time": unixMilliNow(),
+		"socks": socksVal, "block_other": blockOtherVal, "updated_time": unixMilliNow(),
 	}).Error
 }
 
@@ -902,7 +902,7 @@ func (r *Repository) ListNodes(opts *ListNodesOptions) ([]map[string]interface{}
 			"tcpListenAddr": n.TCPListenAddr,
 			"udpListenAddr": n.UDPListenAddr,
 			"version":       nullableString(n.Version),
-			"http":          n.HTTP, "tls": n.TLS, "socks": n.Socks,
+			"http": n.HTTP, "tls": n.TLS, "socks": n.Socks, "blockOther": n.BlockOther,
 			"status": n.Status, "isRemote": n.IsRemote,
 			"remoteUrl":               nullableString(n.RemoteURL),
 			"remoteToken":             nullableString(n.RemoteToken),

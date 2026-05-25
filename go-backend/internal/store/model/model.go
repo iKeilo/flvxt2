@@ -106,6 +106,7 @@ type Node struct {
 	HTTP                         int            `gorm:"column:http;not null;default:0"`
 	TLS                          int            `gorm:"column:tls;not null;default:0"`
 	Socks                        int            `gorm:"not null;default:0"`
+	BlockOther                   int            `gorm:"column:block_other;not null;default:0"`
 	CreatedTime                  int64          `gorm:"column:created_time;not null"`
 	UpdatedTime                  sql.NullInt64  `gorm:"column:updated_time"`
 	Status                       int            `gorm:"not null"`

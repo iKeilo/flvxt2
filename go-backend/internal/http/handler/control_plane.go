@@ -636,11 +636,12 @@ func shouldSelfHealForwardServiceControl(commandType string) bool {
 	return cmd == "pauseservice" || cmd == "resumeservice"
 }
 
-func (h *Handler) applyNodeProtocolChange(nodeID int64, httpVal, tlsVal, socksVal int) error {
+func (h *Handler) applyNodeProtocolChange(nodeID int64, httpVal, tlsVal, socksVal, blockOtherVal int) error {
 	_, err := h.sendNodeCommand(nodeID, "SetProtocol", map[string]interface{}{
-		"http":  httpVal,
-		"tls":   tlsVal,
-		"socks": socksVal,
+		"http":       httpVal,
+		"tls":        tlsVal,
+		"socks":      socksVal,
+		"blockOther": blockOtherVal,
 	}, false, false)
 	return err
 }

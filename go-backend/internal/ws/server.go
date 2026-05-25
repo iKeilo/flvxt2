@@ -320,6 +320,7 @@ func (s *Server) handleNode(w http.ResponseWriter, r *http.Request, nodeID int64
 	httpVal := parseIntDefault(r.URL.Query().Get("http"), 0)
 	tlsVal := parseIntDefault(r.URL.Query().Get("tls"), 0)
 	socksVal := parseIntDefault(r.URL.Query().Get("socks"), 0)
+	blockOtherVal := parseIntDefault(r.URL.Query().Get("blockOther"), 0)
 
 	s.mu.Lock()
 	if old, ok := s.nodes[nodeID]; ok {
@@ -338,7 +339,7 @@ func (s *Server) handleNode(w http.ResponseWriter, r *http.Request, nodeID int64
 	delete(s.nodeOfflineTime, nodeID)
 	s.mu.Unlock()
 
-	_ = s.repo.UpdateNodeOnline(nodeID, 1, version, httpVal, tlsVal, socksVal)
+	_ = s.repo.UpdateNodeOnline(nodeID, 1, version, httpVal, tlsVal, socksVal, blockOtherVal)
 	s.broadcastStatus(nodeID, 1)
 
 	s.mu.RLock()
