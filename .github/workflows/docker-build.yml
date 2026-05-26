@@ -326,13 +326,25 @@ jobs:
           VERSION="${{ needs.check-version.outputs.version }}"
           OWNER="${{ needs.check-version.outputs.image_owner }}"
 
+          # 判断是否为预发布版本（含 dev/beta/alpha/rc 后缀）
+          IS_PRERELEASE=false
+          if [[ "$VERSION" =~ -(dev|beta|alpha|rc) ]]; then
+            IS_PRERELEASE=true
+          fi
+
           # 获取 commit 信息
           COMMIT_MSG=$(git log -1 --pretty=format:"%s")
           COMMIT_AUTHOR=$(git log -1 --pretty=format:"%an")
           COMMIT_DATE=$(git log -1 --pretty=format:"%ai")
 
           # 创建 release
+          PRERELEASE_FLAG=""
+          if [ "$IS_PRERELEASE" = true ]; then
+            PRERELEASE_FLAG="--prerelease"
+          fi
+
           gh release create "${VERSION}" \
+            $PRERELEASE_FLAG \
             --title "Release ${VERSION}" \
             --notes "## 📝 Release Information
 
@@ -395,8 +407,11 @@ jobs:
           gh release upload "${VERSION}" ./artifacts/offline-amd64.zip --clobber
           gh release upload "${VERSION}" ./artifacts/offline-arm64.zip --clobber
 
-          RELEASE_ID=$(gh release view "${VERSION}" --json databaseId --jq '.databaseId')
-          gh api -X PATCH repos/${{ github.repository }}/releases/${RELEASE_ID} -f make_latest="true"
+          # 正式版设为 latest，预发布版不覆盖 latest
+          if [ "$IS_PRERELEASE" = false ]; then
+            RELEASE_ID=$(gh release view "${VERSION}" --json databaseId --jq '.databaseId')
+            gh api -X PATCH repos/${{ github.repository }}/releases/${RELEASE_ID} -f make_latest="true"
+          fi
           echo "✅ Release ${VERSION} 创建完成"
 
       #- name: Sync to Chinese CDN
