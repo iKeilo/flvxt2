@@ -81,35 +81,60 @@ type CommandResult struct {
 }
 
 type Server struct {
-	repo         *repo.Repository
-	jwtSecret    string
-	upgrader     websocket.Upgrader
-	onNodeOnline func(nodeID int64)
-	onNodeMetric func(nodeID int64, info SystemInfo)
+	repo             *repo.Repository
+	jwtSecret        string
+	upgrader         websocket.Upgrader
+	onNodeOnline     func(nodeID int64)
+	onNodeMetric     func(nodeID int64, info SystemInfo)
 	getUserAuthState func(userID int64) (*auth.UserAuthState, error)
 
-	mu      sync.RWMutex
-	admins   map[*adminSession]struct{}
-	monitors map[*monitorSession]struct{}
-	nodes    map[int64]*nodeSession
-	byConn   map[*websocket.Conn]*nodeSession
-	pending  map[string]pendingRequest
+	mu                    sync.RWMutex
+	admins                map[*adminSession]struct{}
+	monitors              map[*monitorSession]struct{}
+	nodes                 map[int64]*nodeSession
+	byConn                map[*websocket.Conn]*nodeSession
+	pending               map[string]pendingRequest
+	serviceConnections    map[int64]map[string]int
+	serviceConnUpdateTime map[int64]int64
+	forwardMetrics        map[int64]map[int64]*ForwardMetric
+	forwardMetricsMu      sync.RWMutex
+	nodeOfflineTime       map[int64]int64
 }
 
 type SystemInfo struct {
-	Uptime           uint64  `json:"uptime"`
-	BytesReceived    uint64  `json:"bytes_received"`
-	BytesTransmitted uint64  `json:"bytes_transmitted"`
-	CPUUsage         float64 `json:"cpu_usage"`
-	MemoryUsage      float64 `json:"memory_usage"`
-	DiskUsage        float64 `json:"disk_usage"`
-	Load1            float64 `json:"load1"`
-	Load5            float64 `json:"load5"`
-	Load15           float64 `json:"load15"`
-	TCPConns         int64   `json:"tcp_conns"`
-	UDPConns         int64   `json:"udp_conns"`
-	NetInSpeed       int64   `json:"net_in_speed"`
-	NetOutSpeed      int64   `json:"net_out_speed"`
+	Uptime                 uint64          `json:"uptime"`
+	BytesReceived          uint64          `json:"bytes_received"`
+	BytesTransmitted       uint64          `json:"bytes_transmitted"`
+	PeriodBytesReceived    uint64          `json:"period_bytes_received"`
+	PeriodBytesTransmitted uint64          `json:"period_bytes_transmitted"`
+	BaselineRecordedAt     int64           `json:"baseline_recorded_at"`
+	NextResetAt            int64           `json:"next_reset_at"`
+	RenewalCycle           string          `json:"renewal_cycle,omitempty"`
+	CPUUsage               float64         `json:"cpu_usage"`
+	MemoryUsage            float64         `json:"memory_usage"`
+	DiskUsage              float64         `json:"disk_usage"`
+	Load1                  float64         `json:"load1"`
+	Load5                  float64         `json:"load5"`
+	Load15                 float64         `json:"load15"`
+	TCPConns               int64           `json:"tcp_conns"`
+	UDPConns               int64           `json:"udp_conns"`
+	NetInSpeed             int64           `json:"net_in_speed"`
+	NetOutSpeed            int64           `json:"net_out_speed"`
+	ServiceName            string          `json:"service_name,omitempty"`
+	ServiceConnections     map[string]int  `json:"serviceConnections"`
+	ForwardMetrics         []ForwardMetric `json:"forward_metrics,omitempty"`
+}
+
+type ForwardMetric struct {
+	ForwardID   int64  `json:"forward_id"`
+	UserID      int64  `json:"user_id"`
+	TunnelID    int64  `json:"tunnel_id"`
+	NodeID      int64  `json:"node_id"`
+	Port        int    `json:"port"`
+	ServiceName string `json:"service_name"`
+	InSpeed     uint64 `json:"in_speed"`
+	OutSpeed    uint64 `json:"out_speed"`
+	Connections int    `json:"connections"`
 }
 
 func (s *Server) SetNodeOnlineHook(fn func(nodeID int64)) {
@@ -130,19 +155,93 @@ func (s *Server) SetNodeMetricHook(fn func(nodeID int64, info SystemInfo)) {
 	s.mu.Unlock()
 }
 
+func (s *Server) GetServiceConnections(nodeID int64) map[string]int {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if conns, ok := s.serviceConnections[nodeID]; ok {
+		out := make(map[string]int, len(conns))
+		for k, v := range conns {
+			out[k] = v
+		}
+		return out
+	}
+	return nil
+}
+
+func (s *Server) GetForwardCurrentConnections(nodeID int64, forwardID int64) int {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	conns := s.serviceConnections[nodeID]
+	if conns == nil {
+		return 0
+	}
+	total := 0
+	prefix := fmt.Sprintf("%d_", forwardID)
+	for serviceName, count := range conns {
+		if strings.HasPrefix(serviceName, prefix) {
+			total += count
+		}
+	}
+	return total
+}
+
+func (s *Server) GetForwardMetric(forwardID int64) *ForwardMetric {
+	s.forwardMetricsMu.RLock()
+	defer s.forwardMetricsMu.RUnlock()
+	nodeMetrics, ok := s.forwardMetrics[forwardID]
+	if !ok || len(nodeMetrics) == 0 {
+		return nil
+	}
+
+	var base *ForwardMetric
+	var totalIn, totalOut uint64
+	totalConnections := 0
+	for _, metric := range nodeMetrics {
+		if base == nil {
+			base = &ForwardMetric{
+				ForwardID:   metric.ForwardID,
+				UserID:      metric.UserID,
+				TunnelID:    metric.TunnelID,
+				ServiceName: metric.ServiceName,
+			}
+		}
+		totalIn += metric.InSpeed
+		totalOut += metric.OutSpeed
+		totalConnections += metric.Connections
+	}
+	if base == nil {
+		return nil
+	}
+	return &ForwardMetric{
+		ForwardID:   base.ForwardID,
+		UserID:      base.UserID,
+		TunnelID:    base.TunnelID,
+		ServiceName: base.ServiceName,
+		InSpeed:     totalIn,
+		OutSpeed:    totalOut,
+		Connections: totalConnections,
+	}
+}
+
 func NewServer(repo *repo.Repository, jwtSecret string) *Server {
-	return &Server{
+	s := &Server{
 		repo:      repo,
 		jwtSecret: jwtSecret,
 		upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool { return true },
 		},
-		admins:   make(map[*adminSession]struct{}),
-		monitors: make(map[*monitorSession]struct{}),
-		nodes:    make(map[int64]*nodeSession),
-		byConn:   make(map[*websocket.Conn]*nodeSession),
-		pending:  make(map[string]pendingRequest),
+		admins:                make(map[*adminSession]struct{}),
+		monitors:              make(map[*monitorSession]struct{}),
+		nodes:                 make(map[int64]*nodeSession),
+		byConn:                make(map[*websocket.Conn]*nodeSession),
+		pending:               make(map[string]pendingRequest),
+		serviceConnections:    make(map[int64]map[string]int),
+		serviceConnUpdateTime: make(map[int64]int64),
+		forwardMetrics:        make(map[int64]map[int64]*ForwardMetric),
+		nodeOfflineTime:       make(map[int64]int64),
 	}
+	go s.cleanupStaleMetrics(2 * time.Minute)
+	return s
 }
 
 func (s *Server) SetUserAuthStateLookup(fn func(userID int64) (*auth.UserAuthState, error)) {
@@ -286,6 +385,7 @@ func (s *Server) handleNode(w http.ResponseWriter, r *http.Request, nodeID int64
 	httpVal := parseIntDefault(r.URL.Query().Get("http"), 0)
 	tlsVal := parseIntDefault(r.URL.Query().Get("tls"), 0)
 	socksVal := parseIntDefault(r.URL.Query().Get("socks"), 0)
+	blockOtherVal := parseIntDefault(r.URL.Query().Get("blockOther"), 0)
 
 	s.mu.Lock()
 	if old, ok := s.nodes[nodeID]; ok {
@@ -300,9 +400,10 @@ func (s *Server) handleNode(w http.ResponseWriter, r *http.Request, nodeID int64
 	ns := &nodeSession{nodeID: nodeID, secret: secret, conn: cw, crypto: nodeCrypto}
 	s.nodes[nodeID] = ns
 	s.byConn[conn] = ns
+	delete(s.nodeOfflineTime, nodeID)
 	s.mu.Unlock()
 
-	_ = s.repo.UpdateNodeOnline(nodeID, 1, version, httpVal, tlsVal, socksVal)
+	_ = s.repo.UpdateNodeOnline(nodeID, 1, version, httpVal, tlsVal, socksVal, blockOtherVal)
 	s.broadcastStatus(nodeID, 1)
 
 	s.mu.RLock()
@@ -319,6 +420,7 @@ func (s *Server) handleNode(w http.ResponseWriter, r *http.Request, nodeID int64
 		current, ok := s.nodes[nodeID]
 		if ok && current.conn != nil && current.conn.conn == conn {
 			delete(s.nodes, nodeID)
+			s.nodeOfflineTime[nodeID] = time.Now().Unix()
 			needOfflineBroadcast = true
 		}
 		delete(s.byConn, conn)
@@ -354,6 +456,24 @@ func (s *Server) handleNode(w http.ResponseWriter, r *http.Request, nodeID int64
 					// 解析 SystemInfo 并调用 hook
 					var sysInfo SystemInfo
 					if json.Unmarshal(envelope.Data, &sysInfo) == nil {
+						s.mu.Lock()
+						s.serviceConnections[nodeID] = sysInfo.ServiceConnections
+						s.serviceConnUpdateTime[nodeID] = time.Now().Unix()
+						if sysInfo.ServiceName != "" {
+							_ = s.repo.UpdateNodeServiceName(nodeID, sysInfo.ServiceName)
+						}
+						if len(sysInfo.ForwardMetrics) > 0 {
+							s.forwardMetricsMu.Lock()
+							for _, metric := range sysInfo.ForwardMetrics {
+								if s.forwardMetrics[metric.ForwardID] == nil {
+									s.forwardMetrics[metric.ForwardID] = make(map[int64]*ForwardMetric)
+								}
+								m := metric
+								s.forwardMetrics[metric.ForwardID][metric.NodeID] = &m
+							}
+							s.forwardMetricsMu.Unlock()
+						}
+						s.mu.Unlock()
 						s.mu.RLock()
 						onMetric := s.onNodeMetric
 						s.mu.RUnlock()
@@ -380,6 +500,10 @@ func (s *Server) handleNode(w http.ResponseWriter, r *http.Request, nodeID int64
 		if looksLikeSystemInfoMessage(msg) {
 			var sysInfo SystemInfo
 			if err := json.Unmarshal([]byte(msg), &sysInfo); err == nil {
+				s.mu.Lock()
+				s.serviceConnections[nodeID] = sysInfo.ServiceConnections
+				s.serviceConnUpdateTime[nodeID] = time.Now().Unix()
+				s.mu.Unlock()
 				s.mu.RLock()
 				onMetric := s.onNodeMetric
 				s.mu.RUnlock()
@@ -765,5 +889,34 @@ func startKeepalive(cw *connWrap, done <-chan struct{}, validate func() bool) {
 				return
 			}
 		}
+	}
+}
+
+func (s *Server) cleanupStaleMetrics(interval time.Duration) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		s.mu.Lock()
+		now := time.Now().Unix()
+		offlineTimeout := int64(10 * 60)
+
+		for nodeID, offlineTime := range s.nodeOfflineTime {
+			if now-offlineTime <= offlineTimeout {
+				continue
+			}
+			delete(s.serviceConnections, nodeID)
+			delete(s.serviceConnUpdateTime, nodeID)
+			s.forwardMetricsMu.Lock()
+			for forwardID, nodeMetrics := range s.forwardMetrics {
+				delete(nodeMetrics, nodeID)
+				if len(nodeMetrics) == 0 {
+					delete(s.forwardMetrics, forwardID)
+				}
+			}
+			s.forwardMetricsMu.Unlock()
+			delete(s.nodeOfflineTime, nodeID)
+		}
+		s.mu.Unlock()
 	}
 }

@@ -208,6 +208,147 @@ func (r *Repository) GetUsernameByID(userID int64) string {
 	return user.User
 }
 
+type ForwardTrafficResetLogCreateParams struct {
+	ForwardID     int64
+	ForwardName   string
+	UserID        int64
+	UserName      string
+	ResetTime     int64
+	InFlowBefore  int64
+	OutFlowBefore int64
+	OperatorID    int64
+	OperatorName  string
+}
+
+func (r *Repository) ResetForwardTraffic(id int64) error {
+	if r == nil || r.db == nil {
+		return errors.New("repository not initialized")
+	}
+	return r.db.Model(&model.Forward{}).
+		Where("id = ?", id).
+		Updates(map[string]interface{}{
+			"in_flow":      0,
+			"out_flow":     0,
+			"updated_time": time.Now().UnixMilli(),
+		}).Error
+}
+
+func (r *Repository) CreateForwardTrafficResetLog(params *ForwardTrafficResetLogCreateParams) error {
+	if r == nil || r.db == nil {
+		return errors.New("repository not initialized")
+	}
+	if params == nil {
+		return errors.New("params is nil")
+	}
+
+	log := &model.ForwardTrafficResetLog{
+		ForwardID:     params.ForwardID,
+		ForwardName:   params.ForwardName,
+		UserID:        params.UserID,
+		UserName:      params.UserName,
+		ResetTime:     params.ResetTime,
+		InFlowBefore:  params.InFlowBefore,
+		OutFlowBefore: params.OutFlowBefore,
+		OperatorID:    params.OperatorID,
+		OperatorName:  params.OperatorName,
+		CreatedTime:   time.Now().UnixMilli(),
+	}
+
+	if err := r.db.Create(log).Error; err != nil {
+		return err
+	}
+
+	return r.cleanupForwardTrafficResetLogs(params.ForwardID)
+}
+
+func (r *Repository) cleanupForwardTrafficResetLogs(forwardID int64) error {
+	if r == nil || r.db == nil {
+		return errors.New("repository not initialized")
+	}
+
+	var count int64
+	if err := r.db.Model(&model.ForwardTrafficResetLog{}).Where("forward_id = ?", forwardID).Count(&count).Error; err != nil {
+		return err
+	}
+
+	if count > 30 {
+		var oldestLog model.ForwardTrafficResetLog
+		if err := r.db.Where("forward_id = ?", forwardID).
+			Order("created_time ASC").
+			First(&oldestLog).Error; err != nil {
+			return err
+		}
+
+		return r.db.Where("forward_id = ? AND created_time <= ?", forwardID, oldestLog.CreatedTime).
+			Delete(&model.ForwardTrafficResetLog{}).Error
+	}
+
+	return nil
+}
+
+type NodeTrafficResetLogCreateParams struct {
+	NodeID        int64
+	NodeName      string
+	ResetTime     int64
+	OperatorID    int64
+	OperatorName  string
+	Reason        string
+	InFlowBefore  int64
+	OutFlowBefore int64
+}
+
+func (r *Repository) CreateNodeTrafficResetLog(params *NodeTrafficResetLogCreateParams) error {
+	if r == nil || r.db == nil {
+		return errors.New("repository not initialized")
+	}
+	if params == nil {
+		return errors.New("params is nil")
+	}
+
+	log := &model.NodeTrafficResetLog{
+		NodeID:        params.NodeID,
+		NodeName:      params.NodeName,
+		ResetTime:     params.ResetTime,
+		OperatorID:    params.OperatorID,
+		OperatorName:  params.OperatorName,
+		Reason:        params.Reason,
+		InFlowBefore:  params.InFlowBefore,
+		OutFlowBefore: params.OutFlowBefore,
+		CreatedTime:   time.Now().UnixMilli(),
+	}
+
+	if err := r.db.Create(log).Error; err != nil {
+		return err
+	}
+
+	return r.cleanupNodeTrafficResetLogs(params.NodeID)
+}
+
+func (r *Repository) cleanupNodeTrafficResetLogs(nodeID int64) error {
+	if r == nil || r.db == nil {
+		return errors.New("repository not initialized")
+	}
+
+	var count int64
+	if err := r.db.Model(&model.NodeTrafficResetLog{}).Where("node_id = ?", nodeID).Count(&count).Error; err != nil {
+		return err
+	}
+
+	if count > 30 {
+		var oldestLog model.NodeTrafficResetLog
+		if err := r.db.Where("node_id = ?", nodeID).
+			Order("created_time ASC").
+			First(&oldestLog).Error; err != nil {
+			return err
+		}
+
+		return r.db.Where("node_id = ? AND created_time <= ?", nodeID, oldestLog.CreatedTime).
+			Delete(&model.NodeTrafficResetLog{}).Error
+	}
+
+	return nil
+}
+
 func (r *Repository) GetUserDefaultsForTunnel(userID int64) (flow int64, num int, expTime int64, flowReset int64, err error) {
 	if r == nil || r.db == nil {
 		return 0, 0, 0, 0, errors.New("repository not initialized")
@@ -220,7 +361,7 @@ func (r *Repository) GetUserDefaultsForTunnel(userID int64) (flow int64, num int
 	return user.Flow, user.Num, user.ExpTime, user.FlowResetTime, nil
 }
 
-func (r *Repository) CreateNode(name, secret, serverIP string, serverIPV4, serverIPV6, port, interfaceName, version, remark, expiryTime, renewalCycle interface{}, httpFlag, tlsFlag, socksFlag int, now int64, status int, tcpAddr, udpAddr string, inx, isRemote int, remoteURL, remoteToken, remoteConfig, extraIPs interface{}) error {
+func (r *Repository) CreateNode(name, secret, serverIP string, serverIPV4, serverIPV6, port, interfaceName, version, remark, expiryTime, renewalCycle interface{}, httpFlag, tlsFlag, socksFlag, blockOtherFlag int, now int64, status int, tcpAddr, udpAddr string, inx, isRemote int, remoteURL, remoteToken, remoteConfig, extraIPs interface{}) error {
 	if r == nil || r.db == nil {
 		return errors.New("repository not initialized")
 	}
@@ -240,6 +381,7 @@ func (r *Repository) CreateNode(name, secret, serverIP string, serverIPV4, serve
 		HTTP:          httpFlag,
 		TLS:           tlsFlag,
 		Socks:         socksFlag,
+		BlockOther:    blockOtherFlag,
 		CreatedTime:   now,
 		UpdatedTime:   sql.NullInt64{Int64: now, Valid: true},
 		Status:        status,
@@ -254,19 +396,19 @@ func (r *Repository) CreateNode(name, secret, serverIP string, serverIPV4, serve
 	return r.db.Create(&node).Error
 }
 
-func (r *Repository) GetNodeStatusFields(nodeID int64) (status, httpFlag, tlsFlag, socksFlag int, err error) {
+func (r *Repository) GetNodeStatusFields(nodeID int64) (status, httpFlag, tlsFlag, socksFlag, blockOtherFlag int, err error) {
 	if r == nil || r.db == nil {
-		return 0, 0, 0, 0, errors.New("repository not initialized")
+		return 0, 0, 0, 0, 0, errors.New("repository not initialized")
 	}
 	var node model.Node
-	err = r.db.Select("status", "http", "tls", "socks").Where("id = ?", nodeID).First(&node).Error
+	err = r.db.Select("status", "http", "tls", "socks", "block_other").Where("id = ?", nodeID).First(&node).Error
 	if err != nil {
-		return 0, 0, 0, 0, normalizeNotFoundErr(err)
+		return 0, 0, 0, 0, 0, normalizeNotFoundErr(err)
 	}
-	return node.Status, node.HTTP, node.TLS, node.Socks, nil
+	return node.Status, node.HTTP, node.TLS, node.Socks, node.BlockOther, nil
 }
 
-func (r *Repository) UpdateNode(id int64, name, serverIP string, serverIPV4, serverIPV6, port, interfaceName, extraIPs, remark, expiryTime, renewalCycle interface{}, httpFlag, tlsFlag, socksFlag int, tcpAddr, udpAddr string, now int64) error {
+func (r *Repository) UpdateNode(id int64, name, serverIP string, serverIPV4, serverIPV6, port, interfaceName, extraIPs, remark, expiryTime, renewalCycle interface{}, httpFlag, tlsFlag, socksFlag, blockOtherFlag int, tcpAddr, udpAddr string, now int64) error {
 	if r == nil || r.db == nil {
 		return errors.New("repository not initialized")
 	}
@@ -286,6 +428,7 @@ func (r *Repository) UpdateNode(id int64, name, serverIP string, serverIPV4, ser
 			"http":                      httpFlag,
 			"tls":                       tlsFlag,
 			"socks":                     socksFlag,
+			"block_other":               blockOtherFlag,
 			"tcp_listen_addr":           tcpAddr,
 			"udp_listen_addr":           udpAddr,
 			"updated_time":              sql.NullInt64{Int64: now, Valid: true},
@@ -729,6 +872,21 @@ func (r *Repository) UpdateForward(id int64, name string, tunnelID int64, remote
 			"ip_speed_id":    nullInt64FromInterface(ipSpeedID),
 			"proxy_protocol": proxyProtocol,
 			"updated_time":   now,
+		}).Error
+}
+
+func (r *Repository) UpdateForwardMode(id int64, mode string, now int64) error {
+	if r == nil || r.db == nil {
+		return errors.New("repository not initialized")
+	}
+	if strings.TrimSpace(mode) == "" {
+		mode = "gost"
+	}
+	return r.db.Model(&model.Forward{}).
+		Where("id = ?", id).
+		Updates(map[string]interface{}{
+			"mode":         mode,
+			"updated_time": now,
 		}).Error
 }
 
@@ -1305,6 +1463,7 @@ func (r *Repository) CreateForwardTx(userID int64, userName, name string, tunnel
 			IPMaxConn:     ipMaxConn,
 			IPSpeedID:     nullInt64FromInterface(ipSpeedID),
 			ProxyProtocol: proxyProtocol,
+			Mode:          "gost",
 		}
 		if err := tx.Create(&fwd).Error; err != nil {
 			return err

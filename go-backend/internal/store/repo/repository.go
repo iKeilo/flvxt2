@@ -272,9 +272,16 @@ func autoMigrateAll(db *gorm.DB) error {
 	models := []interface{}{
 		&model.User{},
 		&model.UserQuota{},
+		&model.UserTrafficHistory{},
 		&model.Forward{},
 		&model.ForwardPort{},
+		&model.ForwardTrafficResetLog{},
+		&model.NftablesRule{},
 		&model.Node{},
+		&model.NodeTrafficResetLog{},
+		&model.NodeGroup{},
+		&model.NodeTag{},
+		&model.NodeTagNode{},
 		&model.SpeedLimit{},
 		&model.StatisticsFlow{},
 		&model.Tunnel{},
@@ -383,7 +390,7 @@ func prepareSQLiteLegacyColumns(db *gorm.DB) error {
 	m := db.Migrator()
 
 	if m.HasTable(&model.Node{}) {
-		for _, field := range []string{"ServerIPV4", "ServerIPV6", "ExtraIPs", "TCPListenAddr", "UDPListenAddr", "Inx", "IsRemote", "RemoteURL", "RemoteToken", "RemoteConfig", "Remark", "ExpiryTime", "RenewalCycle", "ExpiryReminderDismissed"} {
+		for _, field := range []string{"ServerIPV4", "ServerIPV6", "ExtraIPs", "TCPListenAddr", "UDPListenAddr", "Inx", "IsRemote", "RemoteURL", "RemoteToken", "RemoteConfig", "Remark", "ExpiryTime", "RenewalCycle", "ExpiryReminderDismissed", "GroupID", "BlockOther", "ServiceName"} {
 			if m.HasColumn(&model.Node{}, field) {
 				continue
 			}
@@ -405,12 +412,23 @@ func prepareSQLiteLegacyColumns(db *gorm.DB) error {
 	}
 
 	if m.HasTable(&model.Forward{}) {
-		for _, field := range []string{"MaxConn", "IPMaxConn", "IPSpeedID", "ProxyProtocol"} {
+		for _, field := range []string{"MaxConn", "IPMaxConn", "IPSpeedID", "ProxyProtocol", "Mode"} {
 			if m.HasColumn(&model.Forward{}, field) {
 				continue
 			}
 			if err := m.AddColumn(&model.Forward{}, field); err != nil {
 				return fmt.Errorf("add forward.%s: %w", field, err)
+			}
+		}
+	}
+
+	if m.HasTable(&model.ChainTunnel{}) {
+		for _, field := range []string{"ConnectIPType"} {
+			if m.HasColumn(&model.ChainTunnel{}, field) {
+				continue
+			}
+			if err := m.AddColumn(&model.ChainTunnel{}, field); err != nil {
+				return fmt.Errorf("add chain_tunnel.%s: %w", field, err)
 			}
 		}
 	}
@@ -730,13 +748,13 @@ func (r *Repository) GetNodeByID(id int64) (*model.Node, error) {
 	return &n, nil
 }
 
-func (r *Repository) UpdateNodeOnline(nodeID int64, status int, version string, httpVal, tlsVal, socksVal int) error {
+func (r *Repository) UpdateNodeOnline(nodeID int64, status int, version string, httpVal, tlsVal, socksVal, blockOtherVal int) error {
 	if r == nil || r.db == nil {
 		return errors.New("repository not initialized")
 	}
 	return r.db.Model(&model.Node{}).Where("id = ?", nodeID).Updates(map[string]interface{}{
 		"status": status, "version": version, "http": httpVal, "tls": tlsVal,
-		"socks": socksVal, "updated_time": unixMilliNow(),
+		"socks": socksVal, "block_other": blockOtherVal, "updated_time": unixMilliNow(),
 	}).Error
 }
 
@@ -746,6 +764,15 @@ func (r *Repository) UpdateNodeStatus(nodeID int64, status int) error {
 	}
 	return r.db.Model(&model.Node{}).Where("id = ?", nodeID).Updates(map[string]interface{}{
 		"status": status, "updated_time": unixMilliNow(),
+	}).Error
+}
+
+func (r *Repository) UpdateNodeServiceName(nodeID int64, serviceName string) error {
+	if r == nil || r.db == nil {
+		return errors.New("repository not initialized")
+	}
+	return r.db.Model(&model.Node{}).Where("id = ?", nodeID).Updates(map[string]interface{}{
+		"service_name": serviceName, "updated_time": unixMilliNow(),
 	}).Error
 }
 
@@ -809,12 +836,15 @@ func (r *Repository) ListNodes() ([]map[string]interface{}, error) {
 			"udpListenAddr": n.UDPListenAddr,
 			"version":       nullableString(n.Version),
 			"http":          n.HTTP, "tls": n.TLS, "socks": n.Socks,
-			"status": n.Status, "isRemote": n.IsRemote,
+			"blockOther": n.BlockOther,
+			"status":     n.Status, "isRemote": n.IsRemote,
 			"remoteUrl":               nullableString(n.RemoteURL),
 			"remoteToken":             nullableString(n.RemoteToken),
 			"remoteConfig":            nullableString(n.RemoteConfig),
+			"serviceName":             nullableString(n.ServiceName),
 			"expiryReminderDismissed": n.ExpiryReminderDismissed,
 			"interfaceName":           nullableString(n.InterfaceName),
+			"groupId":                 nullableInt64(n.GroupID),
 		})
 	}
 	return items, nil

@@ -6,6 +6,8 @@ import (
 	"context"
 	"errors"
 	"net"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-gost/core/chain"
@@ -25,6 +27,7 @@ import (
 	stats_wrapper "github.com/go-gost/x/observer/stats/wrapper"
 	xrecorder "github.com/go-gost/x/recorder"
 	"github.com/go-gost/x/registry"
+	forwardStats "github.com/go-gost/x/stats"
 )
 
 func init() {
@@ -110,13 +113,69 @@ func (h *forwardHandler) Handle(ctx context.Context, conn net.Conn, opts ...hand
 	pStats := xstats.Stats{}
 	conn = stats_wrapper.WrapConn(conn, &pStats)
 
+	var forwardID, userID, tunnelID int64
+	var port int
+	var lastInput, lastOutput uint64
+	var statsTicker *time.Ticker
+	var statsDone chan struct{}
+
+	if h.options.Service != "" {
+		forwardID, userID, tunnelID = parseServiceName(h.options.Service)
+		if forwardID > 0 {
+			_, portStr, splitErr := net.SplitHostPort(ro.LocalAddr)
+			if splitErr == nil {
+				port, _ = strconv.Atoi(portStr)
+			}
+
+			forwardStats.AddForwardConnection(forwardID, userID, tunnelID, h.options.Service, 0, port, 1)
+
+			statsTicker = time.NewTicker(time.Second)
+			statsDone = make(chan struct{})
+			go func() {
+				for {
+					select {
+					case <-statsTicker.C:
+						inputBytes := pStats.Get(stats.KindInputBytes)
+						outputBytes := pStats.Get(stats.KindOutputBytes)
+
+						if inputBytes > lastInput {
+							forwardStats.AddForwardTraffic(forwardID, userID, tunnelID, h.options.Service, 0, port, true, inputBytes-lastInput)
+							lastInput = inputBytes
+						}
+						if outputBytes > lastOutput {
+							forwardStats.AddForwardTraffic(forwardID, userID, tunnelID, h.options.Service, 0, port, false, outputBytes-lastOutput)
+							lastOutput = outputBytes
+						}
+					case <-statsDone:
+						return
+					}
+				}
+			}()
+		}
+	}
+
 	defer func() {
+		if statsTicker != nil {
+			statsTicker.Stop()
+			close(statsDone)
+		}
+
 		if err != nil {
 			ro.Err = err.Error()
 		}
 		ro.InputBytes = pStats.Get(stats.KindInputBytes)
 		ro.OutputBytes = pStats.Get(stats.KindOutputBytes)
 		ro.Duration = time.Since(start)
+
+		if forwardID > 0 {
+			if ro.InputBytes > lastInput {
+				forwardStats.AddForwardTraffic(forwardID, userID, tunnelID, h.options.Service, 0, port, true, ro.InputBytes-lastInput)
+			}
+			if ro.OutputBytes > lastOutput {
+				forwardStats.AddForwardTraffic(forwardID, userID, tunnelID, h.options.Service, 0, port, false, ro.OutputBytes-lastOutput)
+			}
+			forwardStats.AddForwardConnection(forwardID, userID, tunnelID, h.options.Service, 0, port, -1)
+		}
 
 	}()
 
@@ -283,4 +342,26 @@ func (h *forwardHandler) checkRateLimit(addr net.Addr) bool {
 	}
 
 	return true
+}
+
+func parseServiceName(serviceName string) (forwardID, userID, tunnelID int64) {
+	if serviceName == "" {
+		return 0, 0, 0
+	}
+
+	name := strings.TrimSuffix(serviceName, "_tcp")
+	name = strings.TrimSuffix(name, "_udp")
+	parts := strings.Split(name, "_")
+	if len(parts) < 3 {
+		return 0, 0, 0
+	}
+
+	forwardID, _ = strconv.ParseInt(parts[0], 10, 64)
+	userID, _ = strconv.ParseInt(parts[1], 10, 64)
+	tunnelID, _ = strconv.ParseInt(parts[2], 10, 64)
+	if forwardID <= 0 {
+		return 0, 0, 0
+	}
+
+	return forwardID, userID, tunnelID
 }

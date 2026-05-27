@@ -49,6 +49,7 @@ type Forward struct {
 	IPMaxConn     int           `gorm:"column:ip_max_conn;not null;default:0"`
 	IPSpeedID     sql.NullInt64 `gorm:"column:ip_speed_id"`
 	ProxyProtocol int           `gorm:"column:proxy_protocol;not null;default:0"`
+	Mode          string        `gorm:"type:varchar(20);not null;default:'gost'"`
 }
 
 func (Forward) TableName() string { return "forward" }
@@ -80,6 +81,7 @@ type Node struct {
 	HTTP                    int            `gorm:"column:http;not null;default:0"`
 	TLS                     int            `gorm:"column:tls;not null;default:0"`
 	Socks                   int            `gorm:"not null;default:0"`
+	BlockOther              int            `gorm:"column:block_other;not null;default:0"`
 	CreatedTime             int64          `gorm:"column:created_time;not null"`
 	UpdatedTime             sql.NullInt64  `gorm:"column:updated_time"`
 	Status                  int            `gorm:"not null"`
@@ -91,6 +93,8 @@ type Node struct {
 	RemoteToken             sql.NullString `gorm:"column:remote_token;type:text"`
 	RemoteConfig            sql.NullString `gorm:"column:remote_config;type:text"`
 	ExpiryReminderDismissed int            `gorm:"column:expiry_reminder_dismissed;not null;default:0"`
+	GroupID                 sql.NullInt64  `gorm:"column:group_id;index:idx_node_group_id"`
+	ServiceName             sql.NullString `gorm:"column:service_name;type:varchar(100)"`
 }
 
 func (Node) TableName() string { return "node" }
@@ -155,16 +159,30 @@ type UserQuota struct {
 
 func (UserQuota) TableName() string { return "user_quota" }
 
+// UserTrafficHistory stores monthly user traffic snapshots.
+type UserTrafficHistory struct {
+	ID          int64 `gorm:"primaryKey;autoIncrement"`
+	UserID      int64 `gorm:"column:user_id;not null;uniqueIndex:idx_user_traffic_period"`
+	PeriodKey   int64 `gorm:"column:period_key;not null;uniqueIndex:idx_user_traffic_period"`
+	InFlow      int64 `gorm:"column:in_flow;not null;default:0"`
+	OutFlow     int64 `gorm:"column:out_flow;not null;default:0"`
+	UsedBytes   int64 `gorm:"column:used_bytes;not null;default:0"`
+	CreatedTime int64 `gorm:"column:created_time;not null"`
+}
+
+func (UserTrafficHistory) TableName() string { return "user_traffic_history" }
+
 type ChainTunnel struct {
-	ID        int64          `gorm:"primaryKey;autoIncrement"`
-	TunnelID  int64          `gorm:"column:tunnel_id;not null"`
-	ChainType string         `gorm:"column:chain_type;type:varchar(10);not null"`
-	NodeID    int64          `gorm:"column:node_id;not null"`
-	Port      sql.NullInt64  `gorm:"column:port"`
-	Strategy  sql.NullString `gorm:"type:varchar(10)"`
-	Inx       sql.NullInt64  `gorm:"column:inx"`
-	Protocol  sql.NullString `gorm:"type:varchar(10)"`
-	ConnectIP sql.NullString `gorm:"column:connect_ip;type:varchar(45)"`
+	ID            int64          `gorm:"primaryKey;autoIncrement"`
+	TunnelID      int64          `gorm:"column:tunnel_id;not null"`
+	ChainType     string         `gorm:"column:chain_type;type:varchar(10);not null"`
+	NodeID        int64          `gorm:"column:node_id;not null"`
+	Port          sql.NullInt64  `gorm:"column:port"`
+	Strategy      sql.NullString `gorm:"type:varchar(10)"`
+	Inx           sql.NullInt64  `gorm:"column:inx"`
+	Protocol      sql.NullString `gorm:"type:varchar(10)"`
+	ConnectIP     sql.NullString `gorm:"column:connect_ip;type:varchar(45)"`
+	ConnectIPType sql.NullString `gorm:"column:connect_ip_type;type:varchar(10)"`
 }
 
 func (ChainTunnel) TableName() string { return "chain_tunnel" }
@@ -548,12 +566,15 @@ type ForwardRecord struct {
 	TunnelID      int64
 	RemoteAddr    string
 	Strategy      string
+	InFlow        int64
+	OutFlow       int64
 	Status        int
 	SpeedID       sql.NullInt64
 	MaxConn       int
 	IPMaxConn     int
 	IPSpeedID     sql.NullInt64
 	ProxyProtocol int
+	Mode          string
 }
 
 // TunnelRecord is a minimal tunnel view used by control plane.
@@ -605,18 +626,35 @@ type NodeRecord struct {
 	RemoteURL     string
 	RemoteToken   string
 	RemoteConfig  string
+	BlockOther    int
+	ServiceName   string
 }
 
 type ChainNodeRecord struct {
-	ChainType int
-	Inx       int64
-	NodeID    int64
-	Port      int
-	NodeName  string
-	Protocol  string
-	Strategy  string
-	ConnectIP string
+	ChainType     int
+	Inx           int64
+	NodeID        int64
+	Port          int
+	NodeName      string
+	Protocol      string
+	Strategy      string
+	ConnectIP     string
+	ConnectIPType string
 }
+
+type NftablesRule struct {
+	ID         int64  `gorm:"primaryKey;autoIncrement"`
+	ForwardID  int64  `gorm:"column:forward_id;not null;index:idx_nftables_forward_id"`
+	NodeID     int64  `gorm:"column:node_id;not null"`
+	Protocol   string `gorm:"type:varchar(10);not null"`
+	Port       int    `gorm:"not null"`
+	Table      string `gorm:"type:varchar(50);not null;default:'flvx'"`
+	Chain      string `gorm:"type:varchar(100);not null"`
+	RuleHandle uint64 `gorm:"column:rule_handle"`
+	Status     int    `gorm:"not null;default:1"`
+}
+
+func (NftablesRule) TableName() string { return "nftables_rule" }
 
 type UserTunnelLimiterInfo struct {
 	UserTunnelID int64
@@ -752,3 +790,66 @@ type TunnelQuality struct {
 }
 
 func (TunnelQuality) TableName() string { return "tunnel_quality" }
+
+// NodeGroup groups nodes for management and display.
+type NodeGroup struct {
+	ID          int64          `gorm:"primaryKey;autoIncrement" json:"id"`
+	Name        string         `gorm:"type:varchar(100);not null;uniqueIndex:idx_node_group_name" json:"name"`
+	Description sql.NullString `gorm:"column:description;type:text" json:"description"`
+	Color       string         `gorm:"type:varchar(20);default:'#3b82f6'" json:"color"`
+	Inx         int            `gorm:"column:inx;default:0" json:"inx"`
+	CreatedTime int64          `gorm:"column:created_time;not null" json:"createdTime"`
+	UpdatedTime sql.NullInt64  `gorm:"column:updated_time" json:"updatedTime"`
+}
+
+func (NodeGroup) TableName() string { return "node_group" }
+
+// NodeTag tags nodes with many-to-many assignments.
+type NodeTag struct {
+	ID          int64  `gorm:"primaryKey;autoIncrement" json:"id"`
+	Name        string `gorm:"type:varchar(50);not null;uniqueIndex:idx_node_tag_name" json:"name"`
+	Color       string `gorm:"type:varchar(20);default:'#6b7280'" json:"color"`
+	CreatedTime int64  `gorm:"column:created_time;not null" json:"createdTime"`
+}
+
+func (NodeTag) TableName() string { return "node_tag" }
+
+type NodeTagNode struct {
+	ID        int64 `gorm:"primaryKey;autoIncrement" json:"id"`
+	NodeID    int64 `gorm:"column:node_id;not null;uniqueIndex:idx_node_tag_node_unique" json:"nodeId"`
+	TagID     int64 `gorm:"column:tag_id;not null;uniqueIndex:idx_node_tag_node_unique" json:"tagId"`
+	CreatedAt int64 `gorm:"column:created_at;not null" json:"createdAt"`
+}
+
+func (NodeTagNode) TableName() string { return "node_tag_node" }
+
+type ForwardTrafficResetLog struct {
+	ID            int64  `gorm:"primaryKey;autoIncrement"`
+	ForwardID     int64  `gorm:"column:forward_id;not null;index:idx_forward_reset_time"`
+	ForwardName   string `gorm:"type:varchar(100);not null"`
+	UserID        int64  `gorm:"column:user_id;not null"`
+	UserName      string `gorm:"column:user_name;type:varchar(100);not null"`
+	ResetTime     int64  `gorm:"column:reset_time;not null"`
+	InFlowBefore  int64  `gorm:"column:in_flow_before;not null;default:0"`
+	OutFlowBefore int64  `gorm:"column:out_flow_before;not null;default:0"`
+	OperatorID    int64  `gorm:"column:operator_id;not null"`
+	OperatorName  string `gorm:"column:operator_name;type:varchar(100);not null"`
+	CreatedTime   int64  `gorm:"column:created_time;not null"`
+}
+
+func (ForwardTrafficResetLog) TableName() string { return "forward_traffic_reset_log" }
+
+type NodeTrafficResetLog struct {
+	ID            int64  `gorm:"primaryKey;autoIncrement"`
+	NodeID        int64  `gorm:"column:node_id;not null;index:idx_node_reset_time"`
+	NodeName      string `gorm:"type:varchar(100);not null"`
+	ResetTime     int64  `gorm:"column:reset_time;not null"`
+	OperatorID    int64  `gorm:"column:operator_id;not null"`
+	OperatorName  string `gorm:"column:operator_name;type:varchar(100);not null"`
+	Reason        string `gorm:"column:reason;type:varchar(255)"`
+	InFlowBefore  int64  `gorm:"column:in_flow_before;not null;default:0"`
+	OutFlowBefore int64  `gorm:"column:out_flow_before;not null;default:0"`
+	CreatedTime   int64  `gorm:"column:created_time;not null"`
+}
+
+func (NodeTrafficResetLog) TableName() string { return "node_traffic_reset_log" }

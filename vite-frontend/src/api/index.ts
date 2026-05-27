@@ -40,7 +40,12 @@ import type {
   MonitorTunnelApiItem,
   MonitorPermissionApiItem,
   MonitorAccessApiData,
+  NodeGroupApiItem,
+  NodeGroupMutationPayload,
   TunnelQualityApiItem,
+  TrafficHistoryItem,
+  NodeTagApiItem,
+  NodeTagMutationPayload,
   StorageSummaryApiData,
   SystemUpgradeCheckApiData,
   SystemUpgradeRunApiData,
@@ -129,6 +134,48 @@ export const getNodeReleases = (channel: ReleaseChannel = "stable") =>
   Network.post<NodeReleaseApiItem[]>("/node/releases", { channel });
 export const rollbackNode = (id: number) =>
   Network.post("/node/rollback", { id });
+export const batchResetNodeTraffic = (
+  nodeIds: number[],
+  reason?: string,
+  inFlowBefore?: number,
+  outFlowBefore?: number,
+) =>
+  Network.post("/node/batch-reset-traffic", {
+    nodeIds,
+    reason,
+    inFlowBefore,
+    outFlowBefore,
+  });
+export const recordNodeOfflineLog = (
+  nodeId: number,
+  inFlowBefore?: number,
+  outFlowBefore?: number,
+  reason?: string,
+) =>
+  Network.post("/node/record-offline-log", {
+    nodeId,
+    inFlowBefore,
+    outFlowBefore,
+    reason,
+  });
+export const getNodeTrafficResetLogs = (nodeId: number, limit?: number) =>
+  Network.post<{
+    nodeId: number;
+    nodeName: string;
+    logs: Array<{
+      id: number;
+      nodeId: number;
+      nodeName: string;
+      resetTime: number;
+      operatorId: number;
+      operatorName: string;
+      reason?: string;
+      inFlowBefore: number;
+      outFlowBefore: number;
+    }>;
+  }>("/node/traffic-reset-logs", { nodeId, limit });
+export const deleteNodeTrafficResetLog = (id: number) =>
+  Network.post("/node/traffic-reset-log/delete", { id });
 
 // 隧道CRUD操作 - 全部使用POST请求
 export const createTunnel = (data: TunnelMutationPayload) =>
@@ -224,6 +271,27 @@ export const diagnoseForward = (forwardId: number) =>
 export const updateForwardOrder = (data: {
   forwards: Array<{ id: number; inx: number }>;
 }) => Network.post("/forward/update-order", data);
+export const batchResetForward = (forwardIds: number[]) =>
+  Network.post("/forward/batch-reset-traffic", { forwardIds });
+export const getForwardTrafficResetLogs = (forwardId: number, limit?: number) =>
+  Network.post<{
+    forwardId: number;
+    forwardName: string;
+    logs: Array<{
+      id: number;
+      forwardId: number;
+      forwardName: string;
+      userId: number;
+      userName: string;
+      resetTime: number;
+      inFlowBefore: number;
+      outFlowBefore: number;
+      operatorId: number;
+      operatorName: string;
+    }>;
+  }>("/forward/traffic-reset-logs", { forwardId, limit });
+export const deleteForwardTrafficResetLog = (id: number) =>
+  Network.post("/forward/traffic-reset-log/delete", { id });
 
 // 限速规则CRUD操作 - 全部使用POST请求
 export const createSpeedLimit = (data: SpeedLimitMutationPayload) =>
@@ -244,6 +312,13 @@ export const resetUserFlow = (data: { id: number; type: number }) =>
   Network.post("/user/reset", data);
 export const resetUserQuota = (data: UserQuotaResetPayload) =>
   Network.post("/user/quota/reset", data);
+export const getTrafficHistoryList = (userId?: number, limit: number = 50) =>
+  Network.post<TrafficHistoryItem[]>("/traffic-history/list", {
+    userId,
+    limit,
+  });
+export const deleteTrafficHistoryItem = (id: number) =>
+  Network.post("/traffic-history/delete", { id });
 
 export const getUserGroups = (id: number) =>
   Network.post<number[]>("/user/groups", { id });
@@ -348,6 +423,28 @@ export const assignUsersToGroup = (data: {
   groupId: number;
   userIds: number[];
 }) => Network.post("/group/user/assign", data);
+
+export const getNodeGroupList = () =>
+  Network.post<NodeGroupApiItem[]>("/node-group/list");
+export const createNodeGroup = (data: NodeGroupMutationPayload) =>
+  Network.post("/node-group/create", data);
+export const updateNodeGroup = (data: NodeGroupMutationPayload) =>
+  Network.post("/node-group/update", data);
+export const deleteNodeGroup = (id: number) =>
+  Network.post("/node-group/delete", { id });
+export const assignNodeToGroup = (nodeId: number, groupId: number | null) =>
+  Network.post("/node-group/assign", { nodeId, groupId });
+
+export const getNodeTagList = () =>
+  Network.post<NodeTagApiItem[]>("/node-tag/list");
+export const createNodeTag = (data: NodeTagMutationPayload) =>
+  Network.post("/node-tag/create", data);
+export const updateNodeTag = (data: NodeTagMutationPayload) =>
+  Network.post("/node-tag/update", data);
+export const deleteNodeTag = (id: number) =>
+  Network.post("/node-tag/delete", { id });
+export const assignNodeTags = (nodeId: number, tagIds: number[]) =>
+  Network.post("/node-tag/assign", { nodeId, tagIds });
 
 export const getGroupPermissionList = () =>
   Network.post<GroupPermissionApiItem[]>("/group/permission/list");

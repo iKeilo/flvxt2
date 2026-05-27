@@ -23,7 +23,11 @@ import (
 
 	"github.com/go-gost/x/config"
 	"github.com/go-gost/x/internal/util/crypto"
+	"github.com/go-gost/x/nftables"
+	"github.com/go-gost/x/registry"
 	"github.com/go-gost/x/service"
+	forwardStats "github.com/go-gost/x/stats"
+	"github.com/go-gost/x/traffic"
 	"github.com/gorilla/websocket"
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/disk"
@@ -38,19 +42,39 @@ import (
 
 // SystemInfo 系统信息结构体
 type SystemInfo struct {
-	Uptime           uint64  `json:"uptime"`
-	BytesReceived    uint64  `json:"bytes_received"`
-	BytesTransmitted uint64  `json:"bytes_transmitted"`
-	CPUUsage         float64 `json:"cpu_usage"`
-	MemoryUsage      float64 `json:"memory_usage"`
-	DiskUsage        float64 `json:"disk_usage"`
-	Load1            float64 `json:"load1"`
-	Load5            float64 `json:"load5"`
-	Load15           float64 `json:"load15"`
-	TCPConns         int64   `json:"tcp_conns"`
-	UDPConns         int64   `json:"udp_conns"`
-	NetInSpeed       int64   `json:"net_in_speed"`
-	NetOutSpeed      int64   `json:"net_out_speed"`
+	Uptime                 uint64          `json:"uptime"`
+	BytesReceived          uint64          `json:"bytes_received"`
+	BytesTransmitted       uint64          `json:"bytes_transmitted"`
+	PeriodBytesReceived    uint64          `json:"period_bytes_received"`
+	PeriodBytesTransmitted uint64          `json:"period_bytes_transmitted"`
+	BaselineRecordedAt     int64           `json:"baseline_recorded_at"`
+	NextResetAt            int64           `json:"next_reset_at"`
+	RenewalCycle           string          `json:"renewal_cycle,omitempty"`
+	CPUUsage               float64         `json:"cpu_usage"`
+	MemoryUsage            float64         `json:"memory_usage"`
+	DiskUsage              float64         `json:"disk_usage"`
+	Load1                  float64         `json:"load1"`
+	Load5                  float64         `json:"load5"`
+	Load15                 float64         `json:"load15"`
+	TCPConns               int64           `json:"tcp_conns"`
+	UDPConns               int64           `json:"udp_conns"`
+	NetInSpeed             int64           `json:"net_in_speed"`
+	NetOutSpeed            int64           `json:"net_out_speed"`
+	ServiceName            string          `json:"service_name,omitempty"`
+	ServiceConnections     map[string]int  `json:"serviceConnections"`
+	ForwardMetrics         []ForwardMetric `json:"forward_metrics,omitempty"`
+}
+
+type ForwardMetric struct {
+	ForwardID   int64  `json:"forward_id"`
+	UserID      int64  `json:"user_id"`
+	TunnelID    int64  `json:"tunnel_id"`
+	NodeID      int64  `json:"node_id"`
+	Port        int    `json:"port"`
+	ServiceName string `json:"service_name"`
+	InSpeed     uint64 `json:"in_speed"`
+	OutSpeed    uint64 `json:"out_speed"`
+	Connections int    `json:"connections"`
 }
 
 // NetworkStats 网络统计信息
@@ -155,23 +179,27 @@ const (
 
 type WebSocketReporter struct {
 	url               string
-	addr              string // 保存服务器地址
-	secret            string // 保存密钥
-	version           string // 保存版本号
+	nodeID            int64
+	serviceName       string
+	addr              string
+	secret            string
+	version           string
 	http              int
 	tls               int
 	socks             int
 	preferredWSScheme string
 	conn              *websocket.Conn
-	curBackoff        time.Duration // 当前重连退避间隔
+	curBackoff        time.Duration
 	pingInterval      time.Duration
 	configInterval    time.Duration
 	ctx               context.Context
 	cancel            context.CancelFunc
 	connected         bool
-	connecting        bool              // 正在连接状态
-	connMutex         sync.Mutex        // 连接状态锁
-	aesCrypto         *crypto.AESCrypto // AES加密器
+	connecting        bool
+	connMutex         sync.Mutex
+	aesCrypto         *crypto.AESCrypto
+	nftablesMgr       NftablesManagerInterface
+	nftablesCounters  []nftables.CounterResult
 }
 
 var wsDial = func(dialer *websocket.Dialer, rawURL string) (*websocket.Conn, *http.Response, error) {
@@ -292,16 +320,35 @@ func (w *WebSocketReporter) connect() error {
 
 	// 重新读取 config.json 获取最新的协议配置
 	type LocalConfig struct {
-		Addr   string `json:"addr"`
-		Secret string `json:"secret"`
-		Http   int    `json:"http"`
-		Tls    int    `json:"tls"`
-		Socks  int    `json:"socks"`
+		Addr        string `json:"addr"`
+		Secret      string `json:"secret"`
+		Http        int    `json:"http"`
+		Tls         int    `json:"tls"`
+		Socks       int    `json:"socks"`
+		ServiceName string `json:"service_name"`
+		NodeID      int64  `json:"node_id"`
 	}
 
 	cfg := LocalConfig{Http: w.http, Tls: w.tls, Socks: w.socks}
-	if b, err := os.ReadFile("config.json"); err == nil {
-		_ = json.Unmarshal(b, &cfg)
+	configPaths := []string{"config.json", "/etc/flvx_agent/config.json", "/etc/flux_agent/config.json"}
+	for _, path := range configPaths {
+		if b, err := os.ReadFile(path); err == nil {
+			_ = json.Unmarshal(b, &cfg)
+			if cfg.ServiceName != "" {
+				w.serviceName = cfg.ServiceName
+			}
+			if cfg.NodeID > 0 {
+				w.nodeID = cfg.NodeID
+			}
+			break
+		}
+	}
+
+	if w.nodeID > 0 {
+		baselinePath := getConfigDir(w.serviceName) + "/traffic_baseline.json"
+		if _, err := traffic.InitBaselineManager(w.nodeID, baselinePath); err != nil {
+			fmt.Printf("init baseline manager failed: %v\n", err)
+		}
 	}
 
 	candidates := buildWebSocketCandidates(w.addr, w.secret, w.version, cfg.Http, cfg.Tls, cfg.Socks, w.preferredWSScheme)
@@ -343,7 +390,82 @@ func (w *WebSocketReporter) connect() error {
 	})
 
 	fmt.Printf("✅ WebSocket连接建立成功 (%s, http=%d, tls=%d, socks=%d)\n", sanitizeWebSocketURL(usedURL), cfg.Http, cfg.Tls, cfg.Socks)
+	if w.nodeID <= 0 {
+		w.fetchAndSaveNodeID()
+	}
+	w.initNftablesManager()
 	return nil
+}
+
+func getConfigDir(serviceName string) string {
+	if strings.TrimSpace(serviceName) != "" {
+		return "/etc/" + serviceName
+	}
+	return "."
+}
+
+func (w *WebSocketReporter) fetchAndSaveNodeID() {
+	httpURL := "http://" + w.addr + "/api/v1/node/info"
+	req, err := http.NewRequest("GET", httpURL, nil)
+	if err != nil {
+		fmt.Printf("fetch node info request failed: %v\n", err)
+		return
+	}
+	req.Header.Set("Authorization", w.secret)
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Printf("fetch node info failed: %v\n", err)
+		return
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		fmt.Printf("fetch node info failed: HTTP %d\n", resp.StatusCode)
+		return
+	}
+	var result struct {
+		Code int `json:"code"`
+		Data struct {
+			ID           int64  `json:"id"`
+			RenewalCycle string `json:"renewalCycle"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		fmt.Printf("decode node info failed: %v\n", err)
+		return
+	}
+	if result.Code != 0 || result.Data.ID <= 0 {
+		return
+	}
+	w.nodeID = result.Data.ID
+	configDir := getConfigDir(w.serviceName)
+	configPath := "config.json"
+	if configDir != "." {
+		configPath = configDir + "/config.json"
+	}
+	configMap := map[string]interface{}{}
+	if data, err := os.ReadFile(configPath); err == nil {
+		_ = json.Unmarshal(data, &configMap)
+	}
+	configMap["node_id"] = w.nodeID
+	if data, err := json.MarshalIndent(configMap, "", "  "); err == nil {
+		_ = os.WriteFile(configPath, data, 0600)
+	}
+	baselinePath := "traffic_baseline.json"
+	if configDir != "." {
+		baselinePath = configDir + "/traffic_baseline.json"
+	}
+	if _, err := traffic.InitBaselineManager(w.nodeID, baselinePath); err != nil {
+		fmt.Printf("init baseline manager failed: %v\n", err)
+		return
+	}
+	if bm := traffic.GetManager(); bm != nil {
+		if result.Data.RenewalCycle != "" {
+			_ = bm.UpdateRenewalCycle(result.Data.RenewalCycle)
+		}
+		networkStats := getNetworkStats()
+		_, _ = bm.CreateInitialBaseline(networkStats.BytesReceived, networkStats.BytesTransmitted, result.Data.RenewalCycle)
+	}
 }
 
 func buildWebSocketCandidates(addr string, secret string, version string, http int, tls int, socks int, preferredScheme string) []string {
@@ -574,24 +696,97 @@ func (w *WebSocketReporter) collectSystemInfo() SystemInfo {
 	lastNetBytesTransmitted = networkStats.BytesTransmitted
 	lastNetTime = now
 
+	var periodRX, periodTX uint64
+	var baselineRecordedAt, nextResetAt int64
+	var renewalCycle string
+	if bm := traffic.GetManager(); bm != nil {
+		bm.CheckAndAutoReset(networkStats.BytesReceived, networkStats.BytesTransmitted)
+		periodRX, periodTX = bm.CalculatePeriodTraffic(networkStats.BytesReceived, networkStats.BytesTransmitted)
+		if baseline := bm.GetCurrentBaseline(); baseline != nil {
+			baselineRecordedAt = baseline.RecordedAt.UnixMilli()
+			nextResetAt = baseline.NextResetAt.UnixMilli()
+			renewalCycle = baseline.RenewalCycle
+		}
+	} else {
+		periodRX = networkStats.BytesReceived
+		periodTX = networkStats.BytesTransmitted
+	}
+
 	return SystemInfo{
-		Uptime:           getUptime(),
-		BytesReceived:    networkStats.BytesReceived,
-		BytesTransmitted: networkStats.BytesTransmitted,
-		CPUUsage:         cpuInfo.Usage,
-		MemoryUsage:      memoryInfo.Usage,
-		DiskUsage:        diskInfo.Usage,
-		Load1:            loadInfo.Load1,
-		Load5:            loadInfo.Load5,
-		Load15:           loadInfo.Load15,
-		TCPConns:         connInfo.TCPConns,
-		UDPConns:         connInfo.UDPConns,
-		NetInSpeed:       netInSpeed,
-		NetOutSpeed:      netOutSpeed,
+		Uptime:                 getUptime(),
+		BytesReceived:          networkStats.BytesReceived,
+		BytesTransmitted:       networkStats.BytesTransmitted,
+		PeriodBytesReceived:    periodRX,
+		PeriodBytesTransmitted: periodTX,
+		BaselineRecordedAt:     baselineRecordedAt,
+		NextResetAt:            nextResetAt,
+		RenewalCycle:           renewalCycle,
+		CPUUsage:               cpuInfo.Usage,
+		MemoryUsage:            memoryInfo.Usage,
+		DiskUsage:              diskInfo.Usage,
+		Load1:                  loadInfo.Load1,
+		Load5:                  loadInfo.Load5,
+		Load15:                 loadInfo.Load15,
+		TCPConns:               connInfo.TCPConns,
+		UDPConns:               connInfo.UDPConns,
+		NetInSpeed:             netInSpeed,
+		NetOutSpeed:            netOutSpeed,
+		ServiceName:            w.serviceName,
+		ServiceConnections:     collectServiceConnections(),
+		ForwardMetrics:         collectForwardMetrics(w.nodeID),
 	}
 }
 
 // encryptPayload 加密 JSON 数据，返回加密后的消息字节（若加密失败则回退到原始数据）
+func collectForwardMetrics(nodeID int64) []ForwardMetric {
+	manager := forwardStats.GetForwardStatsManager()
+	if manager == nil {
+		return []ForwardMetric{}
+	}
+
+	internalMetrics := manager.GetForwardMetrics()
+	if len(internalMetrics) == 0 {
+		return []ForwardMetric{}
+	}
+
+	metrics := make([]ForwardMetric, 0, len(internalMetrics))
+	for _, metric := range internalMetrics {
+		resolvedNodeID := metric.NodeID
+		if resolvedNodeID == 0 {
+			resolvedNodeID = nodeID
+		}
+		metrics = append(metrics, ForwardMetric{
+			ForwardID:   metric.ForwardID,
+			UserID:      metric.UserID,
+			TunnelID:    metric.TunnelID,
+			NodeID:      resolvedNodeID,
+			Port:        metric.Port,
+			ServiceName: metric.ServiceName,
+			InSpeed:     metric.InSpeed,
+			OutSpeed:    metric.OutSpeed,
+			Connections: metric.Connections,
+		})
+	}
+
+	return metrics
+}
+
+func collectServiceConnections() map[string]int {
+	result := make(map[string]int)
+	svcReg := registry.ServiceRegistry()
+	if svcReg == nil {
+		return result
+	}
+
+	for name, svc := range svcReg.GetAll() {
+		if current, ok := svc.(interface{ CurrentConns() int }); ok {
+			result[name] = current.CurrentConns()
+		}
+	}
+
+	return result
+}
+
 func (w *WebSocketReporter) encryptPayload(jsonData []byte) []byte {
 	if w.aesCrypto == nil {
 		return jsonData
@@ -807,6 +1002,32 @@ func (w *WebSocketReporter) routeCommand(cmd CommandMessage) {
 		err = w.handleResumeService(cmd.Data)
 		response.Type = "ResumeServiceResponse"
 
+	// Traffic related commands
+	case "ResetTraffic":
+		err = w.handleResetTraffic(cmd.Data)
+		response.Type = "ResetTrafficResponse"
+
+	case "AddNftablesRules":
+		rawData, _ := json.Marshal(cmd.Data)
+		err = w.handleAddNftablesRules(rawData)
+		response.Type = "AddNftablesRulesResponse"
+	case "UpdateNftablesRules":
+		rawData, _ := json.Marshal(cmd.Data)
+		err = w.handleUpdateNftablesRules(rawData)
+		response.Type = "UpdateNftablesRulesResponse"
+	case "DeleteNftablesRules":
+		rawData, _ := json.Marshal(cmd.Data)
+		err = w.handleDeleteNftablesRules(rawData)
+		response.Type = "DeleteNftablesRulesResponse"
+	case "GetNftablesCounters":
+		rawData, _ := json.Marshal(cmd.Data)
+		err = w.handleGetNftablesCounters(rawData)
+		response.Type = "GetNftablesCountersResponse"
+	case "ResetNftablesCounters":
+		rawData, _ := json.Marshal(cmd.Data)
+		err = w.handleResetNftablesCounters(rawData)
+		response.Type = "ResetNftablesCountersResponse"
+
 	// Chain 相关命令
 	case "AddChains":
 		err = w.handleAddChain(cmd.Data)
@@ -895,6 +1116,47 @@ func (w *WebSocketReporter) routeCommand(cmd CommandMessage) {
 }
 
 // Service 命令处理函数
+func (w *WebSocketReporter) handleResetTraffic(data interface{}) error {
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		return fmt.Errorf("serialize reset request failed: %v", err)
+	}
+
+	var req struct {
+		Reason string `json:"reason"`
+		NodeID int64  `json:"nodeId"`
+	}
+	if err := json.Unmarshal(jsonData, &req); err != nil {
+		return fmt.Errorf("parse reset request failed: %v", err)
+	}
+
+	bm := traffic.GetManager()
+	if bm == nil {
+		nodeID := w.nodeID
+		if req.NodeID > 0 {
+			nodeID = req.NodeID
+		}
+		if nodeID <= 0 {
+			return fmt.Errorf("baseline manager not initialized")
+		}
+		configDir := getConfigDir(w.serviceName)
+		baselinePath := "traffic_baseline.json"
+		if configDir != "." {
+			baselinePath = configDir + "/traffic_baseline.json"
+		}
+		if _, err := traffic.InitBaselineManager(nodeID, baselinePath); err != nil {
+			return fmt.Errorf("init baseline manager failed: %v", err)
+		}
+		bm = traffic.GetManager()
+	}
+
+	networkStats := getNetworkStats()
+	if _, err := bm.CreateManualBaseline(networkStats.BytesReceived, networkStats.BytesTransmitted, req.Reason); err != nil {
+		return fmt.Errorf("create manual baseline failed: %v", err)
+	}
+	return nil
+}
+
 func (w *WebSocketReporter) handleAddService(data interface{}) error {
 	// 将 interface{} 转换为 JSON 再解析为具体类型
 	jsonData, err := json.Marshal(data)

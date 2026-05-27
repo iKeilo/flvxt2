@@ -16,6 +16,7 @@ import (
 	xlogger "github.com/go-gost/x/logger"
 	"github.com/go-gost/x/service"
 	"github.com/go-gost/x/socket"
+	"github.com/go-gost/x/stats"
 	"github.com/judwhite/go-svc"
 )
 
@@ -122,6 +123,7 @@ func main() {
 
 	log := xlogger.NewLogger()
 	logger.SetDefault(log)
+	stats.Init()
 
 	distro := socket.DetectDistro()
 	fullVersion := fmt.Sprintf("%s (%s/%s)", version, distro, runtime.GOARCH)

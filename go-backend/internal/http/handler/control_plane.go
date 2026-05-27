@@ -1,7 +1,9 @@
 package handler
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -274,6 +276,10 @@ func (h *Handler) syncForwardServicesWithWarnings(forward *forwardRecord, method
 		speed = utSpeed
 	}
 
+	if strings.EqualFold(forward.Mode, "nftables") {
+		return warnings, h.syncNftablesRules(forward, tunnel, ports, userTunnelID, speed)
+	}
+
 	var ipSpeed *int
 	if forward.IPSpeedID.Valid && forward.IPSpeedID.Int64 > 0 {
 		if speedVal, err := h.repo.GetSpeedLimitSpeed(forward.IPSpeedID.Int64); err == nil && speedVal > 0 {
@@ -377,8 +383,14 @@ func (h *Handler) syncForwardServicesWithWarnings(forward *forwardRecord, method
 	// Keep paused forwards paused after UpdateService/AddService, since agent-side UpdateService
 	// always restarts services.
 	if forward.Status != 1 {
-		if err := h.controlForwardServices(forward, "PauseService", false); err != nil {
-			return warnings, err
+		if strings.EqualFold(forward.Mode, "nftables") {
+			if err := h.deleteNftablesRules(forward, ports); err != nil {
+				return warnings, err
+			}
+		} else {
+			if err := h.controlForwardServices(forward, "PauseService", false); err != nil {
+				return warnings, err
+			}
 		}
 	}
 	return warnings, nil
@@ -452,6 +464,9 @@ func (h *Handler) deleteForwardServicesOnNode(forward *forwardRecord, nodeID int
 	if h == nil || forward == nil {
 		return errors.New("invalid forward delete context")
 	}
+	if strings.EqualFold(forward.Mode, "nftables") {
+		return nil
+	}
 	bases, err := h.forwardServiceBaseCandidates(forward)
 	if err != nil {
 		return err
@@ -522,6 +537,9 @@ func buildForwardServiceDeleteNames(bases []string) []string {
 func (h *Handler) controlForwardServices(forward *forwardRecord, commandType string, tolerateNotFound bool) error {
 	if h == nil || forward == nil {
 		return errors.New("invalid forward control context")
+	}
+	if strings.EqualFold(forward.Mode, "nftables") {
+		return nil
 	}
 	ports, err := h.listForwardPorts(forward.ID)
 	if err != nil {
@@ -665,11 +683,12 @@ func shouldSelfHealForwardServiceControl(commandType string) bool {
 	return cmd == "pauseservice" || cmd == "resumeservice"
 }
 
-func (h *Handler) applyNodeProtocolChange(nodeID int64, httpVal, tlsVal, socksVal int) error {
+func (h *Handler) applyNodeProtocolChange(nodeID int64, httpVal, tlsVal, socksVal, blockOtherVal int) error {
 	_, err := h.sendNodeCommand(nodeID, "SetProtocol", map[string]interface{}{
-		"http":  httpVal,
-		"tls":   tlsVal,
-		"socks": socksVal,
+		"http":       httpVal,
+		"tls":        tlsVal,
+		"socks":      socksVal,
+		"blockOther": blockOtherVal,
 	}, false, false)
 	return err
 }
@@ -1595,6 +1614,26 @@ func splitRemoteTargets(remoteAddr string) []string {
 	return out
 }
 
+func resolveTargetIP(target string) string {
+	host, port, err := net.SplitHostPort(target)
+	if err != nil {
+		return target
+	}
+	host = strings.TrimSpace(host)
+	port = strings.TrimSpace(port)
+	if net.ParseIP(host) != nil {
+		return target
+	}
+	ips, err := net.LookupHost(host)
+	if err != nil || len(ips) == 0 {
+		return target
+	}
+	if strings.Contains(ips[0], ":") {
+		return "[" + ips[0] + "]:" + port
+	}
+	return ips[0] + ":" + port
+}
+
 func parseTargetAddress(addr string) (string, int, error) {
 	addr = strings.TrimSpace(addr)
 	if addr == "" {
@@ -2021,6 +2060,279 @@ func (h *Handler) ensureTrafficLimiterOnNode(nodeID int64, name string, totalSpe
 		if _, updateErr := h.sendNodeCommand(nodeID, "UpdateLimiters", buildLimiterUpdatePayload(name, payload), false, false); updateErr != nil {
 			return fmt.Errorf("限速规则更新失败: %w", updateErr)
 		}
+	}
+	return nil
+}
+
+type NftablesRulePayload struct {
+	ForwardID   int64  `json:"forward_id"`
+	NodeID      int64  `json:"node_id"`
+	Protocol    string `json:"protocol"`
+	Port        int    `json:"port"`
+	Target      string `json:"target"`
+	SpeedLimit  int    `json:"speed_limit"`
+	ChainType   int    `json:"chain_type"`
+	NextHopIP   string `json:"next_hop_ip"`
+	NextHopPort int    `json:"next_hop_port"`
+}
+
+type AddNftablesRulesRequest struct {
+	Rules []NftablesRulePayload `json:"rules"`
+}
+
+type DeleteNftablesRulesRequest struct {
+	ForwardIDs []int64  `json:"forward_ids"`
+	Protocols  []string `json:"protocols"`
+	Ports      []int    `json:"ports"`
+}
+
+func (h *Handler) syncNftablesRules(forward *forwardRecord, tunnel *tunnelRecord, ports []forwardPortRecord, userTunnelID int64, speedLimit *int) error {
+	if h == nil || forward == nil {
+		return errors.New("invalid nftables sync context")
+	}
+	_ = userTunnelID
+
+	if bases, err := h.forwardServiceBaseCandidates(forward); err == nil {
+		for _, fp := range ports {
+			_ = h.deleteForwardServiceBasesOnNode(fp.NodeID, bases)
+		}
+	}
+
+	chainNodes, _ := h.listChainNodesForTunnel(forward.TunnelID)
+	rules := buildNftablesRulePayloads(forward, tunnel, ports, chainNodes, speedLimit)
+
+	nodePorts := make(map[int64][]int)
+	for _, fp := range ports {
+		nodePorts[fp.NodeID] = append(nodePorts[fp.NodeID], fp.Port)
+	}
+
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+	var syncErr error
+
+	for nodeID, portList := range nodePorts {
+		wg.Add(1)
+		go func(nid int64, plist []int) {
+			defer wg.Done()
+
+			node, err := h.getNodeRecord(nid)
+			if err != nil {
+				return
+			}
+
+			nodeRules := filterRulesByNodeID(rules, nid)
+			if len(nodeRules) == 0 {
+				return
+			}
+
+			delPayload := DeleteNftablesRulesRequest{
+				ForwardIDs: []int64{forward.ID},
+				Protocols:  []string{"tcp", "udp"},
+				Ports:      plist,
+			}
+			if node.IsRemote == 1 && strings.TrimSpace(node.RemoteURL) != "" {
+				_ = h.sendRemoteNftablesCommand(node, delPayload)
+			} else {
+				_, _ = h.sendNodeCommand(node.ID, "DeleteNftablesRules", delPayload, true, false)
+			}
+
+			payload := AddNftablesRulesRequest{Rules: nodeRules}
+			if node.IsRemote == 1 && strings.TrimSpace(node.RemoteURL) != "" {
+				if err := h.sendRemoteNftablesCommand(node, payload); err != nil {
+					mu.Lock()
+					syncErr = fmt.Errorf("remote node %s nftables sync failed: %w", node.Name, err)
+					mu.Unlock()
+				}
+				return
+			}
+
+			if _, err := h.sendNodeCommand(node.ID, "AddNftablesRules", payload, true, false); err != nil && !isNodeOfflineOrTimeoutError(err) {
+				mu.Lock()
+				syncErr = fmt.Errorf("node %s nftables sync failed: %w", node.Name, err)
+				mu.Unlock()
+			}
+		}(nodeID, portList)
+	}
+
+	wg.Wait()
+	return syncErr
+}
+
+func buildNftablesRulePayloads(forward *forwardRecord, tunnel *tunnelRecord, ports []forwardPortRecord, chainNodes []chainNodeRecord, speedLimit *int) []NftablesRulePayload {
+	rules := make([]NftablesRulePayload, 0)
+	protocols := []string{"tcp", "udp"}
+	targets := splitRemoteTargets(forward.RemoteAddr)
+	for i, t := range targets {
+		targets[i] = resolveTargetIP(t)
+	}
+
+	spdLimit := 0
+	if speedLimit != nil {
+		spdLimit = *speedLimit
+	}
+
+	for _, fp := range ports {
+		for _, protocol := range protocols {
+			for _, target := range targets {
+				if tunnel.Type == 1 {
+					rules = append(rules, NftablesRulePayload{
+						ForwardID:  forward.ID,
+						NodeID:     fp.NodeID,
+						Protocol:   protocol,
+						Port:       fp.Port,
+						Target:     target,
+						SpeedLimit: spdLimit,
+						ChainType:  1,
+					})
+					continue
+				}
+				if tunnel.Type == 2 {
+					rules = append(rules, buildChainNftablesRule(forward.ID, chainNodes, fp, protocol, target, spdLimit))
+				}
+			}
+		}
+	}
+	return rules
+}
+
+func buildChainNftablesRule(forwardID int64, chainNodes []chainNodeRecord, fp forwardPortRecord, protocol string, target string, speedLimit int) NftablesRulePayload {
+	nextHopIP, nextHopPort := resolveChainNextHop(chainNodes, fp.NodeID, target)
+	return NftablesRulePayload{
+		ForwardID:   forwardID,
+		NodeID:      fp.NodeID,
+		Protocol:    protocol,
+		Port:        fp.Port,
+		Target:      net.JoinHostPort(nextHopIP, strconv.Itoa(nextHopPort)),
+		SpeedLimit:  speedLimit,
+		ChainType:   2,
+		NextHopIP:   nextHopIP,
+		NextHopPort: nextHopPort,
+	}
+}
+
+func resolveChainNextHop(chainNodes []chainNodeRecord, nodeID int64, finalTarget string) (string, int) {
+	if len(chainNodes) == 0 {
+		host, port, _ := net.SplitHostPort(finalTarget)
+		p, _ := strconv.Atoi(port)
+		return host, p
+	}
+
+	currentNodeIdx := -1
+	for i, cn := range chainNodes {
+		if cn.NodeID == nodeID {
+			currentNodeIdx = i
+			break
+		}
+	}
+	if currentNodeIdx >= 0 && currentNodeIdx+1 < len(chainNodes) {
+		nextNode := chainNodes[currentNodeIdx+1]
+		if ip := strings.TrimSpace(nextNode.ConnectIP); ip != "" && nextNode.Port > 0 {
+			return ip, nextNode.Port
+		}
+	}
+
+	host, port, _ := net.SplitHostPort(finalTarget)
+	p, _ := strconv.Atoi(port)
+	return host, p
+}
+
+func filterRulesByNodeID(rules []NftablesRulePayload, nodeID int64) []NftablesRulePayload {
+	filtered := make([]NftablesRulePayload, 0)
+	for _, r := range rules {
+		if r.NodeID == nodeID {
+			filtered = append(filtered, r)
+		}
+	}
+	return filtered
+}
+
+func (h *Handler) deleteNftablesRules(forward *forwardRecord, ports []forwardPortRecord) error {
+	if h == nil || forward == nil {
+		return errors.New("invalid nftables delete context")
+	}
+
+	nodeIDs := make(map[int64]struct{})
+	portNumbers := make([]int, 0, len(ports))
+	for _, fp := range ports {
+		nodeIDs[fp.NodeID] = struct{}{}
+		portNumbers = append(portNumbers, fp.Port)
+	}
+
+	payload := DeleteNftablesRulesRequest{
+		ForwardIDs: []int64{forward.ID},
+		Protocols:  []string{"tcp", "udp"},
+		Ports:      portNumbers,
+	}
+
+	var errs []string
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+	for nodeID := range nodeIDs {
+		wg.Add(1)
+		go func(nid int64) {
+			defer wg.Done()
+			node, err := h.getNodeRecord(nid)
+			if err != nil {
+				mu.Lock()
+				errs = append(errs, fmt.Sprintf("node %d: %v", nid, err))
+				mu.Unlock()
+				return
+			}
+			if node.IsRemote == 1 && strings.TrimSpace(node.RemoteURL) != "" {
+				if err := h.sendRemoteNftablesCommand(node, payload); err != nil {
+					mu.Lock()
+					errs = append(errs, fmt.Sprintf("remote node %s: %v", node.Name, err))
+					mu.Unlock()
+				}
+				return
+			}
+			if _, err := h.sendNodeCommand(node.ID, "DeleteNftablesRules", payload, true, false); err != nil {
+				mu.Lock()
+				errs = append(errs, fmt.Sprintf("node %s: %v", node.Name, err))
+				mu.Unlock()
+			}
+		}(nodeID)
+	}
+	wg.Wait()
+
+	if len(errs) > 0 {
+		return fmt.Errorf("nftables rule deletion errors: %s", strings.Join(errs, "; "))
+	}
+	return nil
+}
+
+func (h *Handler) sendRemoteNftablesCommand(node *nodeRecord, payload interface{}) error {
+	if h == nil || node == nil {
+		return errors.New("invalid remote nftables command context")
+	}
+	remoteURL := strings.TrimSpace(node.RemoteURL)
+	if remoteURL == "" {
+		return errors.New("remote node URL is empty")
+	}
+
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("marshal payload: %w", err)
+	}
+
+	req, err := http.NewRequest("POST", strings.TrimRight(remoteURL, "/")+"/api/v1/nftables/sync", bytes.NewReader(body))
+	if err != nil {
+		return fmt.Errorf("create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	if strings.TrimSpace(node.RemoteToken) != "" {
+		req.Header.Set("Authorization", strings.TrimSpace(node.RemoteToken))
+	}
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("send request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("remote node returned status %d", resp.StatusCode)
 	}
 	return nil
 }

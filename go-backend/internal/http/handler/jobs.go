@@ -2,9 +2,9 @@ package handler
 
 import (
 	"context"
+	"log"
+	"strings"
 	"time"
-
-	"go-backend/internal/license"
 )
 
 func (h *Handler) StartBackgroundJobs() {
@@ -29,59 +29,7 @@ func (h *Handler) StartBackgroundJobs() {
 	go h.runMetricsIngestion(ctx)
 	go h.runHealthChecks(ctx)
 	go h.runTunnelQualityProber(ctx)
-	go h.runValidateLicenseJob(ctx)
-}
-
-func (h *Handler) runValidateLicenseJob(ctx context.Context) {
-	defer h.jobsWG.Done()
-	ticker := time.NewTicker(12 * time.Hour)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			h.validateLicenseJob()
-		}
-	}
-}
-
-func (h *Handler) validateLicenseJob() {
-	if h == nil || h.repo == nil {
-		return
-	}
-
-	accountID := "1bc96cac-09de-4cf4-af34-26afdad63a90"
-
-	key, _ := h.repo.GetViteConfigValue("license_key")
-	isCommercial, _ := h.repo.GetViteConfigValue("is_commercial")
-
-	if key == "" || isCommercial != "true" {
-		return // Nothing to validate
-	}
-
-	fingerprint, _ := h.repo.GetViteConfigValue("machine_fingerprint")
-	client := license.NewKeygenClient(accountID, "")
-	valResp, err := client.ValidateKeyWithFingerprint(key, fingerprint)
-	
-	if err != nil {
-		// Network error or timeout. Grace period by not revoking immediately here.
-		return
-	}
-
-	if !valResp.Meta.Valid {
-		// License is invalid (e.g., revoked, suspended, expired). Downgrade the system.
-		now := time.Now().UnixMilli()
-		_ = h.repo.UpsertConfig("is_commercial", "false", now)
-	} else {
-		now := time.Now().UnixMilli()
-		expiry := valResp.Data.Attributes.Expiry
-		if expiry == "" {
-			expiry = "never"
-		}
-		_ = h.repo.UpsertConfig("license_expiry", expiry, now)
-	}
+	go h.runNftablesDomainRefreshLoop(ctx)
 }
 
 func (h *Handler) StopBackgroundJobs() {
@@ -294,4 +242,94 @@ func (h *Handler) runNodeRenewalCycleJob(now time.Time) {
 	}
 
 	_ = advanced
+}
+
+func (h *Handler) runNftablesDomainRefreshLoop(ctx context.Context) {
+	defer h.jobsWG.Done()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(10 * time.Minute):
+			h.runNftablesDomainRefreshJob()
+		}
+	}
+}
+
+func (h *Handler) runNftablesDomainRefreshJob() {
+	if h == nil || h.repo == nil {
+		return
+	}
+
+	forwards, err := h.repo.ListActiveNftablesForwards()
+	if err != nil {
+		log.Printf("[nftables-dns] list active nftables forwards failed: %v", err)
+		return
+	}
+	if len(forwards) == 0 {
+		return
+	}
+
+	h.nftablesDomainMu.Lock()
+	defer h.nftablesDomainMu.Unlock()
+
+	seen := make(map[int64]struct{}, len(forwards))
+	for _, f := range forwards {
+		seen[f.ID] = struct{}{}
+
+		targets := splitRemoteTargets(f.RemoteAddr)
+		resolvedTargets := make([]string, len(targets))
+		hasDomain := false
+		for i, t := range targets {
+			resolved := resolveTargetIP(t)
+			resolvedTargets[i] = resolved
+			if resolved != t {
+				hasDomain = true
+			}
+		}
+
+		if !hasDomain {
+			delete(h.nftablesDomainCache, f.ID)
+			continue
+		}
+
+		joined := strings.Join(resolvedTargets, ",")
+		if cached, ok := h.nftablesDomainCache[f.ID]; ok && cached == joined {
+			continue
+		}
+
+		forwardRec, err := h.getForwardRecord(f.ID)
+		if err != nil {
+			log.Printf("[nftables-dns] getForwardRecord(%d) failed: %v", f.ID, err)
+			continue
+		}
+		tunnel, err := h.getTunnelRecord(f.TunnelID)
+		if err != nil {
+			log.Printf("[nftables-dns] getTunnelRecord(%d) failed: %v", f.TunnelID, err)
+			continue
+		}
+		ports, err := h.listForwardPorts(f.ID)
+		if err != nil {
+			log.Printf("[nftables-dns] listForwardPorts(%d) failed: %v", f.ID, err)
+			continue
+		}
+		userTunnelID, _, speed, err := h.resolveUserTunnelAndLimiter(forwardRec.UserID, forwardRec.TunnelID)
+		if err != nil {
+			log.Printf("[nftables-dns] resolveUserTunnelAndLimiter(%d,%d) failed: %v", forwardRec.UserID, forwardRec.TunnelID, err)
+			continue
+		}
+		if err := h.syncNftablesRules(forwardRec, tunnel, ports, userTunnelID, speed); err != nil {
+			log.Printf("[nftables-dns] refresh forward %d failed: %v", f.ID, err)
+			continue
+		}
+
+		h.nftablesDomainCache[f.ID] = joined
+	}
+
+	for id := range h.nftablesDomainCache {
+		if _, ok := seen[id]; !ok {
+			delete(h.nftablesDomainCache, id)
+		}
+	}
 }

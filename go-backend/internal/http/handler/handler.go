@@ -52,8 +52,12 @@ type Handler struct {
 	nodeOnlineRedeployQueued map[int64]struct{}
 	nodeOnlineRedeploying    map[int64]struct{}
 
-	qualityProber *tunnelQualityProber
-	bestExit      *bestExitManager
+	qualityProber       *tunnelQualityProber
+	bestExit            *bestExitManager
+	nodeGroupHandler    *NodeGroupHandler
+	nodeTagHandler      *NodeTagHandler
+	nftablesDomainMu    sync.Mutex
+	nftablesDomainCache map[int64]string
 }
 
 const monitorTunnelQualityEnabledConfigKey = "monitor_tunnel_quality_enabled"
@@ -114,9 +118,12 @@ func New(repo *repo.Repository, jwtSecret string) *Handler {
 		nodeOnlineRedeployQueued: make(map[int64]struct{}),
 		nodeOnlineRedeploying:    make(map[int64]struct{}),
 		bestExit:                 newBestExitManager(),
+		nftablesDomainCache:      make(map[int64]string),
 	}
 	h.healthCheck = health.NewChecker(repo, h.wsServer)
 	h.qualityProber = newTunnelQualityProber(h)
+	h.nodeGroupHandler = NewNodeGroupHandler(repo)
+	h.nodeTagHandler = NewNodeTagHandler(repo)
 	h.wsServer.SetNodeOnlineHook(h.onNodeOnline)
 	h.wsServer.SetNodeMetricHook(func(nodeID int64, info ws.SystemInfo) {
 		metricInfo := metrics.SystemInfo{
@@ -156,6 +163,8 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/user/delete", h.userDelete)
 	mux.HandleFunc("/api/v1/user/reset", h.userResetFlow)
 	mux.HandleFunc("/api/v1/user/quota/reset", h.userQuotaReset)
+	mux.HandleFunc("/api/v1/traffic-history/list", h.trafficHistoryList)
+	mux.HandleFunc("/api/v1/traffic-history/delete", h.trafficHistoryDelete)
 	mux.HandleFunc("/api/v1/user/groups", h.userGroups)
 	mux.HandleFunc("/api/v1/public/config/get", h.getPublicConfigByName)
 	mux.HandleFunc("/api/v1/config/get", h.getConfigByName)
@@ -185,6 +194,10 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/node/update-order", h.nodeUpdateOrder)
 	mux.HandleFunc("/api/v1/node/dismiss-expiry-reminder", h.nodeDismissExpiryReminder)
 	mux.HandleFunc("/api/v1/node/batch-delete", h.nodeBatchDelete)
+	mux.HandleFunc("/api/v1/node/batch-reset-traffic", h.nodeBatchResetTraffic)
+	mux.HandleFunc("/api/v1/node/record-offline-log", h.nodeRecordOfflineLog)
+	mux.HandleFunc("/api/v1/node/traffic-reset-logs", h.nodeTrafficResetLogs)
+	mux.HandleFunc("/api/v1/node/traffic-reset-log/delete", h.deleteNodeTrafficResetLog)
 	mux.HandleFunc("/api/v1/node/check-status", h.nodeCheckStatus)
 	mux.HandleFunc("/api/v1/node/upgrade", h.nodeUpgrade)
 	mux.HandleFunc("/api/v1/node/batch-upgrade", h.nodeBatchUpgrade)
@@ -223,6 +236,9 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/forward/batch-resume", h.forwardBatchResume)
 	mux.HandleFunc("/api/v1/forward/batch-redeploy", h.forwardBatchRedeploy)
 	mux.HandleFunc("/api/v1/forward/batch-change-tunnel", h.forwardBatchChangeTunnel)
+	mux.HandleFunc("/api/v1/forward/batch-reset-traffic", h.forwardBatchResetTraffic)
+	mux.HandleFunc("/api/v1/forward/traffic-reset-logs", h.forwardTrafficResetLogs)
+	mux.HandleFunc("/api/v1/forward/traffic-reset-log/delete", h.deleteForwardTrafficResetLog)
 	mux.HandleFunc("/api/v1/speed-limit/list", h.speedLimitList)
 	mux.HandleFunc("/api/v1/speed-limit/create", h.speedLimitCreate)
 	mux.HandleFunc("/api/v1/speed-limit/update", h.speedLimitUpdate)
@@ -277,6 +293,17 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/monitor/permission/list", h.monitorPermissionList)
 	mux.HandleFunc("/api/v1/monitor/permission/assign", h.monitorPermissionAssign)
 	mux.HandleFunc("/api/v1/monitor/permission/remove", h.monitorPermissionRemove)
+
+	mux.HandleFunc("/api/v1/node-group/list", h.nodeGroupHandler.list)
+	mux.HandleFunc("/api/v1/node-group/create", h.nodeGroupHandler.create)
+	mux.HandleFunc("/api/v1/node-group/update", h.nodeGroupHandler.update)
+	mux.HandleFunc("/api/v1/node-group/delete", h.nodeGroupHandler.delete)
+	mux.HandleFunc("/api/v1/node-group/assign", h.nodeGroupHandler.assign)
+	mux.HandleFunc("/api/v1/node-tag/list", h.nodeTagHandler.list)
+	mux.HandleFunc("/api/v1/node-tag/create", h.nodeTagHandler.create)
+	mux.HandleFunc("/api/v1/node-tag/update", h.nodeTagHandler.update)
+	mux.HandleFunc("/api/v1/node-tag/delete", h.nodeTagHandler.delete)
+	mux.HandleFunc("/api/v1/node-tag/assign", h.nodeTagHandler.assign)
 
 	mux.HandleFunc("/flow/test", h.flowTest)
 	mux.HandleFunc("/flow/config", h.flowConfig)

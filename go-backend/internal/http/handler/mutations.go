@@ -356,6 +356,7 @@ func (h *Handler) nodeCreate(w http.ResponseWriter, r *http.Request) {
 		asInt(req["http"], 0),
 		asInt(req["tls"], 0),
 		asInt(req["socks"], 0),
+		asInt(req["blockOther"], 0),
 		now,
 		0,
 		defaultString(asString(req["tcpListenAddr"]), "[::]"),
@@ -389,7 +390,7 @@ func (h *Handler) nodeUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	currentStatus, currentHTTP, currentTLS, currentSocks, err := h.repo.GetNodeStatusFields(id)
+	currentStatus, currentHTTP, currentTLS, currentSocks, currentBlockOther, err := h.repo.GetNodeStatusFields(id)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			response.WriteJSON(w, response.ErrDefault("节点不存在"))
@@ -402,6 +403,7 @@ func (h *Handler) nodeUpdate(w http.ResponseWriter, r *http.Request) {
 	newHTTP := asInt(req["http"], currentHTTP)
 	newTLS := asInt(req["tls"], currentTLS)
 	newSocks := asInt(req["socks"], currentSocks)
+	newBlockOther := asInt(req["blockOther"], currentBlockOther)
 	serverIP := asString(req["serverIp"])
 	if serverIP != "" {
 		if err := IsValidNodeAddress(serverIP); err != nil {
@@ -409,8 +411,8 @@ func (h *Handler) nodeUpdate(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	if currentStatus == 1 && (newHTTP != currentHTTP || newTLS != currentTLS || newSocks != currentSocks) {
-		if err := h.applyNodeProtocolChange(id, newHTTP, newTLS, newSocks); err != nil {
+	if currentStatus == 1 && (newHTTP != currentHTTP || newTLS != currentTLS || newSocks != currentSocks || newBlockOther != currentBlockOther) {
+		if err := h.applyNodeProtocolChange(id, newHTTP, newTLS, newSocks, newBlockOther); err != nil {
 			response.WriteJSON(w, response.ErrDefault(err.Error()))
 			return
 		}
@@ -431,6 +433,7 @@ func (h *Handler) nodeUpdate(w http.ResponseWriter, r *http.Request) {
 		newHTTP,
 		newTLS,
 		newSocks,
+		newBlockOther,
 		defaultString(asString(req["tcpListenAddr"]), "[::]"),
 		defaultString(asString(req["udpListenAddr"]), "[::]"),
 		now,
@@ -1944,11 +1947,26 @@ func (h *Handler) forwardCreate(w http.ResponseWriter, r *http.Request) {
 		ipMaxConn = 0
 	}
 	proxyProtocol := asInt(req["proxyProtocol"], 0)
+	mode := strings.ToLower(strings.TrimSpace(asString(req["mode"])))
+	if mode == "" {
+		mode = "gost"
+	}
+	if mode != "gost" && mode != "nftables" {
+		response.WriteJSON(w, response.ErrDefault("转发模式错误"))
+		return
+	}
 
 	forwardID, err := h.repo.CreateForwardTx(userID, userName, name, tunnelID, remoteAddr, defaultString(asString(req["strategy"]), "fifo"), now, inx, entryNodes, port, inIp, nullableInt(speedID), maxConn, ipMaxConn, nullableInt(ipSpeedID), proxyProtocol)
 	if err != nil {
 		response.WriteJSON(w, response.Err(-2, err.Error()))
 		return
+	}
+	if mode != "gost" {
+		if err := h.repo.UpdateForwardMode(forwardID, mode, now); err != nil {
+			_ = h.deleteForwardByID(forwardID)
+			response.WriteJSON(w, response.Err(-2, err.Error()))
+			return
+		}
 	}
 	createdForward, err := h.getForwardRecord(forwardID)
 	if err != nil {
@@ -2123,8 +2141,23 @@ func (h *Handler) forwardUpdate(w http.ResponseWriter, r *http.Request) {
 		ipMaxConn = 0
 	}
 	proxyProtocol := asInt(req["proxyProtocol"], forward.ProxyProtocol)
+	mode := strings.ToLower(strings.TrimSpace(asString(req["mode"])))
+	if mode == "" {
+		mode = forward.Mode
+		if strings.TrimSpace(mode) == "" {
+			mode = "gost"
+		}
+	}
+	if mode != "gost" && mode != "nftables" {
+		response.WriteJSON(w, response.ErrDefault("转发模式错误"))
+		return
+	}
 
 	if err := h.repo.UpdateForward(id, name, tunnelID, remoteAddr, strategy, now, newSpeedID, maxConn, ipMaxConn, newIPSpeedID, proxyProtocol); err != nil {
+		response.WriteJSON(w, response.Err(-2, err.Error()))
+		return
+	}
+	if err := h.repo.UpdateForwardMode(id, mode, now); err != nil {
 		response.WriteJSON(w, response.Err(-2, err.Error()))
 		return
 	}
@@ -2147,6 +2180,11 @@ func (h *Handler) forwardUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	warnings := make([]string, 0)
+	if strings.EqualFold(forward.Mode, "nftables") && !strings.EqualFold(updatedForward.Mode, "nftables") {
+		if delErr := h.deleteNftablesRules(forward, oldPorts); delErr != nil {
+			warnings = append(warnings, delErr.Error())
+		}
+	}
 	if tunnelChanged && len(keptNodeIDs) > 0 {
 		for _, nodeID := range keptNodeIDs {
 			if delErr := h.deleteForwardServicesOnNodeBatch(forward, nodeID); delErr != nil {
@@ -2202,7 +2240,14 @@ func (h *Handler) forwardDelete(w http.ResponseWriter, r *http.Request) {
 		response.WriteJSON(w, response.Err(-2, err.Error()))
 		return
 	}
-	if err := h.controlForwardServices(forward, "DeleteService", true); err != nil {
+	if strings.EqualFold(forward.Mode, "nftables") {
+		if ports, portsErr := h.listForwardPorts(forward.ID); portsErr == nil {
+			if err := h.deleteNftablesRules(forward, ports); err != nil {
+				response.WriteJSON(w, response.ErrDefault(err.Error()))
+				return
+			}
+		}
+	} else if err := h.controlForwardServices(forward, "DeleteService", true); err != nil {
 		response.WriteJSON(w, response.ErrDefault(err.Error()))
 		return
 	}
@@ -2251,7 +2296,14 @@ func (h *Handler) forwardPause(w http.ResponseWriter, r *http.Request) {
 		response.WriteJSON(w, response.Err(-2, err.Error()))
 		return
 	}
-	if err := h.controlForwardServices(forward, "PauseService", false); err != nil {
+	if strings.EqualFold(forward.Mode, "nftables") {
+		if ports, portsErr := h.listForwardPorts(forward.ID); portsErr == nil {
+			if err := h.deleteNftablesRules(forward, ports); err != nil {
+				response.WriteJSON(w, response.ErrDefault(err.Error()))
+				return
+			}
+		}
+	} else if err := h.controlForwardServices(forward, "PauseService", false); err != nil {
 		response.WriteJSON(w, response.ErrDefault(err.Error()))
 		return
 	}
@@ -2278,7 +2330,12 @@ func (h *Handler) forwardResume(w http.ResponseWriter, r *http.Request) {
 		response.WriteJSON(w, response.ErrDefault(err.Error()))
 		return
 	}
-	if err := h.controlForwardServices(forward, "ResumeService", false); err != nil {
+	if strings.EqualFold(forward.Mode, "nftables") {
+		if err := h.syncForwardServices(forward, "UpdateService", true); err != nil {
+			response.WriteJSON(w, response.ErrDefault(err.Error()))
+			return
+		}
+	} else if err := h.controlForwardServices(forward, "ResumeService", false); err != nil {
 		response.WriteJSON(w, response.ErrDefault(err.Error()))
 		return
 	}
@@ -2351,7 +2408,15 @@ func (h *Handler) forwardBatchDelete(w http.ResponseWriter, r *http.Request) {
 			failures = appendBatchFailure(failures, id, "", accessErr)
 			continue
 		}
-		if err := h.controlForwardServices(forward, "DeleteService", true); err != nil {
+		if strings.EqualFold(forward.Mode, "nftables") {
+			if ports, portsErr := h.listForwardPorts(forward.ID); portsErr == nil {
+				if err := h.deleteNftablesRules(forward, ports); err != nil {
+					f++
+					failures = appendBatchFailure(failures, id, forward.Name, err)
+					continue
+				}
+			}
+		} else if err := h.controlForwardServices(forward, "DeleteService", true); err != nil {
 			f++
 			failures = appendBatchFailure(failures, id, forward.Name, err)
 			continue
@@ -2386,7 +2451,15 @@ func (h *Handler) forwardBatchPause(w http.ResponseWriter, r *http.Request) {
 			failures = appendBatchFailure(failures, id, "", accessErr)
 			continue
 		}
-		if err := h.controlForwardServices(forward, "PauseService", false); err != nil {
+		if strings.EqualFold(forward.Mode, "nftables") {
+			if ports, portsErr := h.listForwardPorts(forward.ID); portsErr == nil {
+				if err := h.deleteNftablesRules(forward, ports); err != nil {
+					f++
+					failures = appendBatchFailure(failures, id, forward.Name, err)
+					continue
+				}
+			}
+		} else if err := h.controlForwardServices(forward, "PauseService", false); err != nil {
 			f++
 			failures = appendBatchFailure(failures, id, forward.Name, err)
 			continue
@@ -2427,7 +2500,13 @@ func (h *Handler) forwardBatchResume(w http.ResponseWriter, r *http.Request) {
 			failures = appendBatchFailure(failures, id, forward.Name, err)
 			continue
 		}
-		if err := h.controlForwardServices(forward, "ResumeService", false); err != nil {
+		if strings.EqualFold(forward.Mode, "nftables") {
+			if err := h.syncForwardServices(forward, "UpdateService", true); err != nil {
+				f++
+				failures = appendBatchFailure(failures, id, forward.Name, err)
+				continue
+			}
+		} else if err := h.controlForwardServices(forward, "ResumeService", false); err != nil {
 			f++
 			failures = appendBatchFailure(failures, id, forward.Name, err)
 			continue
@@ -4455,6 +4534,7 @@ func (h *Handler) rollbackForwardMutation(oldForward *forwardRecord, oldPorts []
 		oldForward.SpeedID, oldForward.MaxConn, oldForward.IPMaxConn, oldForward.IPSpeedID, oldForward.ProxyProtocol,
 		time.Now().UnixMilli(),
 	)
+	_ = h.repo.UpdateForwardMode(oldForward.ID, oldForward.Mode, time.Now().UnixMilli())
 
 	if err := h.replaceForwardPortsWithRecords(oldForward.ID, oldPorts); err != nil {
 		return

@@ -14,9 +14,24 @@ export interface NodeSystemInfo {
   udpConns?: number;
   netInSpeed?: number;
   netOutSpeed?: number;
+  serviceName?: string;
+  serviceConnections?: Record<string, number>;
+  forwardMetrics?: ForwardMetric[];
 }
 
 type RawSystemInfo = Record<string, string | number | undefined>;
+
+export interface ForwardMetric {
+  forwardId: number;
+  nodeId?: number;
+  tunnelId?: number;
+  userId?: number;
+  port?: number;
+  serviceName?: string;
+  connections: number;
+  inSpeed: number;
+  outSpeed: number;
+}
 
 const toInteger = (value: string | number | undefined): number => {
   return Number.parseInt(String(value ?? 0), 10) || 0;
@@ -24,6 +39,69 @@ const toInteger = (value: string | number | undefined): number => {
 
 const toFloat = (value: string | number | undefined): number => {
   return Number.parseFloat(String(value ?? 0)) || 0;
+};
+
+const toRecordOfNumbers = (value: unknown): Record<string, number> => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+
+  const next: Record<string, number> = {};
+
+  Object.entries(value).forEach(([key, raw]) => {
+    if (typeof raw === "number" && Number.isFinite(raw)) {
+      next[key] = raw;
+      return;
+    }
+
+    if (typeof raw === "string" && raw.trim() !== "") {
+      const parsed = Number(raw);
+
+      if (Number.isFinite(parsed)) {
+        next[key] = parsed;
+      }
+    }
+  });
+
+  return next;
+};
+
+const toForwardMetrics = (value: unknown): ForwardMetric[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const parsed = value.map((item): ForwardMetric | null => {
+    if (!item || typeof item !== "object") {
+      return null;
+    }
+
+    const raw = item as Record<string, unknown>;
+    const forwardId = Number(raw.forwardId ?? raw.forward_id ?? 0);
+
+    if (!Number.isFinite(forwardId) || forwardId <= 0) {
+      return null;
+    }
+
+    return {
+      forwardId,
+      nodeId: Number(raw.nodeId ?? raw.node_id ?? 0) || undefined,
+      tunnelId: Number(raw.tunnelId ?? raw.tunnel_id ?? 0) || undefined,
+      userId: Number(raw.userId ?? raw.user_id ?? 0) || undefined,
+      port: Number(raw.port ?? 0) || undefined,
+      serviceName:
+        typeof raw.serviceName === "string"
+          ? raw.serviceName
+          : typeof raw.service_name === "string"
+            ? raw.service_name
+            : undefined,
+      connections: Number(raw.connections ?? 0) || 0,
+      inSpeed: Number(raw.inSpeed ?? raw.in_speed ?? 0) || 0,
+      outSpeed: Number(raw.outSpeed ?? raw.out_speed ?? 0) || 0,
+    };
+  });
+
+  return parsed.filter((item): item is ForwardMetric => item !== null);
 };
 
 const parseRawSystemInfo = (messageData: unknown): RawSystemInfo | null => {
@@ -134,5 +212,13 @@ export const buildNodeSystemInfo = (
     udpConns: toInteger(raw.udp_conns),
     netInSpeed: toInteger(raw.net_in_speed),
     netOutSpeed: toInteger(raw.net_out_speed),
+    serviceName:
+      typeof raw.service_name === "string" ? raw.service_name : undefined,
+    serviceConnections: toRecordOfNumbers(
+      (messageData as Record<string, unknown>)?.service_connections,
+    ),
+    forwardMetrics: toForwardMetrics(
+      (messageData as Record<string, unknown>)?.forward_metrics,
+    ),
   };
 };

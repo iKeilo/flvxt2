@@ -98,6 +98,8 @@ import {
   parseNyFormatData,
 } from "@/pages/forward/import-format";
 import { buildForwardOrder, FORWARD_ORDER_KEY } from "@/pages/forward/order";
+import { useNodeRealtime } from "@/pages/node/use-node-realtime";
+import { type ForwardMetric } from "@/pages/node/system-info";
 import { PageLoadingState } from "@/components/page-state";
 // import { useMobileBreakpoint } from "@/hooks/useMobileBreakpoint";
 import { saveOrder } from "@/utils/order-storage";
@@ -106,6 +108,7 @@ import { JwtUtil } from "@/utils/jwt";
 interface Forward {
   id: number;
   name: string;
+  mode?: "gost" | "nftables" | string;
   tunnelId: number;
   tunnelName: string;
   tunnelTrafficRatio?: number;
@@ -129,6 +132,10 @@ interface Forward {
   ipSpeedId?: number | null;
   ipSpeedLimitName?: string;
   proxyProtocol?: number;
+  connections?: number;
+  inSpeed?: number;
+  outSpeed?: number;
+  metricNodeCount?: number;
 }
 
 interface Tunnel {
@@ -156,6 +163,7 @@ interface ForwardForm {
   id?: number;
   userId?: number;
   name: string;
+  mode: "gost" | "nftables";
   tunnelId: number | null;
   inPort: number | null;
   inIp: string;
@@ -167,6 +175,13 @@ interface ForwardForm {
   ipSpeedId: number | null;
   maxConn?: number;
   proxyProtocol?: number;
+}
+
+interface ForwardRealtimeMetric {
+  connections: number;
+  inSpeed: number;
+  outSpeed: number;
+  metricNodeCount: number;
 }
 
 interface ForwardUserGroup {
@@ -221,7 +236,9 @@ const FORWARD_GROUPED_TABLE_COLUMN_CLASS = {
   name: "w-[200px]",
   inbound: "w-[280px]",
   target: "w-[280px]",
+  mode: "w-[100px]",
   strategy: "w-[100px]",
+  realtime: "w-[160px]",
   totalFlow: "w-[120px]",
   status: "w-[100px]",
   actions: "w-[144px] text-right",
@@ -563,6 +580,10 @@ const mapForwardApiItems = (items: ForwardApiItem[]): Forward[] => {
   return (items || []).map((forward) => ({
     id: forward.id,
     name: forward.name,
+    mode:
+      forward.mode === "nftables" || forward.mode === "gost"
+        ? forward.mode
+        : "gost",
     tunnelId: forward.tunnelId ?? 0,
     tunnelName: forward.tunnelName || "",
     tunnelTrafficRatio: normalizeTunnelTrafficRatio(forward.tunnelTrafficRatio),
@@ -598,6 +619,11 @@ const mapForwardApiItems = (items: ForwardApiItem[]): Forward[] => {
       typeof forward.proxyProtocol === "number"
         ? forward.proxyProtocol
         : undefined,
+    connections:
+      typeof forward.connections === "number" ? forward.connections : 0,
+    inSpeed: typeof forward.inSpeed === "number" ? forward.inSpeed : 0,
+    outSpeed: typeof forward.outSpeed === "number" ? forward.outSpeed : 0,
+    metricNodeCount: 0,
     serviceRunning: forward.status === 1,
   }));
 };
@@ -748,6 +774,7 @@ const SortableTableRow = ({
   handleEdit,
   handleDelete,
   handleDiagnose,
+  showRealtimeDetail,
   showAddressModal,
   formatFlow,
 }: any) => {
@@ -771,6 +798,17 @@ const SortableTableRow = ({
   };
 
   const strategyDisplay = getStrategyDisplay(forward.strategy);
+  const modeDisplay = getForwardModeDisplay(forward.mode);
+  const realtimeText =
+    (forward.connections || 0) > 0 ||
+    (forward.inSpeed || 0) > 0 ||
+    (forward.outSpeed || 0) > 0
+      ? `${forward.connections || 0} / ${formatRealtimeSpeedPair(
+          forward.inSpeed,
+          forward.outSpeed,
+          formatFlow,
+        )}`
+      : "-";
 
   return (
     <TableRow key={forward.id} ref={setNodeRef} style={style}>
@@ -831,6 +869,16 @@ const SortableTableRow = ({
           {formatRemoteAddress(forward.remoteAddr)}
         </button>
       </TableCell>
+      <TableCell className={FORWARD_GROUPED_TABLE_COLUMN_CLASS.mode}>
+        <Chip
+          className="text-xs font-medium shrink-0 whitespace-nowrap"
+          color={modeDisplay.color as any}
+          size="sm"
+          variant="flat"
+        >
+          {modeDisplay.text}
+        </Chip>
+      </TableCell>
       <TableCell className={FORWARD_GROUPED_TABLE_COLUMN_CLASS.strategy}>
         <Chip
           className="text-xs font-medium shrink-0 whitespace-nowrap"
@@ -840,6 +888,17 @@ const SortableTableRow = ({
         >
           {strategyDisplay.text}
         </Chip>
+      </TableCell>
+      <TableCell
+        className={`${FORWARD_GROUPED_TABLE_COLUMN_CLASS.realtime} whitespace-nowrap`}
+      >
+        <button
+          className="text-xs font-medium text-default-600 font-mono hover:text-primary transition-colors"
+          type="button"
+          onClick={() => showRealtimeDetail(forward)}
+        >
+          {realtimeText}
+        </button>
       </TableCell>
       <TableCell
         className={`${FORWARD_GROUPED_TABLE_COLUMN_CLASS.totalFlow} whitespace-nowrap`}
@@ -942,6 +1001,7 @@ const SortableCompactTableRow = ({
   handleEdit,
   handleDelete,
   handleDiagnose,
+  showRealtimeDetail,
   showAddressModal,
   hasMultipleAddresses,
   formatFlow,
@@ -966,6 +1026,17 @@ const SortableCompactTableRow = ({
   };
 
   const strategyDisplay = getStrategyDisplay(forward.strategy);
+  const modeDisplay = getForwardModeDisplay(forward.mode);
+  const realtimeText =
+    (forward.connections || 0) > 0 ||
+    (forward.inSpeed || 0) > 0 ||
+    (forward.outSpeed || 0) > 0
+      ? `${forward.connections || 0} / ${formatRealtimeSpeedPair(
+          forward.inSpeed,
+          forward.outSpeed,
+          formatFlow,
+        )}`
+      : "-";
 
   return (
     <TableRow key={forward.id} ref={setNodeRef} style={style}>
@@ -1061,12 +1132,35 @@ const SortableCompactTableRow = ({
       >
         <Chip
           className="text-sm font-medium shrink-0 whitespace-nowrap"
+          color={modeDisplay.color as any}
+          size="sm"
+          variant="flat"
+        >
+          {modeDisplay.text}
+        </Chip>
+      </TableCell>
+      <TableCell
+        className={`${selectedIds.has(forward.id) ? "bg-primary-50/70 dark:bg-primary-900/40" : ""}`}
+      >
+        <Chip
+          className="text-sm font-medium shrink-0 whitespace-nowrap"
           color={strategyDisplay.color as any}
           size="sm"
           variant="flat"
         >
           {strategyDisplay.text}
         </Chip>
+      </TableCell>
+      <TableCell
+        className={`whitespace-nowrap ${selectedIds.has(forward.id) ? "bg-primary-50/70 dark:bg-primary-900/40" : ""}`}
+      >
+        <button
+          className="text-xs font-medium text-default-600 font-mono hover:text-primary transition-colors"
+          type="button"
+          onClick={() => showRealtimeDetail(forward)}
+        >
+          {realtimeText}
+        </button>
       </TableCell>
       <TableCell
         className={`whitespace-nowrap ${selectedIds.has(forward.id) ? "bg-primary-50/70 dark:bg-primary-900/40" : ""}`}
@@ -1160,6 +1254,77 @@ const getForwardDisplayFlow = (forward: Forward): number => {
   }
 
   return forward.federationShareFlow || 0;
+};
+
+const getForwardModeDisplay = (mode?: string) => {
+  switch (mode) {
+    case "nftables":
+      return { color: "secondary", text: "nftables" };
+    case "gost":
+    default:
+      return { color: "default", text: "gost" };
+  }
+};
+
+const formatRealtimeSpeedPair = (
+  inSpeed?: number,
+  outSpeed?: number,
+  formatFlow?: (bytes: number) => string,
+): string => {
+  const formatter = formatFlow || ((value: number) => `${value}`);
+  const upload = formatter(Math.max(0, outSpeed || 0));
+  const download = formatter(Math.max(0, inSpeed || 0));
+
+  return `↑${upload}/s ↓${download}/s`;
+};
+
+const extractForwardMetricsFromRealtimePayload = (
+  messageData: unknown,
+): ForwardMetric[] => {
+  const payload =
+    typeof messageData === "string" ? JSON.parse(messageData) : messageData;
+
+  if (!payload || typeof payload !== "object") {
+    return [];
+  }
+
+  const metricList = (payload as Record<string, unknown>).forward_metrics;
+
+  if (!Array.isArray(metricList)) {
+    return [];
+  }
+
+  const parsed = metricList.map((item): ForwardMetric | null => {
+    if (!item || typeof item !== "object") {
+      return null;
+    }
+
+    const raw = item as Record<string, unknown>;
+    const forwardId = Number(raw.forwardId ?? raw.forward_id ?? 0);
+
+    if (!Number.isFinite(forwardId) || forwardId <= 0) {
+      return null;
+    }
+
+    return {
+      forwardId,
+      nodeId: Number(raw.nodeId ?? raw.node_id ?? 0) || undefined,
+      tunnelId: Number(raw.tunnelId ?? raw.tunnel_id ?? 0) || undefined,
+      userId: Number(raw.userId ?? raw.user_id ?? 0) || undefined,
+      port: Number(raw.port ?? 0) || undefined,
+      serviceName:
+        typeof raw.serviceName === "string"
+          ? raw.serviceName
+          : typeof raw.service_name === "string"
+            ? raw.service_name
+            : undefined,
+      connections: Number(raw.connections ?? 0) || 0,
+      inSpeed: Number(raw.inSpeed ?? raw.in_speed ?? 0) || 0,
+      outSpeed: Number(raw.outSpeed ?? raw.out_speed ?? 0) || 0,
+    };
+  });
+
+  return parsed.filter((item): item is ForwardMetric => item !== null);
 };
 
 export default function ForwardPage() {
@@ -1275,6 +1440,7 @@ export default function ForwardPage() {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [addressModalOpen, setAddressModalOpen] = useState(false);
   const [diagnosisModalOpen, setDiagnosisModalOpen] = useState(false);
+  const [realtimeDetailModalOpen, setRealtimeDetailModalOpen] = useState(false);
   const [isEdit, setIsEdit] = useState(false);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -1294,6 +1460,9 @@ export default function ForwardPage() {
   const diagnosisAbortRef = useRef<AbortController | null>(null);
   const [addressModalTitle, setAddressModalTitle] = useState("");
   const [addressList, setAddressList] = useState<ForwardAddressItem[]>([]);
+  const [selectedRealtimeForwardId, setSelectedRealtimeForwardId] = useState<
+    number | null
+  >(null);
 
   // 导出相关状态
   const [exportModalOpen, setExportModalOpen] = useState(false);
@@ -1324,6 +1493,7 @@ export default function ForwardPage() {
   // 表单状态
   const [form, setForm] = useState<ForwardForm>({
     name: "",
+    mode: "gost",
     tunnelId: null,
     inPort: null,
     inIp: "",
@@ -1337,6 +1507,9 @@ export default function ForwardPage() {
     proxyProtocol: 0,
   });
   const [inIpTouched, setInIpTouched] = useState(false);
+  const [nodeForwardMetrics, setNodeForwardMetrics] = useState<
+    Record<number, ForwardMetric[]>
+  >({});
 
   // 表单验证错误
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
@@ -1459,6 +1632,137 @@ export default function ForwardPage() {
 
     return null;
   }, [allTunnels, form.tunnelId]);
+
+  const handleRealtimeMessage = useCallback((event: any) => {
+    const nodeId = Number(event?.id);
+
+    if (!Number.isFinite(nodeId) || nodeId <= 0) {
+      return;
+    }
+
+    if (event?.type === "status" && event.data !== 1) {
+      setNodeForwardMetrics((prev) => {
+        if (!(nodeId in prev)) {
+          return prev;
+        }
+
+        const next = { ...prev };
+
+        delete next[nodeId];
+
+        return next;
+      });
+      return;
+    }
+
+    if (event?.type !== "metric") {
+      return;
+    }
+
+    try {
+      const metrics = extractForwardMetricsFromRealtimePayload(event.data);
+
+      setNodeForwardMetrics((prev) => ({
+        ...prev,
+        [nodeId]: metrics,
+      }));
+    } catch {
+      // ignore malformed realtime payloads
+    }
+  }, []);
+
+  useNodeRealtime({
+    onMessage: handleRealtimeMessage,
+  });
+
+  const forwardRealtimeMap = useMemo(() => {
+    const aggregated = new Map<number, ForwardRealtimeMetric>();
+
+    Object.values(nodeForwardMetrics).forEach((metrics) => {
+      metrics.forEach((metric) => {
+        const current = aggregated.get(metric.forwardId) || {
+          connections: 0,
+          inSpeed: 0,
+          outSpeed: 0,
+          metricNodeCount: 0,
+        };
+
+        current.connections += metric.connections || 0;
+        current.inSpeed += metric.inSpeed || 0;
+        current.outSpeed += metric.outSpeed || 0;
+        current.metricNodeCount += 1;
+        aggregated.set(metric.forwardId, current);
+      });
+    });
+
+    return aggregated;
+  }, [nodeForwardMetrics]);
+
+  const forwardsWithRealtime = useMemo(
+    () =>
+      forwards.map((forward) => {
+        const metric = forwardRealtimeMap.get(forward.id);
+
+        if (!metric) {
+          return {
+            ...forward,
+            connections: 0,
+            inSpeed: 0,
+            outSpeed: 0,
+            metricNodeCount: 0,
+          };
+        }
+
+        return {
+          ...forward,
+          connections: metric.connections,
+          inSpeed: metric.inSpeed,
+          outSpeed: metric.outSpeed,
+          metricNodeCount: metric.metricNodeCount,
+        };
+      }),
+    [forwardRealtimeMap, forwards],
+  );
+
+  const selectedRealtimeForward = useMemo(
+    () =>
+      selectedRealtimeForwardId === null
+        ? null
+        : forwardsWithRealtime.find(
+            (forward) => forward.id === selectedRealtimeForwardId,
+          ) || null,
+    [forwardsWithRealtime, selectedRealtimeForwardId],
+  );
+
+  const selectedRealtimeDetails = useMemo(() => {
+    if (selectedRealtimeForwardId === null) {
+      return [];
+    }
+
+    const nodeNameMap = new Map(
+      nodes.map((node) => [node.id, node.name || `节点 #${node.id}`]),
+    );
+
+    return Object.entries(nodeForwardMetrics)
+      .flatMap(([rawNodeId, metrics]) => {
+        const nodeId = Number(rawNodeId);
+
+        return metrics
+          .filter((metric) => metric.forwardId === selectedRealtimeForwardId)
+          .map((metric) => ({
+            ...metric,
+            nodeId,
+            nodeName: nodeNameMap.get(nodeId) || `节点 #${nodeId}`,
+          }));
+      })
+      .sort((a, b) => {
+        if ((b.connections || 0) !== (a.connections || 0)) {
+          return (b.connections || 0) - (a.connections || 0);
+        }
+
+        return (b.inSpeed + b.outSpeed) - (a.inSpeed + a.outSpeed);
+      });
+  }, [nodeForwardMetrics, nodes, selectedRealtimeForwardId]);
 
   useEffect(() => {
     return () => {
@@ -2116,6 +2420,7 @@ export default function ForwardPage() {
     setInIpTouched(false);
     setForm({
       name: "",
+      mode: "gost",
       tunnelId: null,
       inPort: null,
       inIp: "",
@@ -2139,6 +2444,7 @@ export default function ForwardPage() {
       id: forward.id,
       userId: forward.userId,
       name: forward.name,
+      mode: forward.mode === "nftables" ? "nftables" : "gost",
       tunnelId: forward.tunnelId,
       inPort: forward.inPort,
       inIp: forward.inIp || "",
@@ -2274,6 +2580,7 @@ export default function ForwardPage() {
         const updateData = {
           id: form.id,
           name: form.name,
+          mode: form.mode,
           tunnelId: form.tunnelId,
           inPort: form.inPort,
           ...(inIpTouched ? { inIp: form.inIp || "" } : {}),
@@ -2290,6 +2597,7 @@ export default function ForwardPage() {
       } else {
         const createData = {
           name: form.name,
+          mode: form.mode,
           tunnelId: form.tunnelId,
           inPort: form.inPort,
           inIp: form.inIp || undefined,
@@ -2613,6 +2921,11 @@ export default function ForwardPage() {
     setAddressList(action.items);
     setAddressModalTitle(action.title);
     setAddressModalOpen(true);
+  };
+
+  const showRealtimeDetail = (forward: Forward) => {
+    setSelectedRealtimeForwardId(forward.id);
+    setRealtimeDetailModalOpen(true);
   };
 
   // 复制到剪贴板
@@ -3337,11 +3650,11 @@ export default function ForwardPage() {
   // 根据排序顺序获取规则列表
   const orderedForwards = useMemo((): Forward[] => {
     // 确保 forwards 数组存在且有效
-    if (!forwards || forwards.length === 0) {
+    if (!forwardsWithRealtime || forwardsWithRealtime.length === 0) {
       return [];
     }
 
-    let filteredForwards = forwards;
+    let filteredForwards = forwardsWithRealtime;
 
     if (searchParams.userId !== "all") {
       const targetUserId = parseInt(searchParams.userId);
@@ -3426,11 +3739,11 @@ export default function ForwardPage() {
     }
 
     return sortedByDb;
-  }, [forwards, forwardOrder, searchParams]);
+  }, [forwardsWithRealtime, forwardOrder, searchParams]);
 
   const availableGroupData = useMemo(
-    () => buildAvailableGroupData(forwards),
-    [forwards],
+    () => buildAvailableGroupData(forwardsWithRealtime),
+    [forwardsWithRealtime],
   );
 
   const sanitizedGroupOrderMap = useMemo(
@@ -3737,6 +4050,7 @@ export default function ForwardPage() {
   const renderForwardCard = (forward: Forward, listeners?: any) => {
     const statusDisplay = getStatusDisplay(forward.status);
     const strategyDisplay = getStrategyDisplay(forward.strategy);
+    const modeDisplay = getForwardModeDisplay(forward.mode);
 
     return (
       <Card
@@ -3882,11 +4196,41 @@ export default function ForwardPage() {
             <div className="flex flex-wrap items-center justify-between pt-2 border-t border-divider gap-1">
               <Chip
                 className="text-xs whitespace-nowrap shrink-0"
+                color={modeDisplay.color as any}
+                size="sm"
+                variant="flat"
+              >
+                {modeDisplay.text}
+              </Chip>
+              <Chip
+                className="text-xs whitespace-nowrap shrink-0"
                 color={strategyDisplay.color as any}
                 size="sm"
                 variant="flat"
               >
                 {strategyDisplay.text}
+              </Chip>
+              <Chip
+                className="text-xs whitespace-nowrap"
+                color="warning"
+                size="sm"
+                variant="flat"
+                onClick={() => showRealtimeDetail(forward)}
+              >
+                {forward.connections || 0} 连
+              </Chip>
+              <Chip
+                className="text-xs whitespace-nowrap"
+                color="secondary"
+                size="sm"
+                variant="flat"
+                onClick={() => showRealtimeDetail(forward)}
+              >
+                {formatRealtimeSpeedPair(
+                  forward.inSpeed,
+                  forward.outSpeed,
+                  formatFlow,
+                )}
               </Chip>
               {(forward.inFlow || 0) + (forward.outFlow || 0) > 0 ? (
                 <>
@@ -4297,6 +4641,7 @@ export default function ForwardPage() {
                             handleEdit={handleEdit}
                             handleServiceToggle={handleServiceToggle}
                             hasMultipleAddresses={hasMultipleAddresses}
+                            showRealtimeDetail={showRealtimeDetail}
                             selectMode={selectMode}
                             selectedIds={selectedIds}
                             showAddressModal={showAddressModal}
@@ -4596,6 +4941,9 @@ export default function ForwardPage() {
                                           hasMultipleAddresses={
                                             hasMultipleAddresses
                                           }
+                                          showRealtimeDetail={
+                                            showRealtimeDetail
+                                          }
                                           selectMode={selectMode}
                                           selectedIds={selectedIds}
                                           showAddressModal={showAddressModal}
@@ -4786,6 +5134,27 @@ export default function ForwardPage() {
                       setForm((prev) => ({ ...prev, name: e.target.value }))
                     }
                   />
+
+                  <Select
+                    description="选择转发执行模式，nftables 模式更适合做连接隔离和内核级规则下发。"
+                    label="执行模式"
+                    selectedKeys={[form.mode]}
+                    variant="bordered"
+                    onSelectionChange={(keys) => {
+                      const selectedKey = Array.from(keys)[0] as
+                        | "gost"
+                        | "nftables"
+                        | undefined;
+
+                      setForm((prev) => ({
+                        ...prev,
+                        mode: selectedKey === "nftables" ? "nftables" : "gost",
+                      }));
+                    }}
+                  >
+                    <SelectItem key="gost">gost</SelectItem>
+                    <SelectItem key="nftables">nftables</SelectItem>
+                  </Select>
 
                   <Select
                     description={
@@ -5541,6 +5910,133 @@ export default function ForwardPage() {
       </Modal>
 
       {/* 诊断结果模态框 */}
+      <Modal
+        backdrop="blur"
+        classNames={{
+          base: "!w-[calc(100%-32px)] !mx-auto sm:!w-full rounded-2xl overflow-hidden",
+        }}
+        isOpen={realtimeDetailModalOpen}
+        placement="center"
+        scrollBehavior="inside"
+        size="2xl"
+        onOpenChange={(open) => {
+          setRealtimeDetailModalOpen(open);
+          if (!open) {
+            setSelectedRealtimeForwardId(null);
+          }
+        }}
+      >
+        <ModalContent>
+          <ModalHeader className="flex flex-col gap-1">
+            <h2 className="text-xl font-bold">实时指标详情</h2>
+            <p className="text-small text-default-500">
+              {selectedRealtimeForward
+                ? `${selectedRealtimeForward.name} 的节点侧实时连接和速率`
+                : "查看每个节点上报的实时连接和速率"}
+            </p>
+          </ModalHeader>
+          <ModalBody className="pb-6">
+            {selectedRealtimeForward ? (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <Card className="border border-divider bg-content1/60 shadow-none">
+                    <CardBody className="py-3">
+                      <div className="text-xs text-default-500">模式</div>
+                      <div className="mt-1 font-semibold">
+                        {selectedRealtimeForward.mode || "gost"}
+                      </div>
+                    </CardBody>
+                  </Card>
+                  <Card className="border border-divider bg-content1/60 shadow-none">
+                    <CardBody className="py-3">
+                      <div className="text-xs text-default-500">总连接数</div>
+                      <div className="mt-1 font-semibold">
+                        {selectedRealtimeForward.connections || 0}
+                      </div>
+                    </CardBody>
+                  </Card>
+                  <Card className="border border-divider bg-content1/60 shadow-none">
+                    <CardBody className="py-3">
+                      <div className="text-xs text-default-500">实时速率</div>
+                      <div className="mt-1 text-sm font-semibold">
+                        {formatRealtimeSpeedPair(
+                          selectedRealtimeForward.inSpeed,
+                          selectedRealtimeForward.outSpeed,
+                          formatFlow,
+                        )}
+                      </div>
+                    </CardBody>
+                  </Card>
+                </div>
+
+                {selectedRealtimeDetails.length > 0 ? (
+                  <div className="space-y-2">
+                    {selectedRealtimeDetails.map((item, index) => (
+                      <div
+                        key={`${item.forwardId}-${item.nodeId}-${index}`}
+                        className="rounded-xl border border-divider bg-content1/50 px-4 py-3"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="truncate font-medium">
+                              {item.nodeName}
+                            </div>
+                            <div className="text-xs text-default-500">
+                              节点 #{item.nodeId}
+                              {item.port ? ` · 端口 ${item.port}` : ""}
+                            </div>
+                          </div>
+                          <Chip color="primary" size="sm" variant="flat">
+                            {item.connections} 连
+                          </Chip>
+                        </div>
+                        <div className="mt-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+                          <div className="rounded-lg bg-default-100/50 px-3 py-2">
+                            <div className="text-xs text-default-500">
+                              入站速率
+                            </div>
+                            <div className="mt-1 font-mono">
+                              {formatFlow(item.inSpeed)}/s
+                            </div>
+                          </div>
+                          <div className="rounded-lg bg-default-100/50 px-3 py-2">
+                            <div className="text-xs text-default-500">
+                              出站速率
+                            </div>
+                            <div className="mt-1 font-mono">
+                              {formatFlow(item.outSpeed)}/s
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <Alert
+                    color="default"
+                    description="当前还没有节点上报这条转发的实时明细，通常等节点在线并开始承载连接后会出现。"
+                    variant="flat"
+                  />
+                )}
+              </div>
+            ) : (
+              <PageLoadingState message="正在准备实时指标..." />
+            )}
+          </ModalBody>
+          <ModalFooter>
+            <Button
+              variant="light"
+              onPress={() => {
+                setRealtimeDetailModalOpen(false);
+                setSelectedRealtimeForwardId(null);
+              }}
+            >
+              关闭
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
       <Modal
         backdrop="blur"
         classNames={{

@@ -58,6 +58,7 @@ func (r *Repository) ListForwardsByTunnelTx(tx *gorm.DB, tunnelID int64) ([]mode
 			IPMaxConn:     f.IPMaxConn,
 			IPSpeedID:     f.IPSpeedID,
 			ProxyProtocol: f.ProxyProtocol,
+			Mode:          f.Mode,
 		})
 	}
 	for i := range rows {
@@ -233,7 +234,8 @@ func nodeRecordFromModel(n *model.Node) *model.NodeRecord {
 		Status:        n.Status,
 		PortRange:     n.Port,
 		TCPListenAddr: n.TCPListenAddr, UDPListenAddr: n.UDPListenAddr,
-		IsRemote: n.IsRemote,
+		IsRemote:   n.IsRemote,
+		BlockOther: n.BlockOther,
 	}
 	if n.ServerIPV4.Valid {
 		rec.ServerIPv4 = strings.TrimSpace(n.ServerIPV4.String)
@@ -255,6 +257,9 @@ func nodeRecordFromModel(n *model.Node) *model.NodeRecord {
 	}
 	if n.RemoteConfig.Valid {
 		rec.RemoteConfig = strings.TrimSpace(n.RemoteConfig.String)
+	}
+	if n.ServiceName.Valid {
+		rec.ServiceName = strings.TrimSpace(n.ServiceName.String)
 	}
 	if rec.TCPListenAddr == "" {
 		rec.TCPListenAddr = "[::]"
@@ -349,18 +354,19 @@ func (r *Repository) ListChainNodesForTunnel(tunnelID int64) ([]model.ChainNodeR
 		return nil, errors.New("repository not initialized")
 	}
 	type row struct {
-		ChainType string
-		Inx       sql.NullInt64
-		NodeID    int64
-		Port      sql.NullInt64
-		Name      sql.NullString
-		Protocol  sql.NullString
-		Strategy  sql.NullString
-		ConnectIP sql.NullString
+		ChainType     string
+		Inx           sql.NullInt64
+		NodeID        int64
+		Port          sql.NullInt64
+		Name          sql.NullString
+		Protocol      sql.NullString
+		Strategy      sql.NullString
+		ConnectIP     sql.NullString
+		ConnectIPType sql.NullString
 	}
 	var rows []row
 	err := r.db.Model(&model.ChainTunnel{}).
-		Select("chain_tunnel.chain_type, chain_tunnel.inx, chain_tunnel.node_id, chain_tunnel.port, node.name, chain_tunnel.protocol, chain_tunnel.strategy, chain_tunnel.connect_ip").
+		Select("chain_tunnel.chain_type, chain_tunnel.inx, chain_tunnel.node_id, chain_tunnel.port, node.name, chain_tunnel.protocol, chain_tunnel.strategy, chain_tunnel.connect_ip, chain_tunnel.connect_ip_type").
 		Joins("LEFT JOIN node ON node.id = chain_tunnel.node_id").
 		Where("chain_tunnel.tunnel_id = ?", tunnelID).
 		Order("chain_tunnel.chain_type ASC, chain_tunnel.inx ASC, chain_tunnel.id ASC").
@@ -408,7 +414,42 @@ func (r *Repository) ListChainNodesForTunnel(tunnelID int64) ([]model.ChainNodeR
 		if row.ConnectIP.Valid {
 			item.ConnectIP = row.ConnectIP.String
 		}
+		if row.ConnectIPType.Valid {
+			item.ConnectIPType = row.ConnectIPType.String
+		}
 		result = append(result, item)
 	}
 	return result, nil
+}
+
+func (r *Repository) ListActiveNftablesForwards() ([]model.ForwardRecord, error) {
+	if r == nil || r.db == nil {
+		return nil, errors.New("repository not initialized")
+	}
+	var forwards []model.Forward
+	if err := r.db.Where("status = 1 AND mode = ?", "nftables").Order("id ASC").Find(&forwards).Error; err != nil {
+		return nil, err
+	}
+	rows := make([]model.ForwardRecord, 0, len(forwards))
+	for _, f := range forwards {
+		rows = append(rows, model.ForwardRecord{
+			ID:            f.ID,
+			UserID:        f.UserID,
+			UserName:      f.UserName,
+			Name:          f.Name,
+			TunnelID:      f.TunnelID,
+			RemoteAddr:    f.RemoteAddr,
+			Strategy:      f.Strategy,
+			InFlow:        f.InFlow,
+			OutFlow:       f.OutFlow,
+			Status:        f.Status,
+			SpeedID:       f.SpeedID,
+			MaxConn:       f.MaxConn,
+			IPMaxConn:     f.IPMaxConn,
+			IPSpeedID:     f.IPSpeedID,
+			ProxyProtocol: f.ProxyProtocol,
+			Mode:          f.Mode,
+		})
+	}
+	return rows, nil
 }

@@ -121,12 +121,15 @@ func (r *Repository) ListActiveForwardsByUser(userID int64) ([]model.ForwardReco
 			TunnelID:      f.TunnelID,
 			RemoteAddr:    f.RemoteAddr,
 			Strategy:      f.Strategy,
+			InFlow:        f.InFlow,
+			OutFlow:       f.OutFlow,
 			Status:        f.Status,
 			SpeedID:       f.SpeedID,
 			MaxConn:       f.MaxConn,
 			IPMaxConn:     f.IPMaxConn,
 			IPSpeedID:     f.IPSpeedID,
 			ProxyProtocol: f.ProxyProtocol,
+			Mode:          f.Mode,
 		})
 	}
 	for i := range rows {
@@ -156,6 +159,8 @@ func (r *Repository) ListActiveForwardsByUserTunnel(userID, tunnelID int64) ([]m
 			TunnelID:      f.TunnelID,
 			RemoteAddr:    f.RemoteAddr,
 			Strategy:      f.Strategy,
+			InFlow:        f.InFlow,
+			OutFlow:       f.OutFlow,
 			Status:        f.Status,
 			SpeedID:       f.SpeedID,
 			MaxConn:       f.MaxConn,
@@ -191,6 +196,8 @@ func (r *Repository) ListForwardsByUserAndTunnel(userID, tunnelID int64) ([]mode
 			TunnelID:      f.TunnelID,
 			RemoteAddr:    f.RemoteAddr,
 			Strategy:      f.Strategy,
+			InFlow:        f.InFlow,
+			OutFlow:       f.OutFlow,
 			Status:        f.Status,
 			SpeedID:       f.SpeedID,
 			MaxConn:       f.MaxConn,
@@ -227,12 +234,15 @@ func (r *Repository) GetForwardRecord(forwardID int64) (*model.ForwardRecord, er
 		TunnelID:      f.TunnelID,
 		RemoteAddr:    f.RemoteAddr,
 		Strategy:      f.Strategy,
+		InFlow:        f.InFlow,
+		OutFlow:       f.OutFlow,
 		Status:        f.Status,
 		SpeedID:       f.SpeedID,
 		MaxConn:       f.MaxConn,
 		IPMaxConn:     f.IPMaxConn,
 		IPSpeedID:     f.IPSpeedID,
 		ProxyProtocol: f.ProxyProtocol,
+		Mode:          f.Mode,
 	}
 	if strings.TrimSpace(fr.Strategy) == "" {
 		fr.Strategy = "fifo"
@@ -393,4 +403,130 @@ func (r *Repository) GetSpeedLimitSpeed(id int64) (int, error) {
 		return 0, err
 	}
 	return sl.Speed, nil
+}
+
+type ForwardTrafficResetLogItem struct {
+	ID            int64  `json:"id"`
+	ForwardID     int64  `json:"forwardId"`
+	ForwardName   string `json:"forwardName"`
+	UserID        int64  `json:"userId"`
+	UserName      string `json:"userName"`
+	ResetTime     int64  `json:"resetTime"`
+	InFlowBefore  int64  `json:"inFlowBefore"`
+	OutFlowBefore int64  `json:"outFlowBefore"`
+	OperatorID    int64  `json:"operatorId"`
+	OperatorName  string `json:"operatorName"`
+	CreatedTime   int64  `json:"createdTime"`
+}
+
+func (r *Repository) GetForwardTrafficResetLogs(forwardID int64, limit int) ([]ForwardTrafficResetLogItem, error) {
+	if r == nil || r.db == nil {
+		return nil, errors.New("repository not initialized")
+	}
+	if forwardID <= 0 {
+		return nil, errors.New("forward id is required")
+	}
+	if limit <= 0 {
+		limit = 30
+	}
+
+	var logs []model.ForwardTrafficResetLog
+	err := r.db.Where("forward_id = ?", forwardID).
+		Order("created_time DESC").
+		Limit(limit).
+		Find(&logs).Error
+	if err != nil {
+		return nil, err
+	}
+
+	items := make([]ForwardTrafficResetLogItem, 0, len(logs))
+	for _, log := range logs {
+		items = append(items, ForwardTrafficResetLogItem{
+			ID:            log.ID,
+			ForwardID:     log.ForwardID,
+			ForwardName:   log.ForwardName,
+			UserID:        log.UserID,
+			UserName:      log.UserName,
+			ResetTime:     log.ResetTime,
+			InFlowBefore:  log.InFlowBefore,
+			OutFlowBefore: log.OutFlowBefore,
+			OperatorID:    log.OperatorID,
+			OperatorName:  log.OperatorName,
+			CreatedTime:   log.CreatedTime,
+		})
+	}
+
+	return items, nil
+}
+
+func (r *Repository) DeleteForwardTrafficResetLog(id int64) error {
+	if r == nil || r.db == nil {
+		return errors.New("repository not initialized")
+	}
+	if id <= 0 {
+		return errors.New("invalid log id")
+	}
+	return r.db.Delete(&model.ForwardTrafficResetLog{}, id).Error
+}
+
+type NodeTrafficResetLogItem struct {
+	ID            int64  `json:"id"`
+	NodeID        int64  `json:"nodeId"`
+	NodeName      string `json:"nodeName"`
+	ResetTime     int64  `json:"resetTime"`
+	OperatorID    int64  `json:"operatorId"`
+	OperatorName  string `json:"operatorName"`
+	Reason        string `json:"reason"`
+	InFlowBefore  int64  `json:"inFlowBefore"`
+	OutFlowBefore int64  `json:"outFlowBefore"`
+	CreatedTime   int64  `json:"createdTime"`
+}
+
+func (r *Repository) GetNodeTrafficResetLogs(nodeID int64, limit int) ([]NodeTrafficResetLogItem, error) {
+	if r == nil || r.db == nil {
+		return nil, errors.New("repository not initialized")
+	}
+	if nodeID <= 0 {
+		return nil, errors.New("node id is required")
+	}
+	if limit <= 0 {
+		limit = 30
+	}
+
+	var logs []model.NodeTrafficResetLog
+	err := r.db.Where("node_id = ?", nodeID).
+		Order("created_time DESC").
+		Limit(limit).
+		Find(&logs).Error
+	if err != nil {
+		return nil, err
+	}
+
+	items := make([]NodeTrafficResetLogItem, 0, len(logs))
+	for _, log := range logs {
+		items = append(items, NodeTrafficResetLogItem{
+			ID:            log.ID,
+			NodeID:        log.NodeID,
+			NodeName:      log.NodeName,
+			ResetTime:     log.ResetTime,
+			OperatorID:    log.OperatorID,
+			OperatorName:  log.OperatorName,
+			Reason:        log.Reason,
+			InFlowBefore:  log.InFlowBefore,
+			OutFlowBefore: log.OutFlowBefore,
+			CreatedTime:   log.CreatedTime,
+		})
+	}
+
+	return items, nil
+}
+
+func (r *Repository) DeleteNodeTrafficResetLog(id int64) error {
+	if r == nil || r.db == nil {
+		return errors.New("repository not initialized")
+	}
+	if id <= 0 {
+		return errors.New("invalid log id")
+	}
+	return r.db.Delete(&model.NodeTrafficResetLog{}, id).Error
 }

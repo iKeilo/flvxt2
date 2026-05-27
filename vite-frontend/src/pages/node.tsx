@@ -21,6 +21,8 @@ import { LayoutGrid, List } from "lucide-react";
 
 import { SearchBar } from "@/components/search-bar";
 import { AnimatedPage } from "@/components/animated-page";
+import { NodeGroupManager } from "@/pages/node/node-group-manager";
+import { NodeTagManager } from "@/pages/node/node-tag-manager";
 import {
   Table,
   TableHeader,
@@ -107,6 +109,7 @@ interface Node {
   http?: number; // 0 关 1 开
   tls?: number; // 0 关 1 开
   socks?: number; // 0 关 1 开
+  blockOther?: number; // 0 关 1 开
   status: number;
   isRemote?: number;
   remoteUrl?: string;
@@ -135,6 +138,7 @@ interface NodeForm {
   http: number; // 0 关 1 开
   tls: number; // 0 关 1 开
   socks: number; // 0 关 1 开
+  blockOther: number; // 0 关 1 开
 }
 
 type NodeTab = "local" | "remote";
@@ -249,6 +253,19 @@ const mergeNodeRealtimeState = (
   };
 };
 
+const getServiceConnectionTotal = (
+  systemInfo?: NodeSystemInfo | null,
+): number => {
+  if (!systemInfo?.serviceConnections) {
+    return 0;
+  }
+
+  return Object.values(systemInfo.serviceConnections).reduce(
+    (total, count) => total + (Number.isFinite(count) ? count : 0),
+    0,
+  );
+};
+
 const SortableItem = ({
   id,
   children,
@@ -347,6 +364,7 @@ export default function NodePage() {
     http: 0,
     tls: 0,
     socks: 0,
+    blockOther: 0,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -354,6 +372,8 @@ export default function NodePage() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [batchDeleteModalOpen, setBatchDeleteModalOpen] = useState(false);
   const [batchLoading, setBatchLoading] = useState(false);
+  const [groupManagerOpen, setGroupManagerOpen] = useState(false);
+  const [tagManagerOpen, setTagManagerOpen] = useState(false);
 
   // 安装命令相关状态
   const [installCommandModal, setInstallCommandModal] = useState(false);
@@ -601,37 +621,16 @@ export default function NodePage() {
       setNodeList((prev) =>
         prev.map((node) => {
           if (node.id !== nodeId) return node;
+          const systemInfo = buildNodeSystemInfo(messageData, node.systemInfo);
 
-          const metric =
-            typeof messageData === "string"
-              ? JSON.parse(messageData)
-              : messageData;
-
-          if (!metric || typeof metric !== "object") return node;
-
-          const incomingUptime = metric.uptime ?? 0;
+          if (!systemInfo) {
+            return node;
+          }
 
           return {
             ...node,
             connectionStatus: "online",
-            systemInfo: {
-              cpuUsage: metric.cpuUsage ?? metric.cpu_usage ?? 0,
-              memoryUsage: metric.memoryUsage ?? metric.memory_usage ?? 0,
-              uploadTraffic:
-                metric.netOutBytes ?? metric.bytes_transmitted ?? 0,
-              downloadTraffic: metric.netInBytes ?? metric.bytes_received ?? 0,
-              uploadSpeed: metric.netOutSpeed ?? metric.net_out_speed ?? 0,
-              downloadSpeed: metric.netInSpeed ?? metric.net_in_speed ?? 0,
-              uptime: incomingUptime || node.systemInfo?.uptime || 0,
-              diskUsage: metric.diskUsage ?? metric.disk_usage,
-              load1: metric.load1,
-              load5: metric.load5,
-              load15: metric.load15,
-              tcpConns: metric.tcpConns ?? metric.tcp_conns,
-              udpConns: metric.udpConns ?? metric.udp_conns,
-              netInSpeed: metric.netInSpeed ?? metric.net_in_speed,
-              netOutSpeed: metric.netOutSpeed ?? metric.net_out_speed,
-            },
+            systemInfo,
           };
         }),
       );
@@ -901,6 +900,7 @@ export default function NodePage() {
       http: typeof node.http === "number" ? node.http : 1,
       tls: typeof node.tls === "number" ? node.tls : 1,
       socks: typeof node.socks === "number" ? node.socks : 1,
+      blockOther: typeof node.blockOther === "number" ? node.blockOther : 0,
     });
     const offline = node.connectionStatus !== "online";
 
@@ -1209,6 +1209,7 @@ export default function NodePage() {
                     http: form.http,
                     tls: form.tls,
                     socks: form.socks,
+                    blockOther: form.blockOther,
                   }
                 : n,
             ),
@@ -1245,6 +1246,7 @@ export default function NodePage() {
       http: 0,
       tls: 0,
       socks: 0,
+      blockOther: 0,
     });
     setErrors({});
   };
@@ -1712,6 +1714,22 @@ export default function NodePage() {
                   批量
                 </Button>
                 <Button
+                  color="default"
+                  size="sm"
+                  variant="flat"
+                  onPress={() => setGroupManagerOpen(true)}
+                >
+                  分组
+                </Button>
+                <Button
+                  color="default"
+                  size="sm"
+                  variant="flat"
+                  onPress={() => setTagManagerOpen(true)}
+                >
+                  标签
+                </Button>
+                <Button
                   color="primary"
                   size="sm"
                   variant="flat"
@@ -1741,6 +1759,18 @@ export default function NodePage() {
       )}
 
       {/* 节点列表 */}
+      <NodeGroupManager
+        isOpen={groupManagerOpen}
+        onGroupChange={() => {
+          void loadNodes({ silent: true });
+        }}
+        onOpenChange={setGroupManagerOpen}
+      />
+      <NodeTagManager
+        isOpen={tagManagerOpen}
+        onOpenChange={setTagManagerOpen}
+      />
+
       {loading ? (
         <PageLoadingState message="正在加载..." />
       ) : nodeList.length === 0 ? (
@@ -1828,7 +1858,7 @@ export default function NodePage() {
                       />
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <div
                           className={`shrink-0 w-2 h-2 rounded-full ${
                             node.connectionStatus === "online"
@@ -1841,6 +1871,26 @@ export default function NodePage() {
                         <span className="font-medium text-foreground text-sm">
                           {node.name}
                         </span>
+                        {node.blockOther === 1 && (
+                          <Chip
+                            className="h-4 px-1 text-[10px]"
+                            color="warning"
+                            size="sm"
+                            variant="flat"
+                          >
+                            Block Other
+                          </Chip>
+                        )}
+                        {getServiceConnectionTotal(node.systemInfo) > 0 && (
+                          <Chip
+                            className="h-4 px-1 text-[10px]"
+                            color="primary"
+                            size="sm"
+                            variant="flat"
+                          >
+                            {getServiceConnectionTotal(node.systemInfo)} 连接
+                          </Chip>
+                        )}
                         {hasRemark && (
                           <Chip
                             className="h-4 px-1 text-[10px]"
@@ -2193,6 +2243,28 @@ export default function NodePage() {
                                     node.systemInfo
                                       ? formatUptime(node.systemInfo.uptime)
                                       : "-"}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-default-600">
+                                    实时连接
+                                  </span>
+                                  <span className="text-xs font-mono">
+                                    {node.connectionStatus === "online"
+                                      ? getServiceConnectionTotal(
+                                          node.systemInfo,
+                                        ) || "-"
+                                      : "-"}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-default-600">
+                                    规则模式
+                                  </span>
+                                  <span className="text-xs">
+                                    {node.blockOther === 1
+                                      ? "仅放行规则流量"
+                                      : "标准模式"}
                                   </span>
                                 </div>
                               </>
@@ -2814,6 +2886,47 @@ export default function NodePage() {
                           </div>
                           <div className="mt-1 text-xs text-default-400">
                             {form.socks === 1 ? "已开启" : "已关闭"}
+                          </div>
+                        </div>
+                        <div className="px-3 py-3 rounded-lg bg-content1/55 dark:bg-content1/35 border border-divider hover:border-primary-200 dark:hover:border-primary-500/30 transition-colors">
+                          <div className="flex items-center gap-2 mb-2">
+                            <svg
+                              aria-hidden="true"
+                              className="w-4 h-4 text-default-500"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2"
+                              viewBox="0 0 24 24"
+                            >
+                              <path d="M3 12h18" />
+                              <path d="M7 8l-4 4 4 4" />
+                              <path d="M17 16l4-4-4-4" />
+                            </svg>
+                            <div className="text-sm font-medium text-default-700">
+                              Block Other
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <div className="text-xs text-default-500">
+                              仅放行已下发规则
+                            </div>
+                            <Switch
+                              isSelected={form.blockOther === 1}
+                              size="sm"
+                              onValueChange={(v) =>
+                                setForm((prev) => ({
+                                  ...prev,
+                                  blockOther: v ? 1 : 0,
+                                }))
+                              }
+                            />
+                          </div>
+                          <div className="mt-1 text-xs text-default-400">
+                            {form.blockOther === 1
+                              ? "已开启 nftables 隔离"
+                              : "关闭，保留普通访问"}
                           </div>
                         </div>
                       </div>
