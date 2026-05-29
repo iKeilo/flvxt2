@@ -1,7 +1,7 @@
-#!/bin/bash
+﻿#!/bin/bash
 set -e
 
-# 瑙ｅ喅 macOS 涓?tr 鍙兘鍑虹幇鐨勯潪娉曞瓧鑺傚簭鍒楅棶棰?
+# 解决 macOS 下 tr 可能出现的非法字节序列问题
 export LANG=en_US.UTF-8
 export LC_ALL=C
 
@@ -10,14 +10,14 @@ export LC_ALL=C
 # GitHub repo used for release downloads
 REPO="iKeilo/flvxt2"
 
-# 鍥哄畾鐗堟湰鍙凤紙Release 鏋勫缓鏃惰嚜鍔ㄥ～鍏咃紝鐣欑┖鍒欒幏鍙栨渶鏂扮増锛?
+# 固定版本号（Release 构建时自动填充，留空则获取最新版）
 PINNED_VERSION=""
 
-# 闀滃儚鍔犻€熼厤缃紙鍙敱闈㈡澘浼犲叆鎴栦氦浜掑紡璇㈤棶锛?
+# 镜像加速配置（可由面板传入或交互式询问）
 PROXY_ENABLED="${PROXY_ENABLED:-}"
 PROXY_URL="${PROXY_URL:-}"
 
-# 闀滃儚鍔犻€?
+# 镜像加速
 maybe_proxy_url() {
   local url="$1"
 
@@ -49,23 +49,23 @@ ask_proxy_config() {
 
   echo ""
   echo "==============================================="
-  echo "           GitHub 鍔犻€熼厤缃?
+  echo "           GitHub 加速配置"
   echo "==============================================="
-  if ! read -r -p "鏄惁寮€鍚?GitHub 鍔犻€? (Y/n): " proxy_choice; then
+  if ! read -r -p "是否开启 GitHub 加速? (Y/n): " proxy_choice; then
     proxy_choice=""
   fi
   case "$proxy_choice" in
     n|N)
       PROXY_ENABLED="false"
-      echo "宸插叧闂姞閫燂紝灏嗙洿杩?GitHub"
+      echo "已关闭加速，将直连 GitHub"
       ;;
     *)
       PROXY_ENABLED="true"
-      if ! read -r -p "鍔犻€熷湴鍧€ (榛樿 gcode.hostcentral.cc): " input_url; then
+      if ! read -r -p "加速地址 (默认 gcode.hostcentral.cc): " input_url; then
         input_url=""
       fi
       PROXY_URL="${input_url:-gcode.hostcentral.cc}"
-      echo "宸插紑鍚姞閫? $PROXY_URL"
+      echo "已开启加速: $PROXY_URL"
       ;;
   esac
   echo "==============================================="
@@ -111,7 +111,7 @@ resolve_version() {
     return 0
   fi
 
-  echo "鉂?鏃犳硶鑾峰彇鏈€鏂扮増鏈彿銆備綘鍙互鎵嬪姩鎸囧畾鐗堟湰锛屼緥濡傦細VERSION=<鐗堟湰鍙? ./panel_install.sh" >&2
+  echo "❌ 无法获取最新版本号。你可以手动指定版本，例如：VERSION=<版本号> ./panel_install.sh" >&2
   return 1
 }
 
@@ -121,8 +121,7 @@ normalize_image_version() {
   echo "$version"
 }
 
-
-# 鏍规嵁鐗堟湰鍙疯缃?compose 涓嬭浇鍦板潃
+# 根据版本号设置 compose 下载地址
 set_compose_urls_by_version() {
   local version="$1"
   DOCKER_COMPOSEV4_URL=$(maybe_proxy_url "https://github.com/${REPO}/releases/download/${version}/docker-compose-v4.yml")
@@ -140,7 +139,7 @@ ensure_compose_urls_initialized() {
 
 
 
-# 鏍规嵁IPv6鏀寔鎯呭喌閫夋嫨docker-compose URL
+# 根据IPv6支持情况选择docker-compose URL
 get_docker_compose_url() {
   if check_ipv6_support > /dev/null 2>&1; then
     echo "$DOCKER_COMPOSEV6_URL"
@@ -149,7 +148,7 @@ get_docker_compose_url() {
   fi
 }
 
-# 妫€鏌?docker-compose 鎴?docker compose 鍛戒护
+# 检查 docker-compose 或 docker compose 命令
 check_docker() {
   if command -v docker-compose &> /dev/null; then
     DOCKER_CMD="docker-compose"
@@ -157,118 +156,118 @@ check_docker() {
     if docker compose version &> /dev/null; then
       DOCKER_CMD="docker compose"
     else
-      echo "閿欒锛氭娴嬪埌 docker锛屼絾涓嶆敮鎸?'docker compose' 鍛戒护銆傝瀹夎 docker-compose 鎴栨洿鏂?docker 鐗堟湰銆?
+      echo "错误：检测到 docker，但不支持 'docker compose' 命令。请安装 docker-compose 或更新 docker 版本。"
       exit 1
     fi
   else
-    echo "閿欒锛氭湭妫€娴嬪埌 docker 鎴?docker-compose 鍛戒护銆傝鍏堝畨瑁?Docker銆?
+    echo "错误：未检测到 docker 或 docker-compose 命令。请先安装 Docker。"
     exit 1
   fi
-  echo "妫€娴嬪埌 Docker 鍛戒护锛?DOCKER_CMD"
+  echo "检测到 Docker 命令：$DOCKER_CMD"
 }
 
-# 妫€娴嬬郴缁熸槸鍚︽敮鎸?IPv6
+# 检测系统是否支持 IPv6
 check_ipv6_support() {
-  echo "馃攳 妫€娴?IPv6 鏀寔..."
+  echo "🔍 检测 IPv6 支持..."
 
-  # 妫€鏌ユ槸鍚︽湁 IPv6 鍦板潃锛堟帓闄?link-local 鍦板潃锛?
+  # 检查是否有 IPv6 地址（排除 link-local 地址）
   if ip -6 addr show | grep -v "scope link" | grep -q "inet6"; then
-    echo "鉁?妫€娴嬪埌绯荤粺鏀寔 IPv6"
+    echo "✅ 检测到系统支持 IPv6"
     return 0
   elif ifconfig 2>/dev/null | grep -v "fe80:" | grep -q "inet6"; then
-    echo "鉁?妫€娴嬪埌绯荤粺鏀寔 IPv6"
+    echo "✅ 检测到系统支持 IPv6"
     return 0
   else
-    echo "鈿狅笍 鏈娴嬪埌 IPv6 鏀寔"
+    echo "⚠️ 未检测到 IPv6 支持"
     return 1
   fi
 }
 
 
 
-# 閰嶇疆 Docker 鍚敤 IPv6
+# 配置 Docker 启用 IPv6
 configure_docker_ipv6() {
-  echo "馃敡 閰嶇疆 Docker IPv6 鏀寔..."
+  echo "🔧 配置 Docker IPv6 支持..."
 
-  # 妫€鏌ユ搷浣滅郴缁熺被鍨?
+  # 检查操作系统类型
   OS_TYPE=$(uname -s)
 
   if [[ "$OS_TYPE" == "Darwin" ]]; then
-    # macOS 涓?Docker Desktop 宸查粯璁ゆ敮鎸?IPv6
-    echo "鉁?macOS Docker Desktop 榛樿鏀寔 IPv6"
+    # macOS 上 Docker Desktop 已默认支持 IPv6
+    echo "✅ macOS Docker Desktop 默认支持 IPv6"
     return 0
   fi
 
-  # Docker daemon 閰嶇疆鏂囦欢璺緞
+  # Docker daemon 配置文件路径
   DOCKER_CONFIG="/etc/docker/daemon.json"
 
-  # 妫€鏌ユ槸鍚﹂渶瑕?sudo
+  # 检查是否需要 sudo
   if [[ $EUID -ne 0 ]]; then
     SUDO_CMD="sudo"
   else
     SUDO_CMD=""
   fi
 
-  # 妫€鏌?Docker 閰嶇疆鏂囦欢
+  # 检查 Docker 配置文件
   if [ -f "$DOCKER_CONFIG" ]; then
-    # 妫€鏌ユ槸鍚﹀凡缁忛厤缃簡 IPv6
+    # 检查是否已经配置了 IPv6
     if grep -q '"ipv6"' "$DOCKER_CONFIG"; then
-      echo "鉁?Docker 宸查厤缃?IPv6 鏀寔"
+      echo "✅ Docker 已配置 IPv6 支持"
     else
-      echo "馃摑 鏇存柊 Docker 閰嶇疆浠ュ惎鐢?IPv6..."
-      # 澶囦唤鍘熼厤缃?
+      echo "📝 更新 Docker 配置以启用 IPv6..."
+      # 备份原配置
       $SUDO_CMD cp "$DOCKER_CONFIG" "${DOCKER_CONFIG}.backup"
 
-      # 浣跨敤 jq 鎴?sed 娣诲姞 IPv6 閰嶇疆
+      # 使用 jq 或 sed 添加 IPv6 配置
       if command -v jq &> /dev/null; then
         $SUDO_CMD jq '. + {"ipv6": true, "fixed-cidr-v6": "fd00::/80"}' "$DOCKER_CONFIG" > /tmp/daemon.json && $SUDO_CMD mv /tmp/daemon.json "$DOCKER_CONFIG"
       else
-        # 濡傛灉娌℃湁 jq锛屼娇鐢?sed
+        # 如果没有 jq，使用 sed
         $SUDO_CMD sed -i 's/^{$/{\n  "ipv6": true,\n  "fixed-cidr-v6": "fd00::\/80",/' "$DOCKER_CONFIG"
       fi
 
-      echo "馃攧 閲嶅惎 Docker 鏈嶅姟..."
+      echo "🔄 重启 Docker 服务..."
       if command -v systemctl &> /dev/null; then
         $SUDO_CMD systemctl restart docker
       elif command -v service &> /dev/null; then
         $SUDO_CMD service docker restart
       else
-        echo "鈿狅笍 璇锋墜鍔ㄩ噸鍚?Docker 鏈嶅姟"
+        echo "⚠️ 请手动重启 Docker 服务"
       fi
       sleep 5
     fi
   else
-    # 鍒涘缓鏂扮殑閰嶇疆鏂囦欢
-    echo "馃摑 鍒涘缓 Docker 閰嶇疆鏂囦欢..."
+    # 创建新的配置文件
+    echo "📝 创建 Docker 配置文件..."
     $SUDO_CMD mkdir -p /etc/docker
     echo '{
   "ipv6": true,
   "fixed-cidr-v6": "fd00::/80"
 }' | $SUDO_CMD tee "$DOCKER_CONFIG" > /dev/null
 
-    echo "馃攧 閲嶅惎 Docker 鏈嶅姟..."
+    echo "🔄 重启 Docker 服务..."
     if command -v systemctl &> /dev/null; then
       $SUDO_CMD systemctl restart docker
     elif command -v service &> /dev/null; then
       $SUDO_CMD service docker restart
     else
-      echo "鈿狅笍 璇锋墜鍔ㄩ噸鍚?Docker 鏈嶅姟"
+      echo "⚠️ 请手动重启 Docker 服务"
     fi
     sleep 5
   fi
 }
 
-# 鏄剧ず鑿滃崟
+# 显示菜单
 show_menu() {
   echo "==============================================="
-  echo "          闈㈡澘绠＄悊鑴氭湰"
+  echo "          面板管理脚本"
   echo "==============================================="
-  echo "璇烽€夋嫨鎿嶄綔锛?
-  echo "1. 瀹夎闈㈡澘"
-  echo "2. 鏇存柊闈㈡澘"
-  echo "3. 鍗歌浇闈㈡澘"
-  echo "4. 杩佺Щ鍒?PostgreSQL"
-  echo "5. 閫€鍑?
+  echo "请选择操作："
+  echo "1. 安装面板"
+  echo "2. 更新面板"
+  echo "3. 卸载面板"
+  echo "4. 迁移到 PostgreSQL"
+  echo "5. 退出"
   echo "==============================================="
 }
 
@@ -326,28 +325,28 @@ get_current_db_type() {
 wait_for_postgres_healthy() {
   local pg_health
 
-  echo "馃攳 妫€鏌?PostgreSQL 鏈嶅姟鐘舵€?.."
+  echo "🔍 检查 PostgreSQL 服务状态..."
   for i in {1..90}; do
     if docker ps --format "{{.Names}}" | grep -q "^flvx-svc-postgres$"; then
       pg_health=$(docker inspect -f '{{.State.Health.Status}}' flvx-svc-postgres 2>/dev/null || echo "unknown")
       if [[ "$pg_health" == "healthy" ]]; then
-        echo "鉁?PostgreSQL 鏈嶅姟鍋ュ悍妫€鏌ラ€氳繃"
+        echo "✅ PostgreSQL 服务健康检查通过"
         return 0
       elif [[ "$pg_health" == "unhealthy" ]]; then
-        echo "鈿狅笍 PostgreSQL 鍋ュ悍鐘舵€侊細$pg_health"
+        echo "⚠️ PostgreSQL 健康状态：$pg_health"
       fi
     else
       pg_health="not_running"
     fi
 
     if [ $i -eq 90 ]; then
-      echo "鉂?PostgreSQL 鍚姩瓒呮椂锛?0绉掞級"
-      echo "馃攳 褰撳墠鐘舵€侊細$(docker inspect -f '{{.State.Health.Status}}' flvx-svc-postgres 2>/dev/null || echo '瀹瑰櫒涓嶅瓨鍦?)"
+      echo "❌ PostgreSQL 启动超时（90秒）"
+      echo "🔍 当前状态：$(docker inspect -f '{{.State.Health.Status}}' flvx-svc-postgres 2>/dev/null || echo '容器不存在')"
       return 1
     fi
 
     if [ $((i % 15)) -eq 1 ]; then
-      echo "鈴?绛夊緟 PostgreSQL 鍚姩... ($i/90) 鐘舵€侊細${pg_health:-unknown}"
+      echo "⏳ 等待 PostgreSQL 启动... ($i/90) 状态：${pg_health:-unknown}"
     fi
     sleep 1
   done
@@ -356,58 +355,58 @@ wait_for_postgres_healthy() {
 wait_for_backend_healthy() {
   local backend_health
 
-  echo "馃攳 妫€鏌ュ悗绔湇鍔＄姸鎬?.."
+  echo "🔍 检查后端服务状态..."
   for i in {1..90}; do
     if docker ps --format "{{.Names}}" | grep -q "^flvx-svc-backend$"; then
       backend_health=$(docker inspect -f '{{.State.Health.Status}}' flvx-svc-backend 2>/dev/null || echo "unknown")
       if [[ "$backend_health" == "healthy" ]]; then
-        echo "鉁?鍚庣鏈嶅姟鍋ュ悍妫€鏌ラ€氳繃"
+        echo "✅ 后端服务健康检查通过"
         return 0
       elif [[ "$backend_health" == "unhealthy" ]]; then
-        echo "鈿狅笍 鍚庣鍋ュ悍鐘舵€侊細$backend_health"
+        echo "⚠️ 后端健康状态：$backend_health"
       fi
     else
       backend_health="not_running"
     fi
 
     if [ $i -eq 90 ]; then
-      echo "鉂?鍚庣鏈嶅姟鍚姩瓒呮椂锛?0绉掞級"
-      echo "馃攳 褰撳墠鐘舵€侊細$(docker inspect -f '{{.State.Health.Status}}' flvx-svc-backend 2>/dev/null || echo '瀹瑰櫒涓嶅瓨鍦?)"
+      echo "❌ 后端服务启动超时（90秒）"
+      echo "🔍 当前状态：$(docker inspect -f '{{.State.Health.Status}}' flvx-svc-backend 2>/dev/null || echo '容器不存在')"
       return 1
     fi
 
     if [ $((i % 15)) -eq 1 ]; then
-      echo "鈴?绛夊緟鍚庣鏈嶅姟鍚姩... ($i/90) 鐘舵€侊細${backend_health:-unknown}"
+      echo "⏳ 等待后端服务启动... ($i/90) 状态：${backend_health:-unknown}"
     fi
     sleep 1
   done
 }
 
-# 鍒犻櫎鑴氭湰鑷韩
+# 删除脚本自身
 delete_self() {
   echo ""
-  echo "馃棏锔?鎿嶄綔宸插畬鎴愶紝姝ｅ湪娓呯悊鑴氭湰鏂囦欢..."
+  echo "🗑️ 操作已完成，正在清理脚本文件..."
   SCRIPT_PATH="$(readlink -f "$0" 2>/dev/null || realpath "$0" 2>/dev/null || echo "$0")"
   sleep 1
-  rm -f "$SCRIPT_PATH" && echo "鉁?鑴氭湰鏂囦欢宸插垹闄? || echo "鉂?鍒犻櫎鑴氭湰鏂囦欢澶辫触"
+  rm -f "$SCRIPT_PATH" && echo "✅ 脚本文件已删除" || echo "❌ 删除脚本文件失败"
 }
 
 
 
-# 鑾峰彇鐢ㄦ埛杈撳叆鐨勯厤缃弬鏁?
+# 获取用户输入的配置参数
 get_config_params() {
-  echo "馃敡 璇疯緭鍏ラ厤缃弬鏁帮細"
+  echo "🔧 请输入配置参数："
 
-  read -p "鍓嶇绔彛锛堥粯璁?6366锛? " FRONTEND_PORT
+  read -p "前端端口（默认 6366）: " FRONTEND_PORT
   FRONTEND_PORT=${FRONTEND_PORT:-6366}
 
-  read -p "鍚庣绔彛锛堥粯璁?6365锛? " BACKEND_PORT
+  read -p "后端端口（默认 6365）: " BACKEND_PORT
   BACKEND_PORT=${BACKEND_PORT:-6365}
 
-  echo "璇烽€夋嫨鏁版嵁搴撶被鍨嬶細"
-  echo "1. SQLite锛堥粯璁わ級"
+  echo "请选择数据库类型："
+  echo "1. SQLite（默认）"
   echo "2. PostgreSQL"
-  read -p "鏁版嵁搴撶被鍨嬶紙1/2锛岄粯璁?1锛? " DB_CHOICE
+  read -p "数据库类型（1/2，默认 1）: " DB_CHOICE
   case "$DB_CHOICE" in
     2)
       DB_TYPE="postgres"
@@ -416,7 +415,7 @@ get_config_params() {
       DB_TYPE="sqlite"
       ;;
     *)
-      echo "鈿狅笍 杈撳叆鏃犳晥锛岄粯璁や娇鐢?SQLite"
+      echo "⚠️ 输入无效，默认使用 SQLite"
       DB_TYPE="sqlite"
       ;;
   esac
@@ -431,13 +430,13 @@ get_config_params() {
     DATABASE_URL=""
   fi
 
-  # 鐢熸垚JWT瀵嗛挜
+  # 生成JWT密钥
   JWT_SECRET=$(generate_random)
 }
 
-# 瀹夎鍔熻兘
+# 安装功能
 install_panel() {
-  echo "馃殌 寮€濮嬪畨瑁呴潰鏉?.."
+  echo "🚀 开始安装面板..."
 
   ask_proxy_config
   ensure_compose_urls_initialized || return 1
@@ -445,15 +444,15 @@ install_panel() {
   check_docker
   get_config_params
 
-  echo "馃斀 涓嬭浇蹇呰鏂囦欢..."
+  echo "🔽 下载必要文件..."
   DOCKER_COMPOSE_URL=$(get_docker_compose_url)
-  echo "馃摗 閫夋嫨閰嶇疆鏂囦欢锛?(basename "$DOCKER_COMPOSE_URL")"
+  echo "📡 选择配置文件：$(basename "$DOCKER_COMPOSE_URL")"
   curl -L -o docker-compose.yml "$DOCKER_COMPOSE_URL"
-  echo "鉁?鏂囦欢鍑嗗瀹屾垚"
+  echo "✅ 文件准备完成"
 
-  # 鑷姩妫€娴嬪苟閰嶇疆 IPv6 鏀寔
+  # 自动检测并配置 IPv6 支持
   if check_ipv6_support; then
-    echo "馃殌 绯荤粺鏀寔 IPv6锛岃嚜鍔ㄥ惎鐢?IPv6 閰嶇疆..."
+    echo "🚀 系统支持 IPv6，自动启用 IPv6 配置..."
     configure_docker_ipv6
   fi
 
@@ -472,7 +471,7 @@ POSTGRES_USER=$POSTGRES_USER
 POSTGRES_PASSWORD=$POSTGRES_PASSWORD
 EOF
 
-  echo "馃殌 鍚姩 docker 鏈嶅姟..."
+  echo "🚀 启动 docker 服务..."
   if [[ "$DB_TYPE" == "postgres" ]]; then
     $DOCKER_CMD up -d postgres
     wait_for_postgres_healthy
@@ -481,69 +480,69 @@ EOF
     $DOCKER_CMD up -d backend frontend
   fi
 
-  echo "馃帀 閮ㄧ讲瀹屾垚"
-  echo "馃寪 璁块棶鍦板潃: http://鏈嶅姟鍣↖P:$FRONTEND_PORT"
-  echo "馃摉 閮ㄧ讲瀹屾垚鍚庤闃呰涓嬩娇鐢ㄦ枃妗ｏ紝姹傛眰浜嗗晩锛屼笉瑕佷笂鍘诲氨鏄竴椤挎搷浣?
-  echo "馃摎 鏂囨。鍦板潃: https://tes.cc/guide.html"
-  echo "馃挕 榛樿绠＄悊鍛樿处鍙? admin_user / admin_user"
-  echo "鈿狅笍  鐧诲綍鍚庤绔嬪嵆淇敼榛樿瀵嗙爜锛?
+  echo "🎉 部署完成"
+  echo "🌐 访问地址: http://服务器IP:$FRONTEND_PORT"
+  echo "📖 部署完成后请阅读下使用文档，求求了啊，不要上去就是一顿操作"
+  echo "📚 文档地址: https://tes.cc/guide.html"
+  echo "💡 默认管理员账号: admin_user / admin_user"
+  echo "⚠️  登录后请立即修改默认密码！"
 
 
 }
 
-# 鏇存柊鍔熻兘
+# 更新功能
 update_panel() {
-  echo "馃攧 寮€濮嬫洿鏂伴潰鏉?.."
+  echo "🔄 开始更新面板..."
   ask_proxy_config
   check_docker
 
   if [[ ! -f ".env" ]]; then
-    echo "鈿狅笍 鏈壘鍒?.env锛岄粯璁ゆ寜 SQLite 妯″紡鏇存柊"
+    echo "⚠️ 未找到 .env，默认按 SQLite 模式更新"
   fi
   CURRENT_DB_TYPE=$(get_current_db_type)
-  echo "馃梽锔?褰撳墠鏁版嵁搴撶被鍨嬶細$CURRENT_DB_TYPE"
+  echo "🗄️ 当前数据库类型：$CURRENT_DB_TYPE"
 
-  echo "馃攳 鑾峰彇鏈€鏂扮増鏈彿..."
+  echo "🔍 获取最新版本号..."
   LATEST_VERSION=$(resolve_latest_release_tag) || {
-    echo "鉂?鏃犳硶鑾峰彇鏈€鏂扮増鏈彿锛屾洿鏂扮粓姝?
+    echo "❌ 无法获取最新版本号，更新终止"
     return 1
   }
-  echo "馃啎 鏈€鏂扮増鏈細$LATEST_VERSION"
+  echo "🆕 最新版本：$LATEST_VERSION"
   set_compose_urls_by_version "$LATEST_VERSION"
   upsert_env_var ".env" "FLUX_VERSION" "$LATEST_VERSION"
   upsert_env_var ".env" "IMAGE_VERSION" "$(normalize_image_version "$LATEST_VERSION")"
 
-  echo "馃斀 涓嬭浇鏈€鏂伴厤缃枃浠?.."
+  echo "🔽 下载最新配置文件..."
   DOCKER_COMPOSE_URL=$(get_docker_compose_url)
-  echo "馃摗 閫夋嫨閰嶇疆鏂囦欢锛?(basename "$DOCKER_COMPOSE_URL")"
+  echo "📡 选择配置文件：$(basename "$DOCKER_COMPOSE_URL")"
   curl -L -o docker-compose.yml "$DOCKER_COMPOSE_URL"
-  echo "鉁?涓嬭浇瀹屾垚"
+  echo "✅ 下载完成"
 
-  # 鑷姩妫€娴嬪苟閰嶇疆 IPv6 鏀寔
+  # 自动检测并配置 IPv6 支持
   if check_ipv6_support; then
-    echo "馃殌 绯荤粺鏀寔 IPv6锛岃嚜鍔ㄥ惎鐢?IPv6 閰嶇疆..."
+    echo "🚀 系统支持 IPv6，自动启用 IPv6 配置..."
     configure_docker_ipv6
   fi
 
-  # 鍏堝彂閫?SIGTERM 淇″彿锛岃搴旂敤浼橀泤鍏抽棴
+  # 先发送 SIGTERM 信号，让应用优雅关闭
   docker stop -t 30 flvx-svc-backend 2>/dev/null || true
   docker stop -t 10 flvx-svc-frontend 2>/dev/null || true
   
-  # 绛夊緟 WAL 鏂囦欢鍚屾
-  echo "鈴?绛夊緟鏁版嵁鍚屾..."
+  # 等待 WAL 文件同步
+  echo "⏳ 等待数据同步..."
   sleep 5
   
-  # 鐒跺悗鍐嶅畬鍏ㄥ仠姝?
+  # 然后再完全停止
   $DOCKER_CMD down
 
-  echo "猬囷笍 鎷夊彇鏈€鏂伴暅鍍?.."
+  echo "⬇️ 拉取最新镜像..."
   if [[ "$CURRENT_DB_TYPE" == "postgres" ]]; then
     $DOCKER_CMD pull backend frontend postgres
   else
     $DOCKER_CMD pull backend frontend
   fi
 
-  echo "馃殌 鍚姩鏇存柊鍚庣殑鏈嶅姟..."
+  echo "🚀 启动更新后的服务..."
   if [[ "$CURRENT_DB_TYPE" == "postgres" ]]; then
     $DOCKER_CMD up -d postgres
     wait_for_postgres_healthy
@@ -552,42 +551,42 @@ update_panel() {
     $DOCKER_CMD up -d backend frontend
   fi
 
-  # 绛夊緟鏈嶅姟鍚姩
-  echo "鈴?绛夊緟鏈嶅姟鍚姩..."
+  # 等待服务启动
+  echo "⏳ 等待服务启动..."
 
   if ! wait_for_backend_healthy; then
-    echo "馃洃 鏇存柊缁堟"
+    echo "🛑 更新终止"
     return 1
   fi
 
-  echo "鉁?鏇存柊瀹屾垚"
+  echo "✅ 更新完成"
 }
 
 
 migrate_to_postgres() {
   local current_db_type postgres_db postgres_user postgres_password database_url
 
-  echo "馃攧 寮€濮嬭縼绉?SQLite -> PostgreSQL..."
+  echo "🔄 开始迁移 SQLite -> PostgreSQL..."
   check_docker
 
   if [[ ! -f ".env" ]]; then
-    echo "鉂?鏈壘鍒?.env 鏂囦欢锛岃鍏堝畨瑁呴潰鏉?
+    echo "❌ 未找到 .env 文件，请先安装面板"
     return 1
   fi
 
   if [[ ! -f "docker-compose.yml" ]]; then
-    echo "鈿狅笍 鏈壘鍒?docker-compose.yml 鏂囦欢锛屾鍦ㄤ笅杞?.."
+    echo "⚠️ 未找到 docker-compose.yml 文件，正在下载..."
     ask_proxy_config
     ensure_compose_urls_initialized || return 1
     DOCKER_COMPOSE_URL=$(get_docker_compose_url)
-    echo "馃摗 閫夋嫨閰嶇疆鏂囦欢锛?(basename "$DOCKER_COMPOSE_URL")"
+    echo "📡 选择配置文件：$(basename "$DOCKER_COMPOSE_URL")"
     curl -L -o docker-compose.yml "$DOCKER_COMPOSE_URL"
-    echo "鉁?docker-compose.yml 涓嬭浇瀹屾垚"
+    echo "✅ docker-compose.yml 下载完成"
   fi
 
   current_db_type=$(get_current_db_type)
   if [[ "$current_db_type" == "postgres" ]]; then
-    echo "鈩癸笍 褰撳墠宸蹭娇鐢?PostgreSQL锛屾棤闇€杩佺Щ"
+    echo "ℹ️ 当前已使用 PostgreSQL，无需迁移"
     return 0
   fi
 
@@ -603,29 +602,29 @@ migrate_to_postgres() {
   upsert_env_var ".env" "POSTGRES_USER" "$postgres_user"
   upsert_env_var ".env" "POSTGRES_PASSWORD" "$postgres_password"
 
-  echo "馃洃 鍋滄褰撳墠鏈嶅姟..."
+  echo "🛑 停止当前服务..."
   docker stop -t 30 flvx-svc-backend 2>/dev/null || true
   docker stop -t 10 flvx-svc-frontend 2>/dev/null || true
-  echo "鈴?绛夊緟鏁版嵁鍚屾..."
+  echo "⏳ 等待数据同步..."
   sleep 5
   $DOCKER_CMD down
 
-  echo "馃捑 澶囦唤 SQLite 鏁版嵁鍒板綋鍓嶇洰褰?.."
+  echo "💾 备份 SQLite 数据到当前目录..."
   if ! docker run --rm -v sqlite_data:/data -v "$(pwd)":/backup alpine sh -c "cp /data/gost.db /backup/gost.db.bak"; then
-    echo "鉂?SQLite 澶囦唤澶辫触锛岃縼绉荤粓姝?
+    echo "❌ SQLite 备份失败，迁移终止"
     return 1
   fi
 
-  echo "馃殌 鍚姩 PostgreSQL..."
+  echo "🚀 启动 PostgreSQL..."
   $DOCKER_CMD up -d postgres
   if ! wait_for_postgres_healthy; then
-    echo "馃洃 PostgreSQL 鏈氨缁紝杩佺Щ缁堟"
+    echo "🛑 PostgreSQL 未就绪，迁移终止"
     return 1
   fi
 
-  echo "馃攧 鎵ц pgloader 杩佺Щ..."
+  echo "🔄 执行 pgloader 迁移..."
   if ! docker run --rm --network gost-network -v sqlite_data:/sqlite dimitri/pgloader:latest pgloader /sqlite/gost.db "postgresql://${postgres_user}:${postgres_password}@postgres:5432/${postgres_db}"; then
-    echo "鉂?pgloader 杩佺Щ澶辫触锛岃縼绉荤粓姝紙濡傛姤 28P01锛屽彲鎵ц docker volume rm postgres_data 鍚庨噸璇曪級"
+    echo "❌ pgloader 迁移失败，迁移终止（如报 28P01，可执行 docker volume rm postgres_data 后重试）"
     return 1
   fi
 
@@ -633,55 +632,55 @@ migrate_to_postgres() {
   upsert_env_var ".env" "DB_TYPE" "postgres"
   upsert_env_var ".env" "DATABASE_URL" "$database_url"
 
-  echo "馃殌 鍚姩杩佺Щ鍚庣殑鏈嶅姟..."
+  echo "🚀 启动迁移后的服务..."
   $DOCKER_CMD up -d postgres backend frontend
 
-  echo "鈴?绛夊緟鏈嶅姟鍚姩..."
+  echo "⏳ 等待服务启动..."
   if ! wait_for_backend_healthy; then
-    echo "馃洃 杩佺Щ鍚庢湇鍔″惎鍔ㄥけ璐?
+    echo "🛑 迁移后服务启动失败"
     return 1
   fi
 
-  echo "鉁?SQLite -> PostgreSQL 杩佺Щ瀹屾垚"
+  echo "✅ SQLite -> PostgreSQL 迁移完成"
 }
 
 
 
-# 鍗歌浇鍔熻兘
+# 卸载功能
 uninstall_panel() {
-  echo "馃棏锔?寮€濮嬪嵏杞介潰鏉?.."
+  echo "🗑️ 开始卸载面板..."
   check_docker
 
   if [[ ! -f "docker-compose.yml" ]]; then
-    echo "鈿狅笍 鏈壘鍒?docker-compose.yml 鏂囦欢锛屾鍦ㄤ笅杞戒互瀹屾垚鍗歌浇..."
+    echo "⚠️ 未找到 docker-compose.yml 文件，正在下载以完成卸载..."
     ask_proxy_config
     ensure_compose_urls_initialized || return 1
     DOCKER_COMPOSE_URL=$(get_docker_compose_url)
-    echo "馃摗 閫夋嫨閰嶇疆鏂囦欢锛?(basename "$DOCKER_COMPOSE_URL")"
+    echo "📡 选择配置文件：$(basename "$DOCKER_COMPOSE_URL")"
     curl -L -o docker-compose.yml "$DOCKER_COMPOSE_URL"
-    echo "鉁?docker-compose.yml 涓嬭浇瀹屾垚"
+    echo "✅ docker-compose.yml 下载完成"
   fi
 
-  read -p "纭鍗歌浇闈㈡澘鍚楋紵姝ゆ搷浣滃皢鍋滄骞跺垹闄ゆ墍鏈夊鍣ㄥ拰鏁版嵁 (y/N): " confirm
+  read -p "确认卸载面板吗？此操作将停止并删除所有容器和数据 (y/N): " confirm
   if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
-    echo "鉂?鍙栨秷鍗歌浇"
+    echo "❌ 取消卸载"
     return 0
   fi
 
-  echo "馃洃 鍋滄骞跺垹闄ゅ鍣ㄣ€侀暅鍍忋€佸嵎..."
+  echo "🛑 停止并删除容器、镜像、卷..."
   $DOCKER_CMD down --rmi all --volumes --remove-orphans
-  echo "馃Ч 鍒犻櫎閰嶇疆鏂囦欢..."
+  echo "🧹 删除配置文件..."
   rm -f docker-compose.yml .env
-  echo "鉁?鍗歌浇瀹屾垚"
+  echo "✅ 卸载完成"
 }
 
-# 涓婚€昏緫
+# 主逻辑
 main() {
 
-  # 鏄剧ず浜や簰寮忚彍鍗?
+  # 显示交互式菜单
   while true; do
     show_menu
-    read -p "璇疯緭鍏ラ€夐」 (1-5): " choice
+    read -p "请输入选项 (1-5): " choice
 
     case $choice in
       1)
@@ -705,17 +704,17 @@ main() {
         exit 0
         ;;
       5)
-        echo "馃憢 閫€鍑鸿剼鏈?
+        echo "👋 退出脚本"
         delete_self
         exit 0
         ;;
       *)
-        echo "鉂?鏃犳晥閫夐」锛岃杈撳叆 1-5"
+        echo "❌ 无效选项，请输入 1-5"
         echo ""
         ;;
     esac
   done
 }
 
-# 鎵ц涓诲嚱鏁?
+# 执行主函数
 main
