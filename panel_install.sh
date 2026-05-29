@@ -121,6 +121,10 @@ normalize_image_version() {
   echo "$version"
 }
 
+remove_existing_containers() {
+  docker rm -f flvx-svc-backend flvx-svc-frontend flvx-svc-postgres 2>/dev/null || true
+}
+
 # 根据版本号设置 compose 下载地址
 set_compose_urls_by_version() {
   local version="$1"
@@ -471,6 +475,9 @@ POSTGRES_USER=$POSTGRES_USER
 POSTGRES_PASSWORD=$POSTGRES_PASSWORD
 EOF
 
+  echo "🧹 清理可能残留的旧容器..."
+  remove_existing_containers
+
   echo "🚀 启动 docker 服务..."
   if [[ "$DB_TYPE" == "postgres" ]]; then
     $DOCKER_CMD up -d postgres
@@ -523,6 +530,9 @@ update_panel() {
     echo "🚀 系统支持 IPv6，自动启用 IPv6 配置..."
     configure_docker_ipv6
   fi
+
+  echo "🧹 清理可能残留的旧容器..."
+  remove_existing_containers
 
   # 先发送 SIGTERM 信号，让应用优雅关闭
   docker stop -t 30 flvx-svc-backend 2>/dev/null || true
@@ -608,6 +618,7 @@ migrate_to_postgres() {
   echo "⏳ 等待数据同步..."
   sleep 5
   $DOCKER_CMD down
+  remove_existing_containers
 
   echo "💾 备份 SQLite 数据到当前目录..."
   if ! docker run --rm -v sqlite_data:/data -v "$(pwd)":/backup alpine sh -c "cp /data/gost.db /backup/gost.db.bak"; then
