@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -145,7 +146,7 @@ func TestUpdateEnvVersionReplacesExistingValue(t *testing.T) {
 		t.Fatalf("ReadFile() error = %v", err)
 	}
 
-	want := "FLUX_VERSION=2.1.9\nJWT_SECRET=test\n"
+	want := "FLUX_VERSION=2.1.9\nJWT_SECRET=test\nIMAGE_VERSION=2.1.9\n"
 	if string(data) != want {
 		t.Fatalf("env content = %q, want %q", string(data), want)
 	}
@@ -168,7 +169,30 @@ func TestUpdateEnvVersionAppendsMissingValue(t *testing.T) {
 		t.Fatalf("ReadFile() error = %v", err)
 	}
 
-	want := "JWT_SECRET=test\nFLUX_VERSION=2.1.9\n"
+	want := "JWT_SECRET=test\nFLUX_VERSION=2.1.9\nIMAGE_VERSION=2.1.9\n"
+	if string(data) != want {
+		t.Fatalf("env content = %q, want %q", string(data), want)
+	}
+}
+
+func TestUpdateEnvVersionNormalizesReleaseTagForImageVersion(t *testing.T) {
+	dir := t.TempDir()
+	envPath := filepath.Join(dir, ".env")
+	if err := os.WriteFile(envPath, []byte("JWT_SECRET=test\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	exec := &systemUpgradeExecutor{deployDir: dir, backendContainer: "flvx-svc-backend"}
+	if err := exec.updateEnvVersion(envPath, "Release3.0.0"); err != nil {
+		t.Fatalf("updateEnvVersion() error = %v", err)
+	}
+
+	data, err := os.ReadFile(envPath)
+	if err != nil {
+		t.Fatalf("ReadFile() error = %v", err)
+	}
+
+	want := "JWT_SECRET=test\nFLUX_VERSION=Release3.0.0\nIMAGE_VERSION=3.0.0\n"
 	if string(data) != want {
 		t.Fatalf("env content = %q, want %q", string(data), want)
 	}
@@ -233,8 +257,10 @@ func TestUpdateEnvVersionPreservesFileMode(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Stat() error = %v", err)
 	}
-	if got := info.Mode().Perm(); got != 0o600 {
-		t.Fatalf("env mode = %o, want 0600", got)
+	if runtime.GOOS != "windows" {
+		if got := info.Mode().Perm(); got != 0o600 {
+			t.Fatalf("env mode = %o, want 0600", got)
+		}
 	}
 }
 

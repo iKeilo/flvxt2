@@ -108,6 +108,10 @@ func currentPanelVersion() string {
 	return version
 }
 
+func normalizeImageVersion(version string) string {
+	return strings.TrimPrefix(version, "Release")
+}
+
 func validateBackendContainerName(value string) error {
 	if value == "" {
 		return fmt.Errorf("backend container name is empty")
@@ -239,6 +243,7 @@ func (e *systemUpgradeExecutor) updateEnvVersion(envPath, version string) error 
 	if err := validateUpgradeVersion(version); err != nil {
 		return err
 	}
+	imageVersion := normalizeImageVersion(version)
 	mode, err := fileModeOrDefault(envPath, 0o600)
 	if err != nil {
 		return err
@@ -248,24 +253,34 @@ func (e *systemUpgradeExecutor) updateEnvVersion(envPath, version string) error 
 		return err
 	}
 	lines := strings.Split(string(data), "\n")
-	replaced := false
+	replacedFlux := false
+	replacedImage := false
 	for i, line := range lines {
 		if strings.HasPrefix(line, "FLUX_VERSION=") {
 			lines[i] = "FLUX_VERSION=" + version
-			replaced = true
+			replacedFlux = true
+		}
+		if strings.HasPrefix(line, "IMAGE_VERSION=") {
+			lines[i] = "IMAGE_VERSION=" + imageVersion
+			replacedImage = true
 		}
 	}
-	if !replaced {
-		trimmed := strings.TrimRight(strings.Join(lines, "\n"), "\n")
+	trimmed := strings.TrimRight(strings.Join(lines, "\n"), "\n")
+	if !replacedFlux {
 		if trimmed == "" {
 			trimmed = "FLUX_VERSION=" + version
 		} else {
 			trimmed += "\nFLUX_VERSION=" + version
 		}
-		return writeFileWithMode(envPath, []byte(trimmed+"\n"), mode)
 	}
-	content := strings.TrimRight(strings.Join(lines, "\n"), "\n") + "\n"
-	return writeFileWithMode(envPath, []byte(content), mode)
+	if !replacedImage {
+		if trimmed == "" {
+			trimmed = "IMAGE_VERSION=" + imageVersion
+		} else {
+			trimmed += "\nIMAGE_VERSION=" + imageVersion
+		}
+	}
+	return writeFileWithMode(envPath, []byte(trimmed+"\n"), mode)
 }
 
 func (e *systemUpgradeExecutor) backupFile(path string) (string, error) {
